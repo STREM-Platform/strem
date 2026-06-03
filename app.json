@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "STREM",
+    "slug": "strem-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "strem",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
