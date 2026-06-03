@@ -1,0 +1,11 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Docker local volumes (named volumes are managed by Docker, not committed)
