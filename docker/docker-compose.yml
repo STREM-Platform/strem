@@ -1,0 +1,52 @@
+# STREM local development infrastructure.
+#
+# Broker decision (see strem-docs/architecture/event-driven-strategy.md):
+# Redis Streams is the MVP message broker. Redis is already required for cache
+# and rate limiting, and Redis Streams can serve double duty as the broker —
+# avoiding a third stateful service (NATS/RabbitMQ). The event-driven strategy
+# recommends "Redis Streams (if Redis is in use) or NATS" for MVP; reusing Redis
+# is the lower-overhead option. Revisit when event volume or routing complexity
+# justifies a dedicated broker (write an ADR then).
+#
+# This file provides shared infrastructure only. Application service containers
+# live in their own repos and connect to these services over the mapped ports.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-strem}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-strem}
+      POSTGRES_DB: ${POSTGRES_DB:-strem}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # One database per service is created on first boot (data ownership rule:
+      # strem-docs/architecture/database-strategy.md).
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-strem}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # appendonly keeps Redis Streams durable across restarts.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
