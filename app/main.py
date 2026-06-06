@@ -1,20 +1,40 @@
 """strem-training-service — application entrypoint.
 
-Skeleton: a FastAPI app exposing a health endpoint. Strength, running, and
-mobility session logging is implemented against
-strem-shared-contracts/contracts/training/openapi.yml.
+Implements strem-shared-contracts/contracts/training/openapi.yml: strength,
+running, and mobility session logging, publishing `training.session_logged` on
+each log. `GET /health` stays unversioned for probes.
 """
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.config import get_settings
+from app.db import configure
+from app.errors import register_error_handlers
+from app.events import configure_publisher
+from app.routers import training
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    configure(settings.database_url)
+    configure_publisher(settings.message_broker_url)
+    yield
+
 
 def create_app() -> FastAPI:
-    """Build the FastAPI application."""
+    """Build the FastAPI application with routes and error handlers."""
     application = FastAPI(
         title="strem-training-service",
-        version="0.1.0",
+        version="1.0.0",
         description="Strength, running, and mobility session logging for STREM.",
+        lifespan=lifespan,
     )
+    register_error_handlers(application)
+    application.include_router(training.router)
 
     @application.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:

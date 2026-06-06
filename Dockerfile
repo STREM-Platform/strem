@@ -16,6 +16,8 @@ RUN useradd --create-home --uid 1001 strem
 
 COPY --from=builder /install /usr/local
 COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./alembic.ini
 
 USER strem
 
