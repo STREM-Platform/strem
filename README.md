@@ -1,23 +1,44 @@
 # strem-infra
 
-Local development infrastructure and shared CI templates for STREM.
+Local development infrastructure, the composed MVP service stack, and shared CI
+templates for STREM.
 
-`docker compose up -d` brings up the infrastructure dependencies every STREM
-service needs locally — PostgreSQL and Redis — with one command. CI workflow
-templates for service repos live in [`ci-templates/`](ci-templates/README.md).
+`docker compose up -d` brings up PostgreSQL, Redis, and the MVP services (auth,
+user, training, nutrition, community, AI orchestrator, and the gateway) with one
+command. CI workflow templates for service repos live in
+[`ci-templates/`](ci-templates/README.md).
 
 ## Contents
 
 ```
 strem-infra/
 ├── docker/
-│   ├── docker-compose.yml          # Postgres + Redis (Redis Streams = broker)
+│   ├── docker-compose.yml          # Postgres + Redis + the 7 MVP services
 │   └── postgres/init/              # per-service database creation on first boot
 ├── ci-templates/                   # canonical CI workflows for service repos
+├── scripts/smoke-health.sh         # verify every service GET /health after up
 ├── .github/workflows/validate.yml  # validates compose config on PR
 ├── .env.example                    # safe local defaults for every required var
 ├── AGENTS.md
 └── README.md
+```
+
+## Repository layout assumption
+
+The service containers build from the service repositories, which must be cloned
+as **siblings** of `strem-infra` under one parent directory (each service's build
+context is `../../strem-<service>` relative to the compose file):
+
+```
+<parent>/
+├── strem-infra/
+├── strem-api-gateway/
+├── strem-auth-service/
+├── strem-user-service/
+├── strem-training-service/
+├── strem-nutrition-service/
+├── strem-community-service/
+└── strem-ai-orchestrator/
 ```
 
 ## Prerequisites
@@ -36,19 +57,49 @@ docker compose -f docker/docker-compose.yml down       # stop (keep data)
 docker compose -f docker/docker-compose.yml down -v    # stop + wipe data (reset)
 ```
 
-Health checks are defined on every service; `... ps` shows `healthy` once they
-are ready to accept connections.
+Health checks are defined on every container; `... ps` shows `healthy` once each
+is ready. **Startup order** is handled automatically: services wait for Postgres
+and Redis to be healthy (`depends_on: condition: service_healthy`), and the
+gateway waits for the services. Postgres + Redis come up first, then the six
+backend services, then the gateway.
+
+After the stack is up, smoke-check every service's health endpoint:
+
+```bash
+./scripts/smoke-health.sh
+# or manually, e.g.:  curl http://localhost:8001/health
+```
+
+> First run builds seven images and can take a few minutes. The schema is created
+> by each service's own migrations (`alembic upgrade head`), not by infra — run a
+> service's migration once its container and Postgres are healthy.
 
 ## Ports
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| PostgreSQL | `5432` | Primary relational database (one DB per service) |
-| Redis | `6379` | Cache, rate limiting, and the Redis Streams message broker |
+| Service | Port (host) | URL |
+|---------|------|-----|
+| Gateway (mobile entrypoint) | `8000` | http://localhost:8000 |
+| Auth | `8001` | http://localhost:8001/health |
+| User | `8002` | http://localhost:8002/health |
+| Training | `8003` | http://localhost:8003/health |
+| Nutrition | `8004` | http://localhost:8004/health |
+| Community | `8005` | http://localhost:8005/health |
+| AI orchestrator | `8006` | http://localhost:8006/health |
+| PostgreSQL | `5432` | one database per service |
+| Redis | `6379` | cache + Redis Streams broker |
 
-On first boot, Postgres creates one database per MVP service
-(`strem_auth`, `strem_user`, `strem_training`, `strem_nutrition`,
-`strem_community`, `strem_ai`). Connection strings are in `.env.example`.
+Each service listens on `8000` **inside** its container; the gateway and services
+reach each other by container name (e.g. `http://user:8000/v1`). On first boot,
+Postgres creates one database per MVP service (`strem_auth`, `strem_user`,
+`strem_training`, `strem_nutrition`, `strem_community`, `strem_ai`); the gateway
+has no database.
+
+## Troubleshooting
+
+- **A service is `unhealthy`** → `docker compose -f docker/docker-compose.yml logs <service>`. The most common cause is missing migrations: exec in and run `alembic upgrade head`. `GET /health` itself does not touch the database, so a healthy container with failing API calls usually means the schema is not migrated.
+- **Build context error** → ensure the service repos are cloned as siblings (see layout above).
+- **Port already in use** → another process holds `8000-8006`/`5432`/`6379`; stop it or change the host port mapping.
+- **Event consumers** (XP attribution, Tribe Power) run as separate worker processes (`python -m app.worker` in the user and community services); start them alongside the API when testing the event-driven loop.
 
 ## Why Redis Streams as the broker
 
