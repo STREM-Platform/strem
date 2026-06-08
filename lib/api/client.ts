@@ -14,10 +14,28 @@ import type {
   ApiErrorBody,
   AuthIdentity,
   AuthSession,
+  CheckIn,
+  CheckInPage,
+  CreateCheckinRequest,
   LoginRequest,
+  LogNutritionDayRequest,
+  LogTrainingSessionRequest,
+  MedalListResponse,
+  Membership,
+  Mission,
+  MissionGenerationResult,
+  MissionList,
+  NutritionDay,
+  NutritionDayPage,
   OnboardingStatus,
+  OnboardingSubmission,
   RegisterRequest,
   TokenPair,
+  TrainingSession,
+  Tribe,
+  UserProfile,
+  WeeklyRecap,
+  XPSummary,
 } from "./types";
 
 export class ApiError extends Error {
@@ -129,5 +147,72 @@ export const api = {
   },
   getOnboardingStatus(): Promise<OnboardingStatus> {
     return request<OnboardingStatus>("/users/onboarding/status", { auth: true });
+  },
+  submitOnboarding(payload: OnboardingSubmission): Promise<OnboardingStatus> {
+    return request<OnboardingStatus>("/users/onboarding", {
+      method: "POST",
+      body: payload,
+      auth: true,
+    });
+  },
+  getUserProfile(): Promise<UserProfile> {
+    return request<UserProfile>("/users/me", { auth: true });
+  },
+  getXpSummary(): Promise<XPSummary> {
+    return request<XPSummary>("/users/me/xp", { auth: true });
+  },
+  getMedals(): Promise<MedalListResponse> {
+    return request<MedalListResponse>("/users/me/medals", { auth: true });
+  },
+  logTrainingSession(payload: LogTrainingSessionRequest): Promise<TrainingSession> {
+    return request<TrainingSession>("/training/sessions", {
+      method: "POST",
+      body: payload,
+      auth: true,
+    });
+  },
+  logNutritionDay(payload: LogNutritionDayRequest): Promise<NutritionDay> {
+    return request<NutritionDay>("/nutrition/days", { method: "POST", body: payload, auth: true });
+  },
+  listNutritionDays(limit = 14): Promise<NutritionDayPage> {
+    return request<NutritionDayPage>(`/nutrition/days?limit=${limit}`, { auth: true });
+  },
+  getMyTribe(): Promise<Tribe> {
+    return request<Tribe>("/tribes/me", { auth: true });
+  },
+  joinTribe(inviteCode: string): Promise<Membership> {
+    return request<Membership>("/tribes/join", {
+      method: "POST",
+      body: { invite_code: inviteCode },
+      auth: true,
+    });
+  },
+  createCheckin(tribeId: string, payload: CreateCheckinRequest): Promise<CheckIn> {
+    return request<CheckIn>(`/tribes/${tribeId}/checkins`, {
+      method: "POST",
+      body: payload,
+      auth: true,
+    });
+  },
+  listCheckins(tribeId: string, limit = 20): Promise<CheckInPage> {
+    return request<CheckInPage>(`/tribes/${tribeId}/checkins?limit=${limit}`, { auth: true });
+  },
+  getActiveMissions(): Promise<MissionList> {
+    return request<MissionList>("/ai/missions/active", { auth: true });
+  },
+  generateMissions(): Promise<MissionGenerationResult> {
+    return request<MissionGenerationResult>("/ai/missions/generate", {
+      method: "POST",
+      auth: true,
+    });
+  },
+  completeMission(missionId: string): Promise<Mission> {
+    return request<Mission>(`/ai/missions/${missionId}/complete`, { method: "POST", auth: true });
+  },
+  skipMission(missionId: string): Promise<Mission> {
+    return request<Mission>(`/ai/missions/${missionId}/skip`, { method: "POST", auth: true });
+  },
+  getLatestRecap(): Promise<WeeklyRecap> {
+    return request<WeeklyRecap>("/ai/coach/recap", { auth: true });
   },
 };

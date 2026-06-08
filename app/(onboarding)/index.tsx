@@ -1,40 +1,44 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { PrimaryButton } from "@/components/form";
 import { Colors } from "@/constants/Colors";
-import { useAuth } from "@/lib/session/auth-context";
+import { api } from "@/lib/api/client";
+import { resumeScreen, routeForScreen } from "@/lib/onboarding";
 
 /**
- * Onboarding entry. This is the route the guard sends a signed-in user to when
- * onboarding is incomplete. The full seven-screen identity flow is built on this
- * group in the onboarding work (strem-mobile#4); for now it confirms the session
- * landed here and offers a way back out.
+ * Onboarding entry: resumes at the next incomplete screen. A fresh user starts
+ * at `welcome`; a user who abandoned mid-flow returns to where they left off.
  */
-export default function OnboardingStart() {
-  const { user, signOut } = useAuth();
+export default function OnboardingIndex() {
+  const router = useRouter();
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      let last = null;
+      try {
+        const status = await api.getOnboardingStatus();
+        last = status.last_completed_screen ?? null;
+      } catch {
+        // Fall back to the start of the flow on any error.
+      }
+      if (active) {
+        router.replace(routeForScreen(resumeScreen(last)));
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.brand}>STREM</Text>
-      <Text style={styles.title}>Let&apos;s build your identity</Text>
-      <Text style={styles.body}>
-        Welcome{user?.display_name ? `, ${user.display_name}` : ""}. The next few screens capture
-        who you&apos;re becoming — the identity your coach references for the rest of your journey.
-      </Text>
-      <PrimaryButton label="Sign Out" onPress={() => void signOut()} />
+      <ActivityIndicator color={Colors.accentGreen} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 14,
-  },
-  brand: { color: Colors.text, fontSize: 24, fontWeight: "800", letterSpacing: 4 },
-  title: { color: Colors.text, fontSize: 22, fontWeight: "700" },
-  body: { color: Colors.textMuted, fontSize: 15, lineHeight: 22, marginBottom: 8 },
+  container: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.background },
 });

@@ -49,13 +49,14 @@ app/
 ├── (auth)/
 │   ├── login.tsx        # email + password login
 │   └── register.tsx     # account creation
-├── (onboarding)/
-│   └── index.tsx        # onboarding entry (full 7-screen flow lands in #4)
+├── (onboarding)/        # the 7-screen identity flow (welcome … launch) + resume
 └── (app)/
-    ├── home.tsx         # /home — dashboard stub
-    ├── log.tsx          # /log — training log stub
-    ├── tribe.tsx        # /tribe — tribe stub
-    └── profile.tsx      # /profile — profile / rank stub
+    ├── home.tsx         # rank/XP/identity + this week's AI missions + CTAs
+    ├── log.tsx          # training/running/mobility logging
+    ├── nutrition.tsx    # daily nutrition logging + recent days
+    ├── tribe.tsx        # tribe state (none/pending/member/admin), join, check-ins
+    ├── coach.tsx        # weekly AI coaching recap (narrative)
+    └── profile.tsx      # rank, XP progress, and medals
 ```
 
 Supporting:
