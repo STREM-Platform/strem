@@ -56,10 +56,16 @@ faithful ledger proxy (documented in `app/medals.py`): e.g. the first
 
 ### Event consumers (the loop closer)
 
-A separate worker (`python -m app.worker`) consumes the logging streams
-(`training.session_logged`, `nutrition.day_logged`, `tribe.checkin_completed`)
-via a Redis Streams consumer group and awards XP through `award_xp`. So logging
-an action visibly produces XP. Per `event-driven-strategy.md`:
+A separate worker (`python -m app.worker`) consumes the progression streams via a
+Redis Streams consumer group and awards XP through `award_xp`. So logging an
+action — or completing a mission or challenge — visibly produces XP:
+
+- `training.session_logged` / `nutrition.day_logged` / `tribe.checkin_completed` → log XP.
+- `ai.mission_completed` → `mission_complete` XP (the event's `xp_reward`, 75-150).
+- `tribe.challenge_completed` → `challenge_complete` XP, the tribe collective pool distributed across participating members.
+- After any award, **7-day (200) and 30-day (1000) consistency streak bonuses** are detected from the ledger and awarded once per user.
+
+Per `event-driven-strategy.md`:
 
 - **Idempotent** — dedupe by broker message id in `processed_events`; a
   redelivered event is a no-op (the ledger entry's `source_reference` is
