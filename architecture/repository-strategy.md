@@ -35,7 +35,7 @@ Create a repository only when it has:
 Create these as MVP implementation reaches them, not as empty placeholders:
 
 - `strem-mobile`
-- `strem-api-gateway`
+- `strem-api-gateway` — creation authorized and scoped in [ADR 0006](adr/0006-authorize-strem-api-gateway.md)
 - `strem-auth-service`
 - `strem-user-service`
 - `strem-training-service`
