@@ -1,21 +1,45 @@
 """strem-auth-service — application entrypoint.
 
-Skeleton only. Authentication logic (registration, login, JWT issuance,
-refresh-token storage) is implemented against the contract defined in
-strem-shared-contracts/contracts/auth/openapi.yml. This module currently
-exposes a single health endpoint.
+Implements the authentication contract in
+strem-shared-contracts/contracts/auth/openapi.yml: email + password accounts
+with a JWT access token and a rotating, server-side refresh token. The database
+engine is configured on startup; `GET /health` stays unversioned for probes.
 """
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-app = FastAPI(
-    title="strem-auth-service",
-    version="0.1.0",
-    description="Authentication and session management for STREM.",
-)
+from app.config import get_settings
+from app.db import configure
+from app.errors import register_error_handlers
+from app.routers import auth
 
 
-@app.get("/health", tags=["meta"])
-async def health() -> dict[str, str]:
-    """Liveness probe used by CI, Docker, and orchestration."""
-    return {"status": "ok", "service": "strem-auth-service"}
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    configure(get_settings().database_url)
+    yield
+
+
+def create_app() -> FastAPI:
+    """Build the FastAPI application with routes and error handlers."""
+    application = FastAPI(
+        title="strem-auth-service",
+        version="1.0.0",
+        description="Authentication and session management for STREM.",
+        lifespan=lifespan,
+    )
+    register_error_handlers(application)
+    application.include_router(auth.router)
+
+    @application.get("/health", tags=["meta"])
+    async def health() -> dict[str, str]:
+        """Liveness probe used by CI, Docker, and orchestration."""
+        return {"status": "ok", "service": "strem-auth-service"}
+
+    return application
+
+
+app = create_app()
