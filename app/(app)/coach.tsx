@@ -1,19 +1,21 @@
-/* eslint-disable react-hooks/set-state-in-effect -- the initial recap fetch
-   legitimately sets state when the request resolves (404 = no recap yet). */
+/* eslint-disable react-hooks/set-state-in-effect -- initial recap fetch sets state from the request result. */
 
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
-import { Colors } from "@/constants/Colors";
+import { EmptyState, Surface } from "@/components/ui/surface";
+import { StatusPill } from "@/components/ui/status-pill";
+import { ScreenHeader } from "@/components/ui/typography";
+import { Colors, Spacing, Typography } from "@/constants/theme";
 import { ApiError, SessionExpiredError, api } from "@/lib/api/client";
 import type { WeeklyRecap } from "@/lib/api/types";
+import { formatDateRange } from "@/lib/format";
 
 type Status = "loading" | "recap" | "empty" | "error";
 
 /**
- * Weekly coach recap — an identity-grounded narrative from the AI coach, not a
- * metrics dashboard. Empty until the first weekly recap is generated.
+ * Weekly coach recap - identity-grounded narrative, not a metrics dashboard.
  */
 export default function CoachScreen() {
   const [status, setStatus] = useState<Status>("loading");
@@ -40,7 +42,10 @@ export default function CoachScreen() {
   if (status === "loading") {
     return (
       <AppScreen>
-        <ActivityIndicator color={Colors.accentGreen} style={{ marginTop: 40 }} />
+        <Surface variant="muted" style={styles.loading}>
+          <ActivityIndicator color={Colors.accentGreenBright} />
+          <Text style={styles.loadingText}>Loading coach recap...</Text>
+        </Surface>
       </AppScreen>
     );
   }
@@ -52,11 +57,14 @@ export default function CoachScreen() {
   if (status === "empty") {
     return (
       <AppScreen onRefresh={() => void load()}>
-        <Text style={styles.title}>Your coach is listening</Text>
-        <Text style={styles.body}>
-          Your first weekly recap arrives after a week of training and logging — an honest, personal
-          read on the identity you&apos;re building. Keep showing up.
-        </Text>
+        <ScreenHeader
+          title="Coach"
+          subtitle="The weekly recap turns your logs into a narrative you can act on."
+        />
+        <EmptyState
+          title="Your coach is listening"
+          body="Your first weekly recap arrives after a week of training and logging. Keep showing up."
+        />
       </AppScreen>
     );
   }
@@ -64,18 +72,45 @@ export default function CoachScreen() {
   const week = recap as WeeklyRecap;
   return (
     <AppScreen onRefresh={() => void load()}>
-      <Text style={styles.title}>This week</Text>
-      <Text style={styles.week}>
-        {week.week_start} → {week.week_end}
-      </Text>
-      <Text style={styles.narrative}>{week.narrative}</Text>
+      <ScreenHeader title="This week" subtitle="An honest read on the identity you are building." />
+      <Surface variant="raised" style={styles.recap}>
+        <View style={styles.recapTop}>
+          <StatusPill label="Weekly recap" tone="green" />
+          <Text style={styles.week}>{formatDateRange(week.week_start, week.week_end)}</Text>
+        </View>
+        <Text style={styles.narrative}>{week.narrative}</Text>
+      </Surface>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { color: Colors.text, fontSize: 26, fontWeight: "800" },
-  week: { color: Colors.textMuted, fontSize: 13 },
-  body: { color: Colors.textMuted, fontSize: 16, lineHeight: 24 },
-  narrative: { color: Colors.text, fontSize: 18, lineHeight: 28, marginTop: 8 },
+  loading: {
+    alignItems: "center",
+    paddingVertical: Spacing.xxxl,
+  },
+  loadingText: {
+    ...Typography.label,
+    color: Colors.textMuted,
+  },
+  recap: {
+    gap: Spacing.xl,
+  },
+  recapTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+  },
+  week: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    fontWeight: "700",
+  },
+  narrative: {
+    color: Colors.text,
+    fontSize: 19,
+    lineHeight: 30,
+    fontWeight: "700",
+  },
 });

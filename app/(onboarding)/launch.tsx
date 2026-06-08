@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { TextField } from "@/components/form";
 import { OnboardingScaffold } from "@/components/onboarding-scaffold";
-import { Colors } from "@/constants/Colors";
+import { Colors, Typography } from "@/constants/theme";
 import { useAuth } from "@/lib/session/auth-context";
 import { useOnboardingStep } from "@/lib/use-onboarding-step";
 
@@ -49,7 +49,14 @@ export default function LaunchScreen() {
         autoCapitalize="words"
         maxLength={40}
       />
-      <Text style={{ color: Colors.textMuted, fontSize: 13 }}>Timezone: {timezone}</Text>
+      <Text style={styles.timezone}>Timezone: {timezone}</Text>
     </OnboardingScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  timezone: {
+    ...Typography.label,
+    color: Colors.textMuted,
+  },
+});

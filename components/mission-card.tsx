@@ -1,9 +1,13 @@
 /** A single active mission with complete / skip actions. */
 
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Colors } from "@/constants/Colors";
+import { PrimaryButton } from "@/components/form";
+import { Surface } from "@/components/ui/surface";
+import { StatusPill } from "@/components/ui/status-pill";
+import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
+import { titleizeEnum } from "@/lib/format";
 import type { Mission } from "@/lib/api/types";
 
 interface MissionCardProps {
@@ -25,66 +29,110 @@ export function MissionCard({ mission, onComplete, onSkip }: MissionCardProps) {
   };
 
   return (
-    <View style={styles.card}>
+    <Surface variant="raised" style={styles.card}>
       <View style={styles.meta}>
-        <Text style={styles.tag}>{mission.type}</Text>
-        <Text style={styles.tagMuted}>{mission.difficulty}</Text>
+        <StatusPill label={titleizeEnum(mission.type)} tone="green" />
+        <StatusPill label={titleizeEnum(mission.difficulty)} />
+      </View>
+
+      <View style={styles.titleBlock}>
+        <Text style={styles.title}>{mission.title}</Text>
+        <Text style={styles.description}>{mission.description}</Text>
+      </View>
+
+      <View style={styles.conditionBox}>
+        <Text style={styles.conditionLabel}>Completion proof</Text>
+        <Text style={styles.condition}>{mission.completion_condition}</Text>
+      </View>
+
+      <View style={styles.rewardRow}>
+        <Text style={styles.duration}>{mission.duration_days}-day mission</Text>
         <Text style={styles.xp}>+{mission.xp_reward} XP</Text>
       </View>
-      <Text style={styles.title}>{mission.title}</Text>
-      <Text style={styles.description}>{mission.description}</Text>
-      <Text style={styles.condition}>{mission.completion_condition}</Text>
-      <Text style={styles.duration}>{mission.duration_days}-day mission</Text>
+
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy}
+        <PrimaryButton
+          label="Complete"
           onPress={() => void act(onComplete)}
-          style={[styles.button, styles.complete, busy ? styles.disabled : null]}
-        >
-          <Text style={styles.completeLabel}>Complete</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
           disabled={busy}
+          loading={busy}
+          style={styles.actionButton}
+        />
+        <PrimaryButton
+          label="Skip"
           onPress={() => void act(onSkip)}
-          style={[styles.button, styles.skip, busy ? styles.disabled : null]}
-        >
-          <Text style={styles.skipLabel}>Skip</Text>
-        </Pressable>
+          disabled={busy}
+          variant="ghost"
+          style={styles.actionButton}
+        />
       </View>
-    </View>
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    gap: 6,
+    gap: Spacing.lg,
   },
-  meta: { flexDirection: "row", alignItems: "center", gap: 8 },
-  tag: {
-    color: Colors.accentGreen,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+  meta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  titleBlock: {
+    gap: Spacing.sm,
+  },
+  title: {
+    color: Colors.text,
+    fontSize: 21,
+    lineHeight: 27,
+    fontWeight: "900",
+  },
+  description: {
+    ...Typography.body,
+    color: Colors.textMuted,
+  },
+  conditionBox: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.accentGreenBright,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.backgroundElevated,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.xxs,
+  },
+  conditionLabel: {
+    ...Typography.caption,
+    color: Colors.textSubtle,
     textTransform: "uppercase",
   },
-  tagMuted: { color: Colors.textMuted, fontSize: 12, textTransform: "uppercase" },
-  xp: { color: Colors.textMuted, fontSize: 12, fontWeight: "700", marginLeft: "auto" },
-  title: { color: Colors.text, fontSize: 17, fontWeight: "700" },
-  description: { color: Colors.textMuted, fontSize: 14, lineHeight: 20 },
-  condition: { color: Colors.text, fontSize: 13 },
-  duration: { color: Colors.textMuted, fontSize: 12 },
-  actions: { flexDirection: "row", gap: 10, marginTop: 6 },
-  button: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-  complete: { backgroundColor: Colors.text },
-  completeLabel: { color: Colors.background, fontWeight: "700" },
-  skip: { borderColor: Colors.border, borderWidth: 1 },
-  skipLabel: { color: Colors.textMuted, fontWeight: "600" },
-  disabled: { opacity: 0.5 },
+  condition: {
+    color: Colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "700",
+  },
+  rewardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+  },
+  duration: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+  },
+  xp: {
+    color: Colors.accentGreenBright,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "900",
+  },
+  actions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  actionButton: {
+    flex: 1,
+  },
 });

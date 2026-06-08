@@ -1,18 +1,19 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { PrimaryButton } from "@/components/form";
 import { MissionCard } from "@/components/mission-card";
-import { Colors } from "@/constants/Colors";
+import { EmptyState, MetricCard, Surface } from "@/components/ui/surface";
+import { StatusPill } from "@/components/ui/status-pill";
+import { SectionHeader, ScreenHeader } from "@/components/ui/typography";
+import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import { useAsync } from "@/lib/use-async";
 
 /**
- * Home / dashboard — the transformation loop made visible. Greets the user by
- * their identity statement, shows rank + XP, surfaces this week's AI missions
- * (complete / skip / generate), and links to logging, the tribe, and the coach.
+ * Home / dashboard - the transformation loop made visible.
  */
 export default function HomeScreen() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function HomeScreen() {
       if (result.generated_count === 0) {
         setGenerationNote(
           result.reason === "insufficient_context"
-            ? "Your coach needs a bit more from you first — log an action, then try again."
+            ? "Your coach needs a bit more from you first. Log an action, then try again."
             : "This week's missions are already set.",
         );
       }
@@ -61,20 +62,43 @@ export default function HomeScreen() {
     <AppScreen loading={loading} error={error} onRefresh={refreshProgress}>
       {profile ? (
         <>
-          <View style={styles.header}>
-            <Text style={styles.rankBadge}>{profile.rank}</Text>
-            <Text style={styles.xp}>{profile.total_xp.toLocaleString()} XP</Text>
+          <ScreenHeader
+            overline="Transformation OS"
+            title={profile.display_name ? `${profile.display_name}, keep building.` : "Keep building."}
+            subtitle="Daily proof, coached missions, and visible progression."
+          />
+
+          <Surface variant="raised" style={styles.identityCard}>
+            <View style={styles.identityTop}>
+              <StatusPill label={profile.rank} tone="inverse" />
+              <Text style={styles.xp}>{profile.total_xp.toLocaleString()} XP</Text>
+            </View>
+            <Text style={styles.identityLabel}>Identity statement</Text>
+            <Text style={styles.identityText}>
+              {profile.identity_statement || "Define the identity you are building in onboarding."}
+            </Text>
+          </Surface>
+
+          <View style={styles.metrics}>
+            <MetricCard label="Rank" value={profile.rank} detail="Current arc" tone="green" />
+            <MetricCard
+              label="Active"
+              value={String(activeMissions.length)}
+              detail="Missions"
+            />
           </View>
 
-          <Text style={styles.greeting}>
-            {profile.display_name ? `${profile.display_name},` : "You,"}
-          </Text>
-          {profile.identity_statement ? (
-            <Text style={styles.identity}>{profile.identity_statement}</Text>
-          ) : null}
+          <SectionHeader
+            title="This week's missions"
+            subtitle="Structured commitments from your AI coach."
+          />
 
-          <Text style={styles.sectionTitle}>This week&apos;s missions</Text>
-          {activeMissions.length > 0 ? (
+          {missions.loading && activeMissions.length === 0 ? (
+            <Surface variant="muted" style={styles.loadingMissions}>
+              <ActivityIndicator color={Colors.accentGreenBright} />
+              <Text style={styles.loadingText}>Checking coach missions...</Text>
+            </Surface>
+          ) : activeMissions.length > 0 ? (
             activeMissions.map((mission) => (
               <MissionCard
                 key={mission.id}
@@ -84,22 +108,35 @@ export default function HomeScreen() {
               />
             ))
           ) : (
-            <View style={styles.card}>
-              <Text style={styles.cardBody}>
-                No active missions yet. Generate this week&apos;s missions to get a clear, coached
-                next step.
-              </Text>
+            <EmptyState
+              title="No active missions yet"
+              body="Generate this week's missions to turn your logs into a clear next step."
+            >
               {generationNote ? <Text style={styles.note}>{generationNote}</Text> : null}
               <PrimaryButton
-                label="Generate this week's missions"
+                label="Generate missions"
                 onPress={onGenerate}
                 loading={generating}
               />
-            </View>
+            </EmptyState>
           )}
 
-          <PrimaryButton label="Log an action" onPress={() => router.push("/(app)/log")} />
-          <PrimaryButton label="Weekly coach recap" onPress={() => router.push("/(app)/coach")} />
+          <Surface variant="outline" style={styles.actionPanel}>
+            <Text style={styles.actionTitle}>Next proof</Text>
+            <View style={styles.actions}>
+              <PrimaryButton
+                label="Log an action"
+                onPress={() => router.push("/(app)/log")}
+                style={styles.actionButton}
+              />
+              <PrimaryButton
+                label="Coach recap"
+                onPress={() => router.push("/(app)/coach")}
+                variant="secondary"
+                style={styles.actionButton}
+              />
+            </View>
+          </Surface>
         </>
       ) : null}
     </AppScreen>
@@ -107,30 +144,59 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  rankBadge: {
-    color: Colors.background,
-    backgroundColor: Colors.accentGreen,
+  identityCard: {
+    borderRadius: Radius.xxl,
+  },
+  identityTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+  },
+  xp: {
+    color: Colors.accentGreenBright,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "900",
+  },
+  identityLabel: {
+    ...Typography.caption,
+    color: Colors.textSubtle,
+    textTransform: "uppercase",
+  },
+  identityText: {
+    color: Colors.text,
+    fontSize: 20,
+    lineHeight: 28,
     fontWeight: "800",
-    fontSize: 13,
-    letterSpacing: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    overflow: "hidden",
   },
-  xp: { color: Colors.textMuted, fontSize: 14, fontWeight: "600" },
-  greeting: { color: Colors.text, fontSize: 28, fontWeight: "800", marginTop: 8 },
-  identity: { color: Colors.textMuted, fontSize: 16, lineHeight: 24 },
-  sectionTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 8 },
-  card: {
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    gap: 10,
+  metrics: {
+    flexDirection: "row",
+    gap: Spacing.md,
   },
-  cardBody: { color: Colors.textMuted, fontSize: 14, lineHeight: 20 },
-  note: { color: Colors.accentGreen, fontSize: 13 },
+  loadingMissions: {
+    alignItems: "center",
+  },
+  loadingText: {
+    ...Typography.label,
+    color: Colors.textMuted,
+  },
+  note: {
+    ...Typography.body,
+    color: Colors.accentGreenBright,
+  },
+  actionPanel: {
+    gap: Spacing.md,
+  },
+  actionTitle: {
+    ...Typography.label,
+    color: Colors.textMuted,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  actionButton: {
+    flex: 1,
+  },
 });

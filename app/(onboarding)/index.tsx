@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { Colors } from "@/constants/Colors";
+import { Colors } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import { resumeScreen, routeForScreen } from "@/lib/onboarding";
 
@@ -34,11 +34,16 @@ export default function OnboardingIndex() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator color={Colors.accentGreen} />
+      <ActivityIndicator color={Colors.accentGreenBright} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.background },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.background,
+  },
 });

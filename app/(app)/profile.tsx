@@ -1,9 +1,15 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
-import { Colors } from "@/constants/Colors";
+import { BrandLogo } from "@/components/brand-logo";
+import { EmptyState, MetricCard, Surface } from "@/components/ui/surface";
+import { ProgressBar } from "@/components/ui/progress";
+import { StatusPill } from "@/components/ui/status-pill";
+import { SectionHeader, ScreenHeader } from "@/components/ui/typography";
+import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import type { EarnedMedal, XPSummary } from "@/lib/api/types";
+import { formatShortDate } from "@/lib/format";
 import { useAsync } from "@/lib/use-async";
 
 interface ProfileData {
@@ -24,7 +30,7 @@ function progressFraction(xp: XPSummary): number {
   return span > 0 ? Math.min(1, Math.max(0, xp.xp_into_rank / span)) : 0;
 }
 
-/** Profile — rank, total XP, progress to the next rank, and earned medals. */
+/** Profile - rank, total XP, progress to next rank, and earned medals. */
 export default function ProfileScreen() {
   const { data, loading, error, reload } = useAsync(loadProfile);
 
@@ -32,27 +38,52 @@ export default function ProfileScreen() {
     <AppScreen loading={loading} error={error} onRefresh={reload}>
       {data ? (
         <>
-          <Text style={styles.rank}>{data.xp.rank}</Text>
-          <Text style={styles.total}>{data.xp.total_xp.toLocaleString()} XP total</Text>
+          <ScreenHeader
+            title="Progression"
+            subtitle="Permanent proof of the identity you are building."
+          />
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progressFraction(data.xp) * 100}%` }]} />
+          <Surface variant="raised" style={styles.rankCard}>
+            <View style={styles.rankTop}>
+              <StatusPill label={data.xp.rank} tone="inverse" />
+              <Text style={styles.total}>{data.xp.total_xp.toLocaleString()} XP</Text>
+            </View>
+            <ProgressBar
+              value={progressFraction(data.xp)}
+              label={data.xp.next_rank ? `Path to ${data.xp.next_rank}` : "MVP rank complete"}
+              helper={
+                data.xp.next_rank
+                  ? `${data.xp.xp_to_next_rank.toLocaleString()} XP remaining`
+                  : "Top MVP rank reached"
+              }
+            />
+          </Surface>
+
+          <View style={styles.metrics}>
+            <MetricCard label="In rank" value={data.xp.xp_into_rank.toLocaleString()} detail="XP earned" />
+            <MetricCard
+              label="Medals"
+              value={String(data.medals.length)}
+              detail="Earned"
+              tone={data.medals.length > 0 ? "green" : "neutral"}
+            />
           </View>
-          <Text style={styles.progressLabel}>
-            {data.xp.next_rank
-              ? `${data.xp.xp_to_next_rank.toLocaleString()} XP to ${data.xp.next_rank}`
-              : "Top MVP rank reached"}
-          </Text>
 
-          <Text style={styles.sectionTitle}>Medals</Text>
+          <SectionHeader title="Medals" subtitle="Milestones that should feel earned." />
           {data.medals.length === 0 ? (
-            <Text style={styles.empty}>No medals yet — your first is one action away.</Text>
+            <EmptyState title="No medals yet" body="Your first earned marker is one action away." />
           ) : (
             <View style={styles.medals}>
               {data.medals.map((medal) => (
-                <View key={medal.medal_type} style={styles.medal}>
-                  <Text style={styles.medalTitle}>{medal.title}</Text>
-                </View>
+                <Surface key={medal.medal_type} variant="muted" style={styles.medal}>
+                  <View style={styles.medalMark}>
+                    <BrandLogo variant="symbol" style={styles.medalLogo} />
+                  </View>
+                  <View style={styles.medalCopy}>
+                    <Text style={styles.medalTitle}>{medal.title}</Text>
+                    <Text style={styles.medalDate}>Earned {formatShortDate(medal.earned_at.slice(0, 10))}</Text>
+                  </View>
+                </Surface>
               ))}
             </View>
           )}
@@ -63,29 +94,61 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  rank: { color: Colors.text, fontSize: 32, fontWeight: "800" },
-  total: { color: Colors.textMuted, fontSize: 16 },
-  progressTrack: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    overflow: "hidden",
-    marginTop: 8,
+  rankCard: {
+    gap: Spacing.xl,
   },
-  progressFill: { height: "100%", backgroundColor: Colors.accentGreen },
-  progressLabel: { color: Colors.textMuted, fontSize: 13 },
-  sectionTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 12 },
-  empty: { color: Colors.textMuted, fontSize: 14 },
-  medals: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  rankTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+  },
+  total: {
+    color: Colors.accentGreenBright,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "900",
+  },
+  metrics: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  medals: {
+    gap: Spacing.sm,
+  },
   medal: {
-    backgroundColor: Colors.surface,
-    borderColor: Colors.accentGreen,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: Radius.lg,
+    gap: Spacing.md,
   },
-  medalTitle: { color: Colors.text, fontSize: 14, fontWeight: "600" },
+  medalMark: {
+    width: 38,
+    height: 38,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.accentGreen,
+    backgroundColor: Colors.accentGreenSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  medalLogo: {
+    width: 32,
+    height: 32,
+  },
+  medalCopy: {
+    flex: 1,
+    gap: Spacing.xxs,
+  },
+  medalTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+  medalDate: {
+    ...Typography.caption,
+    color: Colors.textSubtle,
+    fontWeight: "600",
+  },
 });

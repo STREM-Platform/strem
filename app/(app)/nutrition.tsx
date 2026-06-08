@@ -3,9 +3,13 @@ import { StyleSheet, Switch, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { FormError, PrimaryButton, TextField } from "@/components/form";
-import { Colors } from "@/constants/Colors";
+import { EmptyState, Surface } from "@/components/ui/surface";
+import { StatusPill } from "@/components/ui/status-pill";
+import { SectionHeader, ScreenHeader } from "@/components/ui/typography";
+import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { ApiError, api } from "@/lib/api/client";
 import type { NutritionDay } from "@/lib/api/types";
+import { formatShortDate } from "@/lib/format";
 import { useAsync } from "@/lib/use-async";
 
 function today(): string {
@@ -13,9 +17,7 @@ function today(): string {
 }
 
 /**
- * Nutrition log — record whether the day's targets were met (consistency-first,
- * not macros) and review recent days. Logging refreshes the recent list; XP from
- * the backend consumer appears on the profile.
+ * Nutrition log - consistency-first daily logging, not calorie obsession.
  */
 export default function NutritionScreen() {
   const { data, loading, error, reload } = useAsync(() => api.listNutritionDays());
@@ -49,63 +51,109 @@ export default function NutritionScreen() {
 
   return (
     <AppScreen loading={loading} error={error} onRefresh={reload}>
-      <Text style={styles.title}>Nutrition</Text>
-
-      <TextField label="Date" value={date} onChangeText={setDate} placeholder="2026-06-08" />
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Targets met</Text>
-        <Switch
-          value={targetsMet}
-          onValueChange={setTargetsMet}
-          trackColor={{ true: Colors.accentGreen, false: Colors.border }}
-        />
-      </View>
-      <TextField
-        label="Notes (optional)"
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="Hit protein, light on veg"
-        multiline
-        maxLength={500}
+      <ScreenHeader
+        title="Nutrition"
+        subtitle="Log alignment for the day. Keep it honest, simple, and repeatable."
       />
-      {formError ? <FormError message={formError} /> : null}
-      <PrimaryButton label="Log day" onPress={onSubmit} loading={submitting} />
 
-      <Text style={styles.sectionTitle}>Recent days</Text>
-      {data && data.items.length === 0 ? (
-        <Text style={styles.empty}>No nutrition logged yet — your first day starts now.</Text>
-      ) : (
-        (data?.items ?? []).map((day: NutritionDay) => (
-          <View key={day.id} style={styles.dayRow}>
-            <Text style={styles.dayDate}>{day.date}</Text>
-            <Text style={[styles.dayStatus, day.targets_met ? styles.met : styles.missed]}>
-              {day.targets_met ? "Targets met" : "Off target"}
-            </Text>
+      <Surface variant="raised" style={styles.form}>
+        <TextField label="Date" value={date} onChangeText={setDate} placeholder="2026-06-08" />
+        <View style={styles.switchRow}>
+          <View style={styles.switchCopy}>
+            <Text style={styles.switchLabel}>Targets met</Text>
+            <Text style={styles.switchHint}>Consistency over perfect macro math.</Text>
           </View>
-        ))
+          <Switch
+            value={targetsMet}
+            onValueChange={setTargetsMet}
+            trackColor={{ true: Colors.accentGreen, false: Colors.surfaceMuted }}
+            thumbColor={targetsMet ? Colors.surfaceInverse : Colors.textMuted}
+          />
+        </View>
+        <TextField
+          label="Notes"
+          helperText="Optional"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="Hit protein, light on vegetables"
+          multiline
+          maxLength={500}
+        />
+        {formError ? <FormError message={formError} /> : null}
+        <PrimaryButton label="Log day" onPress={onSubmit} loading={submitting} />
+      </Surface>
+
+      <SectionHeader title="Recent days" subtitle="A short ledger of nutrition proof." />
+      {data && data.items.length === 0 ? (
+        <EmptyState title="No days logged yet" body="Your first nutrition proof starts with one honest entry." />
+      ) : (
+        <View style={styles.list}>
+          {(data?.items ?? []).map((day: NutritionDay) => (
+            <Surface key={day.id} variant="muted" style={styles.dayRow}>
+              <View>
+                <Text style={styles.dayDate}>{formatShortDate(day.date)}</Text>
+                <Text style={styles.dayRaw}>{day.date}</Text>
+              </View>
+              <StatusPill label={day.targets_met ? "Targets met" : "Off target"} tone={day.targets_met ? "green" : "neutral"} />
+            </Surface>
+          ))}
+        </View>
       )}
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { color: Colors.text, fontSize: 24, fontWeight: "800" },
-  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  switchLabel: { color: Colors.text, fontSize: 16 },
-  sectionTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 12 },
-  empty: { color: Colors.textMuted, fontSize: 14 },
+  form: {
+    gap: Spacing.lg,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.lg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.backgroundElevated,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  switchCopy: {
+    flex: 1,
+    gap: Spacing.xxs,
+  },
+  switchLabel: {
+    color: Colors.text,
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+  switchHint: {
+    ...Typography.body,
+    color: Colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  list: {
+    gap: Spacing.sm,
+  },
   dayRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: Spacing.md,
+    borderRadius: Radius.lg,
   },
-  dayDate: { color: Colors.text, fontSize: 15 },
-  dayStatus: { fontSize: 14, fontWeight: "600" },
-  met: { color: Colors.accentGreen },
-  missed: { color: Colors.textMuted },
+  dayDate: {
+    color: Colors.text,
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+  dayRaw: {
+    ...Typography.caption,
+    color: Colors.textSubtle,
+    fontWeight: "600",
+  },
 });

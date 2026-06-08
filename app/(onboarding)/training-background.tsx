@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { OnboardingScaffold } from "@/components/onboarding-scaffold";
 import { MultiOptionSelect, OptionSelect, type Option } from "@/components/select";
-import { Colors } from "@/constants/Colors";
+import { Colors, Typography } from "@/constants/theme";
 import type { Modality, TrainingLevel } from "@/lib/api/types";
 import { useOnboardingStep } from "@/lib/use-onboarding-step";
 
@@ -48,10 +48,17 @@ export default function TrainingBackgroundScreen() {
       errorText={error}
     >
       <OptionSelect options={LEVELS} selected={level} onSelect={setLevel} />
-      <Text style={{ color: Colors.textMuted, fontSize: 13 }}>
+      <Text style={styles.helper}>
         Pillars you want to prioritize first (optional)
       </Text>
       <MultiOptionSelect options={MODALITIES} selected={modalities} onToggle={toggle} />
     </OnboardingScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  helper: {
+    ...Typography.label,
+    color: Colors.textMuted,
+  },
+});

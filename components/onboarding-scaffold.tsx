@@ -1,15 +1,19 @@
 /**
- * Shared layout for an onboarding screen: progress dots, title/subtitle, the
- * scrollable body, an optional skip action, and a primary continue button.
+ * Shared onboarding layout: progress, identity-first heading, body, and fixed
+ * actions. Per-screen submission behavior stays in `useOnboardingStep`.
  */
 
 import { type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { FormError, PrimaryButton } from "@/components/form";
-import { Colors } from "@/constants/Colors";
-import { ONBOARDING_ORDER } from "@/lib/onboarding";
+import { SegmentedProgress } from "@/components/ui/progress";
+import { Surface } from "@/components/ui/surface";
+import { Colors, Radius, Shadows, Spacing, Typography } from "@/constants/theme";
 import type { OnboardingScreen } from "@/lib/api/types";
+import { ONBOARDING_ORDER } from "@/lib/onboarding";
 
 interface OnboardingScaffoldProps {
   screen: OnboardingScreen;
@@ -39,52 +43,115 @@ export function OnboardingScaffold({
   const stepIndex = ONBOARDING_ORDER.indexOf(screen);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.container}
-    >
-      <View style={styles.progress}>
-        {ONBOARDING_ORDER.map((name, index) => (
-          <View
-            key={name}
-            style={[styles.dot, index <= stepIndex ? styles.dotActive : null]}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.container}
+      >
+        <View style={styles.top}>
+          <View style={styles.brandRow}>
+            <BrandLogo variant="symbol" style={styles.brandMark} />
+            <Text style={styles.step}>
+              {stepIndex + 1}/{ONBOARDING_ORDER.length}
+            </Text>
+          </View>
+          <SegmentedProgress total={ONBOARDING_ORDER.length} currentIndex={stepIndex} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          <Surface variant="raised" style={styles.hero}>
+            <Text style={styles.title}>{title}</Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          </Surface>
+          {children ? <View style={styles.fields}>{children}</View> : null}
+          {errorText ? <FormError message={errorText} /> : null}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <PrimaryButton
+            label={primaryLabel}
+            onPress={onPrimary}
+            disabled={primaryDisabled}
+            loading={submitting}
           />
-        ))}
-      </View>
-
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        {children}
-        {errorText ? <FormError message={errorText} /> : null}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <PrimaryButton
-          label={primaryLabel}
-          onPress={onPrimary}
-          disabled={primaryDisabled}
-          loading={submitting}
-        />
-        {onSkip ? (
-          <Pressable accessibilityRole="button" onPress={onSkip} style={styles.skip}>
-            <Text style={styles.skipText}>Skip for now</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </KeyboardAvoidingView>
+          {onSkip ? (
+            <Pressable accessibilityRole="button" onPress={onSkip} style={styles.skip}>
+              <Text style={styles.skipText}>Skip for now</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  progress: { flexDirection: "row", gap: 6, paddingHorizontal: 24, paddingTop: 16 },
-  dot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: Colors.border },
-  dotActive: { backgroundColor: Colors.accentGreen },
-  body: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 14 },
-  title: { color: Colors.text, fontSize: 26, fontWeight: "800" },
-  subtitle: { color: Colors.textMuted, fontSize: 15, lineHeight: 22 },
-  footer: { paddingHorizontal: 24, paddingBottom: 28, gap: 10 },
-  skip: { alignItems: "center", paddingVertical: 8 },
-  skipText: { color: Colors.textMuted, fontSize: 14 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  container: {
+    flex: 1,
+  },
+  top: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    gap: Spacing.md,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  brandMark: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.md,
+  },
+  step: {
+    ...Typography.caption,
+    color: Colors.textSubtle,
+    marginLeft: "auto",
+  },
+  body: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.xl,
+  },
+  hero: {
+    borderRadius: Radius.xxl,
+    gap: Spacing.md,
+    ...Shadows.card,
+  },
+  title: {
+    ...Typography.screenTitle,
+    color: Colors.text,
+  },
+  subtitle: {
+    ...Typography.subtitle,
+    color: Colors.textMuted,
+  },
+  fields: {
+    gap: Spacing.lg,
+  },
+  footer: {
+    borderTopColor: Colors.border,
+    borderTopWidth: 1,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  skip: {
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+  },
+  skipText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
 });

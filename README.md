@@ -72,7 +72,10 @@ lib/
     ├── tokens.ts        # expo-secure-store token storage
     └── auth-context.tsx # session state, sign in/up/out, route-guard signals
 components/form.tsx       # shared TextField / PrimaryButton / FormError
-constants/Colors.ts       # STREM color tokens (brand-identity.md)
+components/ui/            # shared surfaces, headers, status pills, progress, empty states
+components/tribe/         # tribe screen-specific presentation components
+constants/theme.ts        # STREM design tokens (colors, spacing, type, radius, elevation)
+constants/Colors.ts       # compatibility re-export for older imports
 ```
 
 ## Auth & session (`strem-mobile#3`)

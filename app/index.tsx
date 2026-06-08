@@ -1,13 +1,14 @@
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { Colors } from "@/constants/Colors";
+import { BrandLogo } from "@/components/brand-logo";
+import { Colors, Spacing } from "@/constants/theme";
 
-/** Loading / splash screen — the app's entry route. */
+/** Loading / splash screen - shown while the session restores. */
 export default function SplashScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.brand}>STREM</Text>
-      <Text style={styles.tagline}>Never Settle.</Text>
+      <BrandLogo style={styles.logo} />
+      <ActivityIndicator color={Colors.accentGreenBright} style={styles.spinner} />
     </View>
   );
 }
@@ -18,17 +19,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.background,
+    gap: Spacing.sm,
   },
-  brand: {
-    color: Colors.text,
-    fontSize: 40,
-    fontWeight: "800",
-    letterSpacing: 4,
+  logo: {
+    width: 260,
+    height: 260,
   },
-  tagline: {
-    color: Colors.accentGreen,
-    marginTop: 8,
-    fontSize: 14,
-    letterSpacing: 2,
+  spinner: {
+    marginTop: Spacing.md,
   },
 });

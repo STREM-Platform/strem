@@ -5,17 +5,19 @@ import { StyleSheet, Text, View } from "react-native";
 import { AppScreen } from "@/components/app-screen";
 import { FormError, PrimaryButton, TextField } from "@/components/form";
 import { OptionSelect, type Option } from "@/components/select";
-import { Colors } from "@/constants/Colors";
+import { EmptyState, Surface } from "@/components/ui/surface";
+import { ScreenHeader } from "@/components/ui/typography";
+import { Colors, Spacing, Typography } from "@/constants/theme";
 import { ApiError, api } from "@/lib/api/client";
 import type { SessionType } from "@/lib/api/types";
 
 const TYPES: Option<SessionType>[] = [
-  { value: "strength", label: "Strength" },
-  { value: "running", label: "Running" },
-  { value: "mobility", label: "Mobility" },
+  { value: "strength", label: "Strength", hint: "Lift, accessories, loaded movement" },
+  { value: "running", label: "Running", hint: "Distance, tempo, intervals, easy miles" },
+  { value: "mobility", label: "Mobility", hint: "Recovery, movement quality, reset work" },
 ];
 
-/** Training log — log a session and watch XP/rank respond on the profile. */
+/** Training log - log a session and let XP/rank update on the backend. */
 export default function LogScreen() {
   const router = useRouter();
   const [sessionType, setSessionType] = useState<SessionType>("strength");
@@ -58,63 +60,81 @@ export default function LogScreen() {
   if (logged) {
     return (
       <AppScreen>
-        <Text style={styles.successTitle}>Logged.</Text>
-        <Text style={styles.successBody}>
-          Your XP is updating now — check your profile to watch your rank respond.
-        </Text>
-        <PrimaryButton label="View progress" onPress={() => router.replace("/(app)/profile")} />
-        <PrimaryButton
-          label="Log another"
-          onPress={() => {
-            setLogged(false);
-            setDuration("");
-            setDistance("");
-            setNotes("");
-          }}
-        />
+        <EmptyState
+          title="Session logged"
+          body="That action is now part of your proof. XP updates through the progression ledger."
+        >
+          <PrimaryButton label="View progress" onPress={() => router.replace("/(app)/profile")} />
+          <PrimaryButton
+            label="Log another"
+            variant="secondary"
+            onPress={() => {
+              setLogged(false);
+              setDuration("");
+              setDistance("");
+              setNotes("");
+            }}
+          />
+        </EmptyState>
       </AppScreen>
     );
   }
 
   return (
     <AppScreen>
-      <Text style={styles.title}>Log a session</Text>
-      <OptionSelect options={TYPES} selected={sessionType} onSelect={setSessionType} />
-      <TextField
-        label="Duration (minutes)"
-        value={duration}
-        onChangeText={setDuration}
-        keyboardType="number-pad"
-        placeholder="45"
+      <ScreenHeader
+        title="Log a session"
+        subtitle="Record the work quickly. STREM turns the action into visible progression."
       />
-      {sessionType === "running" ? (
+
+      <Surface variant="raised" style={styles.form}>
+        <View style={styles.block}>
+          <Text style={styles.blockLabel}>Session type</Text>
+          <OptionSelect options={TYPES} selected={sessionType} onSelect={setSessionType} />
+        </View>
         <TextField
-          label="Distance (km, optional)"
-          value={distance}
-          onChangeText={setDistance}
-          keyboardType="decimal-pad"
-          placeholder="8.2"
+          label="Duration"
+          helperText="Minutes"
+          value={duration}
+          onChangeText={setDuration}
+          keyboardType="number-pad"
+          placeholder="45"
         />
-      ) : null}
-      <TextField
-        label="Notes (optional)"
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="How did it go?"
-        multiline
-        maxLength={500}
-      />
-      {error ? <FormError message={error} /> : null}
-      <View style={styles.actions}>
+        {sessionType === "running" ? (
+          <TextField
+            label="Distance"
+            helperText="Km optional"
+            value={distance}
+            onChangeText={setDistance}
+            keyboardType="decimal-pad"
+            placeholder="8.2"
+          />
+        ) : null}
+        <TextField
+          label="Notes"
+          helperText="Optional"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="How did it go?"
+          multiline
+          maxLength={500}
+        />
+        {error ? <FormError message={error} /> : null}
         <PrimaryButton label="Log session" onPress={onSubmit} loading={submitting} />
-      </View>
+      </Surface>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { color: Colors.text, fontSize: 24, fontWeight: "800" },
-  actions: { marginTop: 4 },
-  successTitle: { color: Colors.text, fontSize: 28, fontWeight: "800" },
-  successBody: { color: Colors.textMuted, fontSize: 15, lineHeight: 22 },
+  form: {
+    gap: Spacing.lg,
+  },
+  block: {
+    gap: Spacing.sm,
+  },
+  blockLabel: {
+    ...Typography.label,
+    color: Colors.textMuted,
+  },
 });
