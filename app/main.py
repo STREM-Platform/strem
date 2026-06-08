@@ -1,21 +1,50 @@
 """strem-user-service — application entrypoint.
 
-Skeleton only. This service owns user profiles, the XP ledger, ranks, medals,
-and onboarding state for MVP (see `strem-docs/architecture/service-map.md`).
-Data models are defined in `app.schemas`; no persistence or XP calculation
-logic exists yet. This module exposes a single health endpoint.
+Owns user profiles, onboarding state, and (from strem-user-service#4) the
+XP ledger, ranks, and medals. Profile and onboarding endpoints implement
+strem-shared-contracts/contracts/user/openapi.yml. `GET /health` stays
+unversioned for probes.
 """
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-app = FastAPI(
-    title="strem-user-service",
-    version="0.1.0",
-    description="User profiles, onboarding, and the XP/rank/medal progression module for STREM.",
-)
+from app.config import get_settings
+from app.db import configure
+from app.errors import register_error_handlers
+from app.events import configure_publisher
+from app.routers import onboarding, profile, xp
 
 
-@app.get("/health", tags=["meta"])
-async def health() -> dict[str, str]:
-    """Liveness probe used by CI, Docker, and orchestration."""
-    return {"status": "ok", "service": "strem-user-service"}
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    configure(settings.database_url)
+    configure_publisher(settings.message_broker_url)
+    yield
+
+
+def create_app() -> FastAPI:
+    """Build the FastAPI application with routes and error handlers."""
+    application = FastAPI(
+        title="strem-user-service",
+        version="1.0.0",
+        description="User profiles, onboarding, and the XP/rank/medal module for STREM.",
+        lifespan=lifespan,
+    )
+    register_error_handlers(application)
+    application.include_router(profile.router)
+    application.include_router(onboarding.router)
+    application.include_router(xp.router)
+
+    @application.get("/health", tags=["meta"])
+    async def health() -> dict[str, str]:
+        """Liveness probe used by CI, Docker, and orchestration."""
+        return {"status": "ok", "service": "strem-user-service"}
+
+    return application
+
+
+app = create_app()

@@ -50,6 +50,21 @@ class MedalType(StrEnum):
     IDENTITY_FORGED = "identity_forged"
 
 
+# Human-readable medal names (game-systems.md "MVP Medal Set").
+MEDAL_TITLES: dict[MedalType, str] = {
+    MedalType.FIRST_STEPS: "First Steps",
+    MedalType.COMMITTED: "Committed",
+    MedalType.TRIBE_MEMBER: "Tribe Member",
+    MedalType.IRON_WEEK: "Iron Week",
+    MedalType.THIRTY_DAY_MARK: "30-Day Mark",
+    MedalType.ACCOUNTABILITY_ANCHOR: "Accountability Anchor",
+    MedalType.NUTRITION_CONSISTENT: "Nutrition Consistent",
+    MedalType.FIRST_MILE: "First Mile",
+    MedalType.FIRST_IRON: "First Iron",
+    MedalType.IDENTITY_FORGED: "Identity Forged",
+}
+
+
 class Medal(BaseModel):
     """A medal earned by a user."""
 
