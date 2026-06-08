@@ -4,9 +4,10 @@ The primary user-facing STREM app — React Native + Expo + TypeScript, targetin
 iOS and Android (with web support via Expo). See
 `strem-docs/architecture/adr/0003-use-react-native-expo.md`.
 
-This repository is a **navigable shell**: file-based routing with `expo-router`
-and placeholder screens. No business logic, API calls, state management, or auth
-flows yet — those land in later issues.
+Authentication and session handling are implemented (`strem-mobile#3`): a typed
+API client, email + password login/register, secure token storage with
+transparent refresh, and an onboarding-aware route guard. The remaining MVP
+screens (onboarding, home/profile/log, tribe, missions) land in later issues.
 
 ## Run it (Expo Go)
 
@@ -43,11 +44,13 @@ organize the two areas of the app without changing the URL path.
 
 ```
 app/
-├── _layout.tsx          # root Stack navigator
-├── index.tsx            # / — loading / splash
+├── _layout.tsx          # root: AuthProvider + onboarding-aware route guard
+├── index.tsx            # / — loading / splash (shown while the session restores)
 ├── (auth)/
-│   ├── login.tsx        # /login — login stub
-│   └── register.tsx     # /register — register stub
+│   ├── login.tsx        # email + password login
+│   └── register.tsx     # account creation
+├── (onboarding)/
+│   └── index.tsx        # onboarding entry (full 7-screen flow lands in #4)
 └── (app)/
     ├── home.tsx         # /home — dashboard stub
     ├── log.tsx          # /log — training log stub
@@ -58,15 +61,28 @@ app/
 Supporting:
 
 ```
-components/               # shared components (empty for now)
+lib/
+├── config.ts            # API base URL (EXPO_PUBLIC_API_URL → gateway)
+├── validation.ts        # email / password validation
+├── api/
+│   ├── types.ts         # auth + onboarding types (mirror the contracts)
+│   └── client.ts        # typed fetch client: bearer + 401 refresh-and-retry
+└── session/
+    ├── tokens.ts        # expo-secure-store token storage
+    └── auth-context.tsx # session state, sign in/up/out, route-guard signals
+components/form.tsx       # shared TextField / PrimaryButton / FormError
 constants/Colors.ts       # STREM color tokens (brand-identity.md)
-app.json                  # Expo config (expo-router plugin)
-tsconfig.json             # TypeScript strict, "@/*" path alias
-eslint.config.js          # eslint-config-expo (flat)
 ```
 
-## Out of scope (shell)
+## Auth & session (`strem-mobile#3`)
 
-No API calls, no state management (Redux/Zustand evaluated when needed), no real
-auth flow, and no UI component library decision yet. Stubs use basic React
-Native components only.
+- **Typed client** (`lib/api/client.ts`) — configurable base URL, attaches
+  `Authorization: Bearer`, and on `401` refreshes via `POST /auth/refresh` and
+  retries once; on refresh failure it clears tokens and the session signs out.
+- **Secure storage** — access/refresh tokens live in `expo-secure-store`.
+- **Route guard** (`app/_layout.tsx`) — unauthenticated → `(auth)`; authenticated
+  but onboarding incomplete → `(onboarding)`; complete → `(app)`. Onboarding
+  status comes from `GET /users/onboarding/status`.
+
+Set `EXPO_PUBLIC_API_URL` to point at the API gateway (which routes to the auth
+and user services); it defaults to the local gateway port.
