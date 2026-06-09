@@ -22,10 +22,12 @@ import json
 import logging
 from typing import Any
 
+from redis.exceptions import TimeoutError as RedisTimeoutError
+
 from app.config import get_settings
 from app.consumers import CONSUMED_STREAMS, MalformedEventError, handle_event
 from app.db import configure, session_factory
-from app.events import RedisStreamPublisher
+from app.events import EventPublisher, RedisStreamPublisher
 
 logger = logging.getLogger("strem_user_service.worker")
 
@@ -61,7 +63,7 @@ async def _dead_letter(redis: Any, stream: str, message_id: str, reason: str) ->
     logger.warning("dead-lettered %s %s: %s", stream, message_id, reason)
 
 
-async def _process(redis: Any, publisher: RedisStreamPublisher, stream: str, message_id: str,
+async def _process(redis: Any, publisher: EventPublisher, stream: str, message_id: str,
                    fields: dict[str, str]) -> None:
     """Handle a single message; ack on success, dead-letter if malformed."""
     try:
@@ -82,15 +84,18 @@ async def _process(redis: Any, publisher: RedisStreamPublisher, stream: str, mes
     await redis.xack(stream, GROUP, message_id)
 
 
-async def _read_new(redis: Any, publisher: RedisStreamPublisher) -> None:
+async def _read_new(redis: Any, publisher: EventPublisher) -> None:
     streams = {stream: ">" for stream in CONSUMED_STREAMS}
-    response = await redis.xreadgroup(GROUP, CONSUMER, streams, count=20, block=BLOCK_MS)
+    try:
+        response = await redis.xreadgroup(GROUP, CONSUMER, streams, count=20, block=BLOCK_MS)
+    except RedisTimeoutError:
+        return
     for stream, messages in response or []:
         for message_id, fields in messages:
             await _process(redis, publisher, stream, message_id, fields)
 
 
-async def _reclaim_pending(redis: Any, publisher: RedisStreamPublisher) -> None:
+async def _reclaim_pending(redis: Any, publisher: EventPublisher) -> None:
     """Retry stale pending messages; dead-letter ones that exceed MAX_DELIVERIES."""
     for stream in CONSUMED_STREAMS:
         pending = await redis.xpending_range(
