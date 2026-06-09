@@ -25,6 +25,23 @@ class Settings(BaseSettings):
     # Per-request upstream timeout (seconds).
     upstream_timeout_seconds: float = 10.0
 
+    # Browser origins allowed to call the gateway (comma-separated). Needed so the
+    # Expo web build can reach the API; native clients are unaffected by CORS.
+    # Empty by default because the regex below already covers any local-dev port;
+    # set this for non-local origins (e.g. a LAN IP or a deployed web host).
+    cors_allow_origins: str = ""
+
+    # Regex form of the allow-list. The default matches any localhost port so the
+    # local demo works no matter which port the Expo web/Metro dev server lands on
+    # (8081 is the default but Expo bumps to 8082+ when it is taken). Set to an
+    # empty string and use `cors_allow_origins` to lock origins down for deploys.
+    cors_allow_origin_regex: str = r"http://localhost:\d+"
+
+    @property
+    def cors_allow_origin_list(self) -> list[str]:
+        """`cors_allow_origins` split into a list, ignoring blanks."""
+        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:

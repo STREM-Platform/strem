@@ -93,6 +93,34 @@ def test_unknown_prefix_is_404() -> None:
     run(scenario)
 
 
+def test_cors_preflight_allows_web_origin() -> None:
+    """A browser preflight (OPTIONS) from the Expo web origin is answered with the
+    matching allow-origin header, so the web build can call the gateway."""
+
+    async def scenario(client: httpx.AsyncClient) -> None:
+        response = await client.request(
+            "OPTIONS",
+            "/v1/auth/login",
+            headers={
+                "Origin": "http://localhost:8081",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "http://localhost:8081"
+
+    run(scenario)
+
+
+def test_cors_adds_allow_origin_to_responses() -> None:
+    async def scenario(client: httpx.AsyncClient) -> None:
+        response = await client.get("/v1/users/me", headers={"Origin": "http://localhost:8081"})
+        assert response.headers["access-control-allow-origin"] == "http://localhost:8081"
+
+    run(scenario)
+
+
 def test_upstream_failure_is_502() -> None:
     def boom(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("upstream down", request=request)

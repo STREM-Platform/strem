@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings, upstream_for
 from app.errors import AppError, register_error_handlers
@@ -36,6 +37,20 @@ def create_app() -> FastAPI:
         description="Mobile-facing routing and auth handoff for STREM. Owns no domain data.",
         lifespan=lifespan,
     )
+
+    # Allow the Expo web build (a browser origin) to call the gateway. This also
+    # answers the CORS preflight `OPTIONS` that the proxy route does not handle.
+    # Native mobile clients are unaffected by CORS.
+    _settings = get_settings()
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=_settings.cors_allow_origin_list,
+        allow_origin_regex=_settings.cors_allow_origin_regex or None,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     register_error_handlers(application)
 
     @application.get("/health", tags=["meta"])
