@@ -90,21 +90,28 @@ From `strem-infra`:
 
 ```bash
 cp .env.example .env
-docker compose -f docker/docker-compose.yml up -d --build
-python scripts/migrate-stack.py
-python scripts/seed-demo.py
-python scripts/smoke-health.py
+<<<<<<< HEAD
+docker compose -f docker/docker-compose.yml up -d --build   # builds 7 images on first run (a few minutes)
+python scripts/migrate-stack.py                              # apply Alembic migrations in each service
+python scripts/smoke-health.py                               # every service reports healthy
+python scripts/seed-demo.py                                  # seed demo@strem.app end-to-end through the gateway
 ```
 
-Then start the mobile app from the sibling `strem-mobile` repo:
+`docker compose ... ps` should show every container `healthy` before you seed.
+
+Then start the mobile app from the sibling `strem-mobile` repo, in a second
+terminal:
 
 ```bash
 npm install
-npm run web
+npm run web        # opens the Expo web build in your browser (http://localhost:8081)
 ```
 
 The mobile app defaults to `http://localhost:8000/v1`. If you need to override
 it, set `EXPO_PUBLIC_API_URL=http://localhost:8000/v1` before starting Expo.
+
+> The gateway enables CORS for any `localhost` port, so the browser build works
+> whether Expo serves on `8081` or bumps to `8082+` when that port is taken.
 
 Use the seeded account:
 
@@ -118,14 +125,16 @@ Expected demo path:
 1. Sign in with the seeded account.
 2. Land directly in the app because onboarding was completed by the seed script.
 3. See the dashboard with identity statement, current rank / XP, and active AI missions.
-4. Open Profile to see XP progress and medals as they are earned.
-5. Open Log or Nutrition and add a real entry through the API.
-6. Open Tribe to see `Forge Circle`, submit a check-in, and watch Tribe Power update after the workers process events.
+4. Complete the active mission and watch XP increase after the workers process the event.
+5. Open Profile to see XP progress and medals as they are earned.
+6. Open Log or Nutrition and add a real entry through the API.
+7. Open Tribe to see `Forge Circle`, submit a check-in, and watch Tribe Power update after the workers process events.
+8. Open Coach to read the seeded weekly recap; a fresh account can generate one with the in-screen button.
 
 Known local-demo limits:
 
-- Weekly coach recap generation is not exposed as an HTTP demo action yet, so the
-  Coach screen can still show an empty state.
+- The seeded XP total (≈425) and ranks are real, but the demo represents a single
+  user — Tribe Power equals that user's XP because `Forge Circle` has one member.
 - Event processing is asynchronous. XP and Tribe Power usually update within a
   few seconds; refresh the mobile screen if needed.
 - `seed-demo.py` is idempotent for account creation and tribe lookup, but it
@@ -159,6 +168,7 @@ has no database.
 - **Build context error** → ensure the service repos are cloned as siblings (see layout above).
 - **Port already in use** → another process holds `8000-8006`/`5432`/`6379`; stop it or change the host port mapping.
 - **Event consumers are not running** -> confirm `user-worker` and `community-worker` are up with `docker compose -f docker/docker-compose.yml ps`. They run `python -m app.worker` in the user and community service images.
+- **Browser shows a CORS error in the Expo web build** -> the gateway allows any `localhost` origin by default (`CORS_ALLOW_ORIGIN_REGEX`). If you serve the web build from a non-localhost origin (a LAN IP, a tunnel), add it to `CORS_ALLOW_ORIGINS` on the `gateway` service and `up -d --build gateway`.
 
 ## Why Redis Streams as the broker
 

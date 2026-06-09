@@ -197,6 +197,12 @@ def main() -> int:
     except ApiFailure as exc:
         print(f"Mission generation skipped: {exc}")
 
+    # Pre-generate this week's coach recap so the Coach screen opens with a real
+    # narrative instead of an empty state during the demo.
+    try:
+        request_json("POST", base_url, "/ai/coach/recap/generate", token=token)
+    except ApiFailure as exc:
+        print(f"Recap generation skipped: {exc}")
     xp = poll_xp(base_url, token, int(initial_xp["total_xp"]))
     missions = request_json("GET", base_url, "/ai/missions/active", token=token)
     profile = request_json("GET", base_url, "/users/me", token=token)
