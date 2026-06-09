@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
+import { PrimaryButton } from "@/components/form";
 import { EmptyState, Surface } from "@/components/ui/surface";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ScreenHeader } from "@/components/ui/typography";
@@ -20,6 +21,8 @@ type Status = "loading" | "recap" | "empty" | "error";
 export default function CoachScreen() {
   const [status, setStatus] = useState<Status>("loading");
   const [recap, setRecap] = useState<WeeklyRecap | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generationNote, setGenerationNote] = useState<string | undefined>();
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -32,6 +35,24 @@ export default function CoachScreen() {
       } else if (!(err instanceof SessionExpiredError)) {
         setStatus("error");
       }
+    }
+  }, []);
+
+  const onGenerate = useCallback(async (): Promise<void> => {
+    setGenerating(true);
+    setGenerationNote(undefined);
+    try {
+      const created = await api.generateRecap();
+      setRecap(created);
+      setStatus("recap");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setGenerationNote("Log an action first — your coach needs a little more to work with.");
+      } else if (!(err instanceof SessionExpiredError)) {
+        setGenerationNote("Couldn't reach your coach. Please try again.");
+      }
+    } finally {
+      setGenerating(false);
     }
   }, []);
 
@@ -63,8 +84,15 @@ export default function CoachScreen() {
         />
         <EmptyState
           title="Your coach is listening"
-          body="Your first weekly recap arrives after a week of training and logging. Keep showing up."
-        />
+          body="Generate this week's recap to turn your logs into an honest, identity-grounded read."
+        >
+          {generationNote ? <Text style={styles.note}>{generationNote}</Text> : null}
+          <PrimaryButton
+            label="Generate this week's recap"
+            onPress={onGenerate}
+            loading={generating}
+          />
+        </EmptyState>
       </AppScreen>
     );
   }
@@ -92,6 +120,10 @@ const styles = StyleSheet.create({
   loadingText: {
     ...Typography.label,
     color: Colors.textMuted,
+  },
+  note: {
+    ...Typography.body,
+    color: Colors.accentGreenBright,
   },
   recap: {
     gap: Spacing.xl,

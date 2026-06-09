@@ -9,6 +9,25 @@ API client, email + password login/register, secure token storage with
 transparent refresh, and an onboarding-aware route guard. The remaining MVP
 screens (onboarding, home/profile/log, tribe, missions) land in later issues.
 
+## Run the full local MVP demo (web)
+
+The app is backend-driven (no mock data), so it needs the local service stack
+running. Bring up the backend first from the sibling `strem-infra` repo
+(`docker compose ... up -d --build` → `migrate-stack.py` → `smoke-health.py` →
+`seed-demo.py`; see `strem-infra/README.md` → **MVP demo on a laptop**). Then:
+
+```bash
+npm install
+npm run web             # opens the Expo web build at http://localhost:8081
+```
+
+Sign in with the seeded account — `demo@strem.app` / `NeverSettle123!` — and you
+land on the dashboard (rank, XP, AI missions), with Log, Nutrition, Tribe, Coach
+recap, and Profile all populated from the real services. The app targets the
+gateway at `http://localhost:8000/v1` by default (`EXPO_PUBLIC_API_URL` overrides
+it). If port `8081` is busy Expo offers `8082+` — that works too (the gateway
+allows any localhost origin).
+
 ## Run it (Expo Go)
 
 ```bash

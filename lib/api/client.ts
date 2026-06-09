@@ -215,4 +215,7 @@ export const api = {
   getLatestRecap(): Promise<WeeklyRecap> {
     return request<WeeklyRecap>("/ai/coach/recap", { auth: true });
   },
+  generateRecap(): Promise<WeeklyRecap> {
+    return request<WeeklyRecap>("/ai/coach/recap/generate", { method: "POST", auth: true });
+  },
 };
