@@ -95,6 +95,19 @@ services:
       <<: [*healthcheck-cmd, *service-health]
     restart: unless-stopped
 
+  user-worker:
+    build: ../../strem-user-service
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_user
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
+      JWT_ALGORITHM: HS256
+      MESSAGE_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+
   training:
     build: ../../strem-training-service
     ports:
@@ -141,6 +154,19 @@ services:
       redis: {condition: service_healthy}
     healthcheck:
       <<: [*healthcheck-cmd, *service-health]
+    restart: unless-stopped
+
+  community-worker:
+    build: ../../strem-community-service
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_community
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
+      JWT_ALGORITHM: HS256
+      MESSAGE_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
     restart: unless-stopped
 
   ai:
