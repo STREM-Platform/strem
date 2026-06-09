@@ -111,7 +111,11 @@ def generate_missions(bundle: ContextBundle) -> list[GeneratedMission]:
 
 def generate_recap_narrative(bundle: ContextBundle, completed_missions: int) -> str:
     """Compose an identity-grounded weekly recap (not a metrics dashboard)."""
-    opener = f"You're becoming someone who {bundle.identity_statement.rstrip('.').lower()}."
+    # Quote the member's own identity statement verbatim rather than splicing it
+    # into another sentence — it reads cleanly for any phrasing and keeps the
+    # recap grounded in the words they chose.
+    identity = bundle.identity_statement.strip().rstrip(".")
+    opener = f'The identity you\'re building: "{identity}."'
     if completed_missions > 0:
         body = (
             f" This week you finished {completed_missions} "

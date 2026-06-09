@@ -78,3 +78,31 @@ def test_recap_not_found_when_none_yet() -> None:
         assert response.json()["code"] == "no_recap_yet"
 
     run(scenario, DEFAULT_BUNDLE)
+
+
+def test_generate_endpoint_creates_readable_recap() -> None:
+    async def scenario(harness: Harness) -> None:
+        user_id = uuid.uuid4()
+        created = await harness.client.post(
+            "/v1/ai/coach/recap/generate", headers=auth_header(user_id)
+        )
+        assert created.status_code == 201
+        assert "hybrid athlete" in created.json()["narrative"].lower()
+
+        latest = await harness.client.get("/v1/ai/coach/recap", headers=auth_header(user_id))
+        assert latest.status_code == 200
+        assert latest.json()["narrative"] == created.json()["narrative"]
+        assert harness.publisher.of_type("ai.coach_summary_created")
+
+    run(scenario, DEFAULT_BUNDLE)
+
+
+def test_generate_endpoint_declines_without_context() -> None:
+    async def scenario(harness: Harness) -> None:
+        response = await harness.client.post(
+            "/v1/ai/coach/recap/generate", headers=auth_header(uuid.uuid4())
+        )
+        assert response.status_code == 409
+        assert response.json()["code"] == "insufficient_context"
+
+    run(scenario, None)
