@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import date
 from typing import Any
 
 from sqlalchemy import select
@@ -31,6 +30,7 @@ from app.models import ProcessedEvent, UserProfile, XPLedgerEntry
 from app.progression import award_xp
 from app.schemas.enums import OnboardingStatusValue
 from app.schemas.xp import XP_FIXED, XPSource
+from app.streaks import longest_run
 
 TRAINING_STREAM = "training.session_logged"
 NUTRITION_STREAM = "nutrition.day_logged"
@@ -111,17 +111,6 @@ async def _onboarding_completed(session: AsyncSession, user_id: uuid.UUID) -> bo
     return status == OnboardingStatusValue.COMPLETED.value
 
 
-def _longest_active_run(days: set[date]) -> int:
-    if not days:
-        return 0
-    ordered = sorted(days)
-    best = run = 1
-    for prev, current in zip(ordered, ordered[1:], strict=False):
-        run = run + 1 if (current - prev).days == 1 else 1
-        best = max(best, run)
-    return best
-
-
 async def _award_streak_bonuses(
     session: AsyncSession, publisher: EventPublisher, user_id: uuid.UUID
 ) -> None:
@@ -131,7 +120,7 @@ async def _award_streak_bonuses(
             select(XPLedgerEntry.earned_at).where(XPLedgerEntry.user_id == user_id)
         )
     ).all()
-    run = _longest_active_run({ts.date() for ts in timestamps})
+    run = longest_run({ts.date() for ts in timestamps})
 
     earned = set(
         (

@@ -10,10 +10,12 @@ from pydantic import BaseModel
 from app.schemas.game import UserRank
 from app.schemas.profile import EarnedMedal
 from app.schemas.xp import XPSource
+from app.streaks import StreakState
 
 
 class XPSummaryResponse(BaseModel):
-    """XP total, current rank, and progress to the next rank (contract `XPSummary`)."""
+    """XP total, current rank, progress to the next rank, and consistency streak
+    (contract `XPSummary`)."""
 
     user_id: uuid.UUID
     total_xp: int
@@ -23,6 +25,9 @@ class XPSummaryResponse(BaseModel):
     rank_xp_ceiling: int
     xp_into_rank: int
     xp_to_next_rank: int
+    current_streak_days: int
+    longest_streak_days: int
+    streak_state: StreakState
 
 
 class XPLedgerEntryResponse(BaseModel):

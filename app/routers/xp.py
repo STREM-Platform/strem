@@ -20,6 +20,7 @@ from app.schemas.xp_api import (
     XPLedgerEntryResponse,
     XPSummaryResponse,
 )
+from app.streaks import streak_summary
 
 router = APIRouter(prefix="/v1", tags=["xp"])
 
@@ -28,6 +29,7 @@ router = APIRouter(prefix="/v1", tags=["xp"])
 async def get_xp_summary(current: CurrentUserDep, session: SessionDep) -> XPSummaryResponse:
     total = await total_xp(session, current.user_id)
     progress = rank_progress(total)
+    current_streak, longest_streak, streak_state = await streak_summary(session, current.user_id)
     return XPSummaryResponse(
         user_id=current.user_id,
         total_xp=total,
@@ -37,6 +39,9 @@ async def get_xp_summary(current: CurrentUserDep, session: SessionDep) -> XPSumm
         rank_xp_ceiling=progress.rank_xp_ceiling,
         xp_into_rank=progress.xp_into_rank,
         xp_to_next_rank=progress.xp_to_next_rank,
+        current_streak_days=current_streak,
+        longest_streak_days=longest_streak,
+        streak_state=streak_state,
     )
 
 

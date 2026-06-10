@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.db import configure
 from app.errors import register_error_handlers
 from app.events import configure_publisher
+from app.observability import configure_logging, install_request_logging
 from app.routers import onboarding, profile, xp
 
 
@@ -35,6 +36,8 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     register_error_handlers(application)
+    configure_logging(application.title)
+    install_request_logging(application, application.title)
     application.include_router(profile.router)
     application.include_router(onboarding.router)
     application.include_router(xp.router)
