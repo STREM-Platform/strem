@@ -105,11 +105,11 @@ export default function ProfileScreen() {
             </View>
             <ProgressBar
               value={progressFraction(data.xp)}
-              label={data.xp.next_rank ? `Path to ${data.xp.next_rank}` : "MVP rank complete"}
+              label={data.xp.next_rank ? `Path to ${data.xp.next_rank}` : "Summit reached"}
               helper={
                 data.xp.next_rank
                   ? `${data.xp.xp_to_next_rank.toLocaleString()} XP remaining`
-                  : "Top MVP rank reached"
+                  : "Ascended — the top rank"
               }
             />
           </Surface>

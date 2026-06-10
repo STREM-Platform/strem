@@ -6,7 +6,15 @@
 
 import type { EarnedMedal, UserRank } from "@/lib/api/types";
 
-const RANK_ORDER: UserRank[] = ["Initiate", "Builder", "Forged", "Hybrid", "Warrior"];
+const RANK_ORDER: UserRank[] = [
+  "Initiate",
+  "Builder",
+  "Forged",
+  "Hybrid",
+  "Warrior",
+  "Titan",
+  "Ascended",
+];
 
 export interface ProgressionSnapshot {
   rank: UserRank;
@@ -41,6 +49,8 @@ export function rankUpLine(rank: UserRank): string {
     Forged: "Forged. The standard you hold is rising.",
     Hybrid: "Hybrid. Strength and endurance, held together by discipline.",
     Warrior: "Warrior. The identity you chose, made real.",
+    Titan: "Titan. Few reach this. The work made you immovable.",
+    Ascended: "Ascended. The summit of the climb — and you're still rising.",
   };
   return lines[rank];
 }

@@ -88,7 +88,14 @@ export interface OnboardingSubmission {
 
 // --- User profile, XP, and medals (user contract) ---
 
-export type UserRank = "Initiate" | "Builder" | "Forged" | "Hybrid" | "Warrior";
+export type UserRank =
+  | "Initiate"
+  | "Builder"
+  | "Forged"
+  | "Hybrid"
+  | "Warrior"
+  | "Titan"
+  | "Ascended";
 
 export interface EarnedMedal {
   medal_type: string;

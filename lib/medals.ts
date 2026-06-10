@@ -22,4 +22,11 @@ export const MEDAL_CATALOGUE: MedalDefinition[] = [
   { type: "accountability_anchor", title: "Accountability Anchor", condition: "Post 14 tribe check-ins." },
   { type: "thirty_day_mark", title: "30-Day Mark", condition: "Log activity on 30 different days." },
   { type: "identity_forged", title: "Identity Forged", condition: "Finish onboarding and reach 30 active days." },
+  // --- Phase 2 expanded catalogue ---
+  { type: "unbroken", title: "Unbroken", condition: "Stay active 14 days in a row." },
+  { type: "relentless", title: "Relentless", condition: "Stay active 30 days in a row." },
+  { type: "long_hauler", title: "Long Hauler", condition: "Log 25 running sessions." },
+  { type: "iron_devotee", title: "Iron Devotee", condition: "Log 25 strength sessions." },
+  { type: "well_fueled", title: "Well Fueled", condition: "Log 30 nutrition days." },
+  { type: "tribe_pillar", title: "Tribe Pillar", condition: "Post 50 tribe check-ins." },
 ];
