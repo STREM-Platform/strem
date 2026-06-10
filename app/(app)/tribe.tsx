@@ -5,12 +5,13 @@ import { ActivityIndicator, StyleSheet, Text } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { PrimaryButton } from "@/components/form";
+import { ChallengesPanel } from "@/components/tribe/challenges-panel";
 import { JoinTribePanel } from "@/components/tribe/join-tribe-panel";
 import { TribeHomePanel } from "@/components/tribe/tribe-home-panel";
 import { EmptyState, Surface } from "@/components/ui/surface";
 import { Colors, Spacing, Typography } from "@/constants/theme";
 import { ApiError, SessionExpiredError, api } from "@/lib/api/client";
-import type { CheckIn, Tribe } from "@/lib/api/types";
+import type { Challenge, CheckIn, Tribe } from "@/lib/api/types";
 
 type Status = "loading" | "no_tribe" | "pending" | "in_tribe" | "error";
 
@@ -21,13 +22,18 @@ export default function TribeScreen() {
   const [status, setStatus] = useState<Status>("loading");
   const [tribe, setTribe] = useState<Tribe | null>(null);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
 
   const load = useCallback(async (): Promise<void> => {
     try {
       const current = await api.getMyTribe();
-      const activity = await api.listCheckins(current.id);
+      const [activity, challengePage] = await Promise.all([
+        api.listCheckins(current.id),
+        api.listChallenges(current.id),
+      ]);
       setTribe(current);
       setCheckins(activity.items);
+      setChallenges(challengePage.items);
       setStatus("in_tribe");
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
@@ -83,6 +89,12 @@ export default function TribeScreen() {
   return (
     <AppScreen onRefresh={() => void load()}>
       <TribeHomePanel tribe={tribe as Tribe} checkins={checkins} onCheckedIn={() => void load()} />
+      <ChallengesPanel
+        tribeId={(tribe as Tribe).id}
+        isAdmin={(tribe as Tribe).my_role === "admin"}
+        challenges={challenges}
+        onChanged={() => void load()}
+      />
     </AppScreen>
   );
 }

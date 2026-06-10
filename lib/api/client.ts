@@ -14,8 +14,11 @@ import type {
   ApiErrorBody,
   AuthIdentity,
   AuthSession,
+  Challenge,
+  ChallengePage,
   CheckIn,
   CheckInPage,
+  CreateChallengeRequest,
   CreateCheckinRequest,
   LoginRequest,
   LogNutritionDayRequest,
@@ -196,6 +199,29 @@ export const api = {
   },
   listCheckins(tribeId: string, limit = 20): Promise<CheckInPage> {
     return request<CheckInPage>(`/tribes/${tribeId}/checkins?limit=${limit}`, { auth: true });
+  },
+  listChallenges(tribeId: string, limit = 20): Promise<ChallengePage> {
+    return request<ChallengePage>(`/tribes/${tribeId}/challenges?limit=${limit}`, { auth: true });
+  },
+  createChallenge(tribeId: string, payload: CreateChallengeRequest): Promise<Challenge> {
+    return request<Challenge>(`/tribes/${tribeId}/challenges`, {
+      method: "POST",
+      body: payload,
+      auth: true,
+    });
+  },
+  contributeToChallenge(tribeId: string, challengeId: string, amount: number): Promise<Challenge> {
+    return request<Challenge>(`/tribes/${tribeId}/challenges/${challengeId}/contributions`, {
+      method: "POST",
+      body: { amount },
+      auth: true,
+    });
+  },
+  completeChallenge(tribeId: string, challengeId: string): Promise<Challenge> {
+    return request<Challenge>(`/tribes/${tribeId}/challenges/${challengeId}/complete`, {
+      method: "POST",
+      auth: true,
+    });
   },
   getActiveMissions(): Promise<MissionList> {
     return request<MissionList>("/ai/missions/active", { auth: true });

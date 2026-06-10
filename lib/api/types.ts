@@ -227,6 +227,42 @@ export interface CheckInPage {
   pagination: Pagination;
 }
 
+// --- Tribe collective challenges (community contract) ---
+
+export type ChallengeTargetType = "training_sessions" | "running_distance_km" | "checkins";
+export type ChallengeState = "active" | "completed" | "failed" | "abandoned";
+
+export interface Challenge {
+  id: string;
+  tribe_id: string;
+  title: string;
+  description?: string | null;
+  target_type: ChallengeTargetType;
+  target_value: number;
+  current_value: number;
+  state: ChallengeState;
+  starts_at: string;
+  ends_at: string;
+  completed_at?: string | null;
+}
+
+export interface ChallengePage {
+  items: Challenge[];
+  pagination: Pagination;
+}
+
+export interface CreateChallengeRequest {
+  title: string;
+  description?: string;
+  target_type: ChallengeTargetType;
+  target_value: number;
+  ends_at: string;
+}
+
+export interface ContributionRequest {
+  amount: number;
+}
+
 // --- AI missions + coaching (ai contract) ---
 
 export type MissionType =
