@@ -25,6 +25,16 @@ class Settings(BaseSettings):
     # Per-request upstream timeout (seconds).
     upstream_timeout_seconds: float = 10.0
 
+    # Rate limiting. Redis is shared across gateway instances; empty falls back to
+    # a per-process in-memory limiter. Limits apply per window, per scope (client
+    # IP and bearer token).
+    redis_url: str = ""
+    rate_limit_max: int = 240
+    rate_limit_window_seconds: int = 60
+
+    # Reject request bodies larger than this many bytes (defends the edge).
+    max_request_bytes: int = 1_048_576
+
     # Browser origins allowed to call the gateway (comma-separated). Needed so the
     # Expo web build can reach the API; native clients are unaffected by CORS.
     # Empty by default because the regex below already covers any local-dev port;
