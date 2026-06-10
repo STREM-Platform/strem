@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { BrandLogo } from "@/components/brand-logo";
+import { NotificationsCard } from "@/components/notifications-card";
 import { CelebrationOverlay } from "@/components/ui/celebration";
 import { MetricCard, Surface } from "@/components/ui/surface";
 import { ProgressBar } from "@/components/ui/progress";
@@ -168,10 +169,12 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                   {earned ? <StatusPill label="Earned" tone="green" /> : null}
-                </Surface>
+              </Surface>
               );
             })}
           </View>
+
+          <NotificationsCard xp={data.xp} />
         </>
       ) : null}
 
