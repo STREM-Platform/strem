@@ -110,6 +110,8 @@ export interface UserProfile {
   created_at: string;
 }
 
+export type StreakState = "active" | "at_risk" | "broken" | "none";
+
 export interface XPSummary {
   user_id: string;
   total_xp: number;
@@ -119,6 +121,9 @@ export interface XPSummary {
   rank_xp_ceiling: number;
   xp_into_rank: number;
   xp_to_next_rank: number;
+  current_streak_days: number;
+  longest_streak_days: number;
+  streak_state: StreakState;
 }
 
 export interface MedalListResponse {

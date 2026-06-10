@@ -8,7 +8,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { SectionHeader, ScreenHeader } from "@/components/ui/typography";
 import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { api } from "@/lib/api/client";
-import type { EarnedMedal, XPSummary } from "@/lib/api/types";
+import type { EarnedMedal, StreakState, XPSummary } from "@/lib/api/types";
 import { formatShortDate } from "@/lib/format";
 import { useAsync } from "@/lib/use-async";
 
@@ -16,6 +16,33 @@ interface ProfileData {
   xp: XPSummary;
   medals: EarnedMedal[];
 }
+
+/** State-driven, compassionate presentation for the consistency streak. */
+const STREAK: Record<
+  StreakState,
+  { pill: string; tone: "green" | "neutral" | "red"; message: string }
+> = {
+  active: {
+    pill: "On streak",
+    tone: "green",
+    message: "Logged today — keep the chain alive.",
+  },
+  at_risk: {
+    pill: "At risk",
+    tone: "neutral",
+    message: "You showed up yesterday. One action today keeps it going.",
+  },
+  broken: {
+    pill: "Streak reset",
+    tone: "red",
+    message: "Streaks reset — the return is what counts. Start a new one today.",
+  },
+  none: {
+    pill: "No streak yet",
+    tone: "neutral",
+    message: "Your first logged day starts the streak.",
+  },
+};
 
 async function loadProfile(): Promise<ProfileData> {
   const [xp, medals] = await Promise.all([api.getXpSummary(), api.getMedals()]);
@@ -57,6 +84,23 @@ export default function ProfileScreen() {
                   : "Top MVP rank reached"
               }
             />
+          </Surface>
+
+          <Surface variant="raised" style={styles.streakCard}>
+            <View style={styles.streakTop}>
+              <Text style={styles.streakLabel}>Consistency streak</Text>
+              <StatusPill label={STREAK[data.xp.streak_state].pill} tone={STREAK[data.xp.streak_state].tone} />
+            </View>
+            <View style={styles.streakRow}>
+              <Text style={styles.streakValue}>{data.xp.current_streak_days}</Text>
+              <Text style={styles.streakUnit}>
+                {data.xp.current_streak_days === 1 ? "day" : "days"}
+              </Text>
+              {data.xp.longest_streak_days > 0 ? (
+                <Text style={styles.streakBest}>Longest {data.xp.longest_streak_days}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.streakMessage}>{STREAK[data.xp.streak_state].message}</Text>
           </Surface>
 
           <View style={styles.metrics}>
@@ -108,6 +152,46 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     fontWeight: "900",
+  },
+  streakCard: {
+    gap: Spacing.md,
+  },
+  streakTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+  },
+  streakLabel: {
+    ...Typography.label,
+    color: Colors.textMuted,
+  },
+  streakRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: Spacing.sm,
+  },
+  streakValue: {
+    color: Colors.accentGreenBright,
+    fontSize: 40,
+    lineHeight: 44,
+    fontWeight: "900",
+  },
+  streakUnit: {
+    color: Colors.text,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "800",
+  },
+  streakBest: {
+    ...Typography.caption,
+    color: Colors.textSubtle,
+    fontWeight: "700",
+    marginLeft: "auto",
+  },
+  streakMessage: {
+    ...Typography.body,
+    color: Colors.textMuted,
   },
   metrics: {
     flexDirection: "row",

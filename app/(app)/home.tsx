@@ -19,12 +19,14 @@ export default function HomeScreen() {
   const router = useRouter();
   const { data: profile, loading, error, reload } = useAsync(() => api.getUserProfile());
   const missions = useAsync(() => api.getActiveMissions());
+  const xp = useAsync(() => api.getXpSummary());
   const [generating, setGenerating] = useState(false);
   const [generationNote, setGenerationNote] = useState<string | undefined>();
 
   const refreshProgress = (): void => {
     reload();
     missions.reload();
+    xp.reload();
   };
 
   const onGenerate = async (): Promise<void> => {
@@ -77,6 +79,15 @@ export default function HomeScreen() {
             <Text style={styles.identityText}>
               {profile.identity_statement || "Define the identity you are building in onboarding."}
             </Text>
+            {xp.data && xp.data.current_streak_days > 0 ? (
+              <View style={styles.streakChip}>
+                <View style={styles.streakDot} />
+                <Text style={styles.streakChipText}>
+                  {xp.data.current_streak_days}-day streak
+                  {xp.data.streak_state === "at_risk" ? " · keep it alive today" : ""}
+                </Text>
+              </View>
+            ) : null}
           </Surface>
 
           <View style={styles.metrics}>
@@ -168,6 +179,22 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 20,
     lineHeight: 28,
+    fontWeight: "800",
+  },
+  streakChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  streakDot: {
+    width: 8,
+    height: 8,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.accentGreenBright,
+  },
+  streakChipText: {
+    ...Typography.caption,
+    color: Colors.accentGreenBright,
     fontWeight: "800",
   },
   metrics: {
