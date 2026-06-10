@@ -87,19 +87,15 @@ export const Typography = {
   },
 } as const;
 
+// Use the cross-platform `boxShadow` (RN 0.85 + react-native-web) instead of the
+// deprecated `shadow*` props; keep `elevation` for legacy Android.
 export const Shadows = {
   card: {
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.26,
-    shadowRadius: 24,
+    boxShadow: "0px 14px 24px rgba(0, 0, 0, 0.26)",
     elevation: 8,
   },
   nav: {
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.24,
-    shadowRadius: 20,
+    boxShadow: "0px -10px 20px rgba(0, 0, 0, 0.24)",
     elevation: 16,
   },
 } as const;

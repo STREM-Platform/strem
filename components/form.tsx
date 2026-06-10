@@ -42,6 +42,7 @@ export function TextField({
         {helperText ? <Text style={styles.helper}>{helperText}</Text> : null}
       </View>
       <TextInput
+        accessibilityLabel={label}
         placeholderTextColor={Colors.textSubtle}
         multiline={multiline}
         onFocus={(event) => {

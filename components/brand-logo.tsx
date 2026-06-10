@@ -24,6 +24,7 @@ export function BrandLogo({ variant = "lockup", style }: BrandLogoProps) {
 
     return (
       <View
+        accessibilityRole="image"
         accessibilityLabel="STREM logo"
         style={[
           styles.lockupFrame,
@@ -51,6 +52,7 @@ export function BrandLogo({ variant = "lockup", style }: BrandLogoProps) {
 
   return (
     <Image
+      accessibilityRole="image"
       accessibilityLabel="STREM logo"
       resizeMode="contain"
       source={SYMBOL}
