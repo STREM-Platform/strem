@@ -62,6 +62,18 @@ class WeeklyRecapPage(BaseModel):
     pagination: Pagination
 
 
+class TribeCoachSummary(BaseModel):
+    """An identity-grounded narrative over a tribe's weekly accountability (MVP-16)."""
+
+    tribe_id: uuid.UUID
+    name: str
+    narrative: str
+    tribe_power: int
+    checkins_this_week: int
+    active_member_count: int
+    inactive_member_count: int
+
+
 class Season(BaseModel):
     """A seasonal arc: a themed, time-boxed window with an XP multiplier (P2-03)."""
 

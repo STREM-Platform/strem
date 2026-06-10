@@ -19,10 +19,11 @@ class Settings(BaseSettings):
     # Redis Streams broker for publishing AI mission/coaching events.
     message_broker_url: str = "redis://localhost:6379/0"
 
-    # Approved service API the orchestrator reads identity context from.
-    # Domain services remain the sources of truth; the orchestrator copies no
-    # raw logs into its own database.
+    # Approved service APIs the orchestrator reads context from. Domain services
+    # remain the sources of truth; the orchestrator copies no raw logs into its
+    # own database.
     user_service_base_url: str = "http://localhost:8002/v1"
+    community_service_base_url: str = "http://localhost:8005/v1"
 
 
 @lru_cache

@@ -14,11 +14,13 @@ from app.db import get_session
 from app.errors import AppError
 from app.events import EventPublisher, get_publisher
 from app.security import decode_access_token
+from app.tribe_coach import TribeSummaryProvider, get_tribe_summary_provider
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
 ContextProviderDep = Annotated[ContextProvider, Depends(get_context_provider)]
+TribeSummaryProviderDep = Annotated[TribeSummaryProvider, Depends(get_tribe_summary_provider)]
 
 
 def get_bearer_token(request: Request) -> str:
