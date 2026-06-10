@@ -96,4 +96,19 @@ def detect_earned_medals(
         if onboarding_completed:
             earned.add(MedalType.IDENTITY_FORGED)
 
+    # Phase 2 expanded catalogue (deeper consistency, volume, and tribe tiers).
+    longest_run = _max_consecutive_run(active_days)
+    if longest_run >= 14:
+        earned.add(MedalType.UNBROKEN)
+    if longest_run >= 30:
+        earned.add(MedalType.RELENTLESS)
+    if all_sources.count(XPSource.RUNNING_SESSION.value) >= 25:
+        earned.add(MedalType.LONG_HAULER)
+    if all_sources.count(XPSource.STRENGTH_SESSION.value) >= 25:
+        earned.add(MedalType.IRON_DEVOTEE)
+    if len(nutrition_days) >= 30:
+        earned.add(MedalType.WELL_FUELED)
+    if tribe_checkins >= 50:
+        earned.add(MedalType.TRIBE_PILLAR)
+
     return earned
