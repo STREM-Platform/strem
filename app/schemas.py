@@ -60,3 +60,11 @@ class WeeklyRecap(BaseModel):
 class WeeklyRecapPage(BaseModel):
     items: list[WeeklyRecap]
     pagination: Pagination
+
+
+class CoachAdaptation(BaseModel):
+    """The coach's current proactive adaptation (P2-04)."""
+
+    signal: str
+    headline: str
+    action: str

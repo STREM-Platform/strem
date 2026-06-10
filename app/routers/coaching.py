@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from app import recap
+from app.adaptation import decide_adaptation
 from app.deps import (
     BearerTokenDep,
     ContextProviderDep,
@@ -14,7 +15,7 @@ from app.deps import (
     SessionDep,
 )
 from app.errors import AppError
-from app.schemas import Pagination, WeeklyRecap, WeeklyRecapPage
+from app.schemas import CoachAdaptation, Pagination, WeeklyRecap, WeeklyRecapPage
 
 router = APIRouter(prefix="/v1", tags=["coaching"])
 
@@ -72,4 +73,26 @@ async def list_recaps(
     )
     return WeeklyRecapPage(
         items=items, pagination=Pagination(limit=limit, offset=offset, total=total)
+    )
+
+
+@router.get("/ai/coach/adaptation", response_model=CoachAdaptation)
+async def get_adaptation(
+    current: CurrentUserDep,
+    provider: ContextProviderDep,
+    token: BearerTokenDep,
+) -> CoachAdaptation:
+    """The coach's proactive read of recent behavior (P2-04 behavioral adaptation)."""
+    bundle = await provider.for_user(str(current.user_id), token)
+    if bundle is None:
+        raise AppError(
+            409, "insufficient_context", "Not enough context yet to adapt. Log an action first."
+        )
+    decision = decide_adaptation(
+        active_days_last_week=bundle.active_days_last_week,
+        weekly_target_days=bundle.weekly_target_days,
+        xp_to_next_rank=bundle.xp_to_next_rank,
+    )
+    return CoachAdaptation(
+        signal=decision.signal, headline=decision.headline, action=decision.action
     )
