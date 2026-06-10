@@ -62,6 +62,24 @@ class WeeklyRecapPage(BaseModel):
     pagination: Pagination
 
 
+class Season(BaseModel):
+    """A seasonal arc: a themed, time-boxed window with an XP multiplier (P2-03)."""
+
+    key: str
+    name: str
+    theme: str
+    xp_multiplier: float
+    starts_on: date_type
+    ends_on: date_type
+
+
+class SeasonStatus(BaseModel):
+    """Whether a season is currently running, and which one."""
+
+    active: bool
+    season: Season | None = None
+
+
 class CoachAdaptation(BaseModel):
     """The coach's current proactive adaptation (P2-04)."""
 
