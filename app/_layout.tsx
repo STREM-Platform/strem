@@ -2,7 +2,11 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, type ReactNode } from "react";
 
+import { ErrorBoundary } from "@/components/error-boundary";
+import { installGlobalErrorHandler } from "@/lib/monitoring";
 import { AuthProvider, useAuth } from "@/lib/session/auth-context";
+
+installGlobalErrorHandler();
 
 /**
  * Route guard: keeps the user on the screen group that matches their session.
@@ -50,11 +54,13 @@ function RouteGuard({ children }: { children: ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RouteGuard>
-        <Stack screenOptions={{ headerShown: false }} />
-      </RouteGuard>
-      <StatusBar style="light" />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RouteGuard>
+          <Stack screenOptions={{ headerShown: false }} />
+        </RouteGuard>
+        <StatusBar style="light" />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
