@@ -179,6 +179,7 @@ services:
       JWT_ALGORITHM: HS256
       MESSAGE_BROKER_URL: redis://redis:6379/0
       USER_SERVICE_BASE_URL: http://user:8000/v1
+      COMMUNITY_SERVICE_BASE_URL: http://community:8000/v1
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
