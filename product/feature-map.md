@@ -1,5 +1,11 @@
 # Feature Map
 
+> **Implementation status:** the full MVP loop plus several Phase-2 items are
+> built (full 7-rank ladder, tribe leaderboard, season foundation, behavioral
+> adaptation, expanded medals, accountability/observability hardening). This map
+> still describes the *intended* split; for what is actually shipped vs. queued,
+> see [`implementation-status.md`](implementation-status.md).
+
 This map separates MVP transformation mechanics from future ecosystem systems. It exists to prevent scope creep and category drift.
 
 STREM's MVP features are not valuable because they are trackers. They are valuable only if they reinforce identity, consistency, and accountability.

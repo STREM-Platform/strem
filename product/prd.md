@@ -100,10 +100,10 @@ Validate that users return because STREM helps them:
 - advanced analytics dashboards
 - advanced social network
 - meal-prep marketplace
-- Titan and Ascended ranks (V2)
-- path ranks (V2)
-- seasonal arcs (V2)
-- tribe vs. tribe challenges (V2)
+- Titan and Ascended ranks (✅ shipped post-MVP — P2-01; see implementation-status.md)
+- path ranks (V2 — not built)
+- seasonal arcs (🟡 foundation shipped — P2-03; multipliers/challenges queued)
+- tribe vs. tribe challenges (⬜ queued — P2-05; the Tribe Power leaderboard shipped in P2-02)
 - audio generation (V3)
 - video generation (V4)
 - AI avatar (V4)

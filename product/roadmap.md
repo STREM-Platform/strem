@@ -1,6 +1,10 @@
 # Roadmap
 
-The roadmap follows one rule: earn expansion through transformation retention.
+> **Implementation status:** Phase 1 (the transformation loop) is built, and
+> Phase-2 *foundations* have shipped ahead of the gate at the team's direction
+> (7-rank ladder, leaderboard, season model, behavioral adaptation). The
+> expansion gates below still govern when the remaining Phase-2/3 work is taken
+> on. See [`implementation-status.md`](implementation-status.md) for the live state.
 
 Each phase has a name, a purpose, and a gate. No phase begins until the previous phase's evidence threshold is met.
 

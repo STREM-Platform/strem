@@ -6,6 +6,12 @@ This is identity engineering through disciplined progression — not a fitness p
 
 See also: `vision/transformation-psychology.md` for the behavioral science behind these decisions.
 
+> **Implementation status:** several mechanics this doc once marked "V2/future" are
+> now built — the **full 7-rank ladder (Titan, Ascended)**, an **expanded medal
+> catalogue**, the **season foundation**, **behavioral adaptation**, and the
+> **tribe leaderboard**. This doc describes the full design; for exactly what is
+> shipped vs. queued, see [`implementation-status.md`](implementation-status.md).
+
 ---
 
 ## Why Game Systems Belong Here
@@ -135,9 +141,13 @@ These 10 medals ship with MVP. They cover the core transformation arc.
 | First Iron | Log your first strength training session |
 | Identity Forged | Complete full onboarding and remain active for 30 days |
 
-### Full Medal Catalogue (V2+)
+### Full Medal Catalogue (expansion started — P2-01)
 
-Expanded medal set for Version 2:
+> **Status:** the catalogue expansion has begun — six P2 medals shipped in P2-01
+> (Unbroken, Relentless, Long Hauler, Iron Devotee, Well Fueled, Tribe Pillar).
+> The remaining items below toward the 30+ set are still queued.
+
+Expanded medal set:
 
 **Endurance Milestones**
 - First 5K (logged running session reaching or exceeding 5km)
@@ -266,7 +276,13 @@ No shame mechanics on failed challenges. The system should offer a lower-stakes 
 
 ---
 
-## Immersive Seasons (V2+)
+## Immersive Seasons (foundation shipped — P2-03)
+
+> **Status:** the season **foundation** is built — a season calendar, the
+> active-season resolver, and `GET /ai/season/current` (P2-03). The mechanics that
+> consume it are queued: XP multipliers (P2-06), seasonal challenges + permanent
+> medals (P2-07), season-aware coach narrative (P2-08), and the mobile season
+> banner (P2-09).
 
 Seasons are the long-arc transformation experience. They give users a narrative container for their effort — a reason to train through December, not just when motivation is high.
 
@@ -331,14 +347,16 @@ The test for every game mechanic: does this help the user build a real, lasting 
 | Text missions (weekly, AI-generated) | Yes | — | — |
 | Individual discipline challenges | Yes | — | — |
 | Tribe collective challenges | Yes | — | — |
-| Full 7-rank system (Titan, Ascended) | — | Yes | — |
+| Full 7-rank system (Titan, Ascended) | — | ✅ shipped (P2-01) | — |
 | Path ranks (Iron Mind, Mountain Runner, etc.) | — | Yes | — |
-| Full medal catalogue (30+ medals) | — | Yes | — |
-| Tribe vs. tribe challenges | — | Yes | — |
+| Full medal catalogue (30+ medals) | — | 🟡 started (P2-01) | — |
+| Tribe vs. tribe challenges | — | ⬜ queued (P2-05) | — |
 | Global STREM events | — | Yes | — |
-| Immersive seasonal arcs | — | Yes | — |
+| Immersive seasonal arcs | — | 🟡 foundation (P2-03) | — |
+| Behavioral adaptation engine | — | ✅ shipped (P2-04) | — |
+| Tribe leaderboard (by Tribe Power) | — | ✅ shipped (P2-02) | — |
 | AI-generated personal challenges | — | Yes | — |
-| Seasonal exclusive medals | — | Yes | — |
+| Seasonal exclusive medals | — | ⬜ queued (P2-07) | — |
 | Audio mission briefings | — | — | Yes |
 | Cinematic rank-up sequences | — | — | Yes |
 | Avatar evolution | — | — | Yes |

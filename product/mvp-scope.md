@@ -1,5 +1,11 @@
 # MVP Scope
 
+> **Implementation status:** the MVP scope below is **built** end-to-end (auth,
+> onboarding, training/nutrition logging, AI coach + missions + recap, tribes +
+> check-ins + challenges, XP/ranks/medals/streaks). Several Phase-2 items have
+> also shipped. See [`implementation-status.md`](implementation-status.md) for the
+> capability-by-capability status.
+
 The MVP is intentionally narrow. STREM has a large ecosystem vision, but the first release must prove one thing: users return because STREM helps them behave like the person they are trying to become.
 
 The MVP is not a miniature version of the full platform. It is a test of the transformation loop:
