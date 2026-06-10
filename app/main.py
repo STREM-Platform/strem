@@ -22,6 +22,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from app.config import Settings, get_settings, upstream_for
 from app.errors import AppError, register_error_handlers
+from app.observability import configure_logging, install_request_logging, request_id_var
 from app.proxy import forward
 from app.ratelimit import InMemoryRateLimiter, RateDecision, RateLimiter, RedisRateLimiter
 
@@ -132,6 +133,13 @@ def create_app() -> FastAPI:
     # CORS is added last so it stays the outermost layer: it answers the preflight
     # OPTIONS before the guard, and native mobile clients are unaffected.
     _attach_cors(application, settings)
+
+    # Observability: originate (or accept) X-Request-ID and log every request.
+    # Added after CORS so it is outermost — the request id is set before the
+    # guard, the proxy, and CORS all run.
+    configure_logging(application.title)
+    install_request_logging(application, application.title)
+
     register_error_handlers(application)
 
     @application.get("/health", tags=["meta"])
@@ -147,6 +155,10 @@ def create_app() -> FastAPI:
             raise AppError(404, "unknown_route", f"No upstream is configured for /{first_segment}.")
 
         client: httpx.AsyncClient = request.app.state.client
+        # Propagate the gateway-originated request id so the call is traceable
+        # across services.
+        forwarded_headers = dict(request.headers)
+        forwarded_headers["x-request-id"] = request_id_var.get()
         try:
             upstream_response = await forward(
                 client,
@@ -154,7 +166,7 @@ def create_app() -> FastAPI:
                 method=request.method,
                 downstream_path=path,
                 query_string=request.url.query,
-                headers=request.headers,
+                headers=forwarded_headers,
                 body=await request.body(),
             )
         except httpx.RequestError as exc:
