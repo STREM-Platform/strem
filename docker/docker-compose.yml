@@ -197,6 +197,8 @@ services:
       NUTRITION_BASE_URL: http://nutrition:8000/v1
       COMMUNITY_BASE_URL: http://community:8000/v1
       AI_BASE_URL: http://ai:8000/v1
+      # Shared rate-limit counters (the gateway fails open if Redis is down).
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       - auth
       - user
@@ -204,6 +206,7 @@ services:
       - nutrition
       - community
       - ai
+      - redis
     healthcheck:
       <<: [*healthcheck-cmd, *service-health]
     restart: unless-stopped
