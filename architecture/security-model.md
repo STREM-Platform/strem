@@ -79,3 +79,9 @@ Security review is required for:
 - marketplace systems
 - health-data integrations
 - public API exposure
+
+The current state of boundary authorization (every service verifies the JWT and
+scopes ownership itself) is recorded in
+[`security-boundary-audit.md`](security-boundary-audit.md), which also holds the
+reusable per-endpoint security checklist. Re-run that audit on any
+authentication or authorization change.
