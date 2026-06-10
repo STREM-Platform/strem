@@ -1,8 +1,10 @@
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { BrandLogo } from "@/components/brand-logo";
-import { EmptyState, MetricCard, Surface } from "@/components/ui/surface";
+import { CelebrationOverlay } from "@/components/ui/celebration";
+import { MetricCard, Surface } from "@/components/ui/surface";
 import { ProgressBar } from "@/components/ui/progress";
 import { StatusPill } from "@/components/ui/status-pill";
 import { SectionHeader, ScreenHeader } from "@/components/ui/typography";
@@ -10,6 +12,8 @@ import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import type { EarnedMedal, StreakState, XPSummary } from "@/lib/api/types";
 import { formatShortDate } from "@/lib/format";
+import { MEDAL_CATALOGUE } from "@/lib/medals";
+import { detectMoment, type ProgressionMoment, type ProgressionSnapshot } from "@/lib/progression";
 import { useAsync } from "@/lib/use-async";
 
 interface ProfileData {
@@ -57,9 +61,33 @@ function progressFraction(xp: XPSummary): number {
   return span > 0 ? Math.min(1, Math.max(0, xp.xp_into_rank / span)) : 0;
 }
 
-/** Profile - rank, total XP, progress to next rank, and earned medals. */
+/** Profile - rank, XP, progress, the medal gallery, and earned-state moments. */
 export default function ProfileScreen() {
   const { data, loading, error, reload } = useAsync(loadProfile);
+  const [moment, setMoment] = useState<ProgressionMoment | null>(null);
+  const prevSnapshot = useRef<ProgressionSnapshot | null>(null);
+
+  // When a reload reveals a higher rank or new medals since the last view,
+  // celebrate it once. The first load only establishes the baseline.
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+    const snapshot: ProgressionSnapshot = {
+      rank: data.xp.rank,
+      medalTypes: new Set(data.medals.map((medal) => medal.medal_type)),
+    };
+    const previous = prevSnapshot.current;
+    prevSnapshot.current = snapshot;
+    if (previous) {
+      const detected = detectMoment(previous, { rank: data.xp.rank, medals: data.medals });
+      if (detected) {
+        setMoment(detected);
+      }
+    }
+  }, [data]);
+
+  const earnedByType = new Map((data?.medals ?? []).map((medal) => [medal.medal_type, medal]));
 
   return (
     <AppScreen loading={loading} error={error} onRefresh={reload}>
@@ -107,32 +135,47 @@ export default function ProfileScreen() {
             <MetricCard label="In rank" value={data.xp.xp_into_rank.toLocaleString()} detail="XP earned" />
             <MetricCard
               label="Medals"
-              value={String(data.medals.length)}
+              value={`${data.medals.length}/${MEDAL_CATALOGUE.length}`}
               detail="Earned"
               tone={data.medals.length > 0 ? "green" : "neutral"}
             />
           </View>
 
-          <SectionHeader title="Medals" subtitle="Milestones that should feel earned." />
-          {data.medals.length === 0 ? (
-            <EmptyState title="No medals yet" body="Your first earned marker is one action away." />
-          ) : (
-            <View style={styles.medals}>
-              {data.medals.map((medal) => (
-                <Surface key={medal.medal_type} variant="muted" style={styles.medal}>
-                  <View style={styles.medalMark}>
-                    <BrandLogo variant="symbol" style={styles.medalLogo} />
+          <SectionHeader title="Medals" subtitle="Earned and aspirational — the markers of the work." />
+          <View style={styles.medals}>
+            {MEDAL_CATALOGUE.map((definition) => {
+              const earned = earnedByType.get(definition.type);
+              return (
+                <Surface
+                  key={definition.type}
+                  variant="muted"
+                  style={[styles.medal, earned ? null : styles.medalLocked]}
+                >
+                  <View style={[styles.medalMark, earned ? null : styles.medalMarkLocked]}>
+                    <BrandLogo
+                      variant="symbol"
+                      style={[styles.medalLogo, earned ? null : styles.medalLogoLocked]}
+                    />
                   </View>
                   <View style={styles.medalCopy}>
-                    <Text style={styles.medalTitle}>{medal.title}</Text>
-                    <Text style={styles.medalDate}>Earned {formatShortDate(medal.earned_at.slice(0, 10))}</Text>
+                    <Text style={[styles.medalTitle, earned ? null : styles.medalTitleLocked]}>
+                      {definition.title}
+                    </Text>
+                    <Text style={styles.medalDate}>
+                      {earned
+                        ? `Earned ${formatShortDate(earned.earned_at.slice(0, 10))}`
+                        : definition.condition}
+                    </Text>
                   </View>
+                  {earned ? <StatusPill label="Earned" tone="green" /> : null}
                 </Surface>
-              ))}
-            </View>
-          )}
+              );
+            })}
+          </View>
         </>
       ) : null}
+
+      {moment ? <CelebrationOverlay moment={moment} onDismiss={() => setMoment(null)} /> : null}
     </AppScreen>
   );
 }
@@ -206,6 +249,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     gap: Spacing.md,
   },
+  medalLocked: {
+    opacity: 0.7,
+  },
   medalMark: {
     width: 38,
     height: 38,
@@ -216,9 +262,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  medalMarkLocked: {
+    borderColor: Colors.border,
+    backgroundColor: Colors.backgroundElevated,
+  },
   medalLogo: {
     width: 32,
     height: 32,
+  },
+  medalLogoLocked: {
+    opacity: 0.3,
   },
   medalCopy: {
     flex: 1,
@@ -229,6 +282,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 21,
     fontWeight: "800",
+  },
+  medalTitleLocked: {
+    color: Colors.textMuted,
   },
   medalDate: {
     ...Typography.caption,
