@@ -28,6 +28,7 @@ import type {
   Mission,
   MissionGenerationResult,
   MissionList,
+  MissionPage,
   NutritionDay,
   NutritionDayPage,
   OnboardingStatus,
@@ -35,6 +36,7 @@ import type {
   RegisterRequest,
   TokenPair,
   TrainingSession,
+  TrainingSessionPage,
   Tribe,
   UserProfile,
   WeeklyRecap,
@@ -174,6 +176,9 @@ export const api = {
       auth: true,
     });
   },
+  listTrainingSessions(limit = 50): Promise<TrainingSessionPage> {
+    return request<TrainingSessionPage>(`/training/sessions?limit=${limit}`, { auth: true });
+  },
   logNutritionDay(payload: LogNutritionDayRequest): Promise<NutritionDay> {
     return request<NutritionDay>("/nutrition/days", { method: "POST", body: payload, auth: true });
   },
@@ -225,6 +230,9 @@ export const api = {
   },
   getActiveMissions(): Promise<MissionList> {
     return request<MissionList>("/ai/missions/active", { auth: true });
+  },
+  listMissionHistory(limit = 10): Promise<MissionPage> {
+    return request<MissionPage>(`/ai/missions/history?limit=${limit}`, { auth: true });
   },
   generateMissions(): Promise<MissionGenerationResult> {
     return request<MissionGenerationResult>("/ai/missions/generate", {

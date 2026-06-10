@@ -152,6 +152,11 @@ export interface TrainingSession {
   created_at: string;
 }
 
+export interface TrainingSessionPage {
+  items: TrainingSession[];
+  pagination: Pagination;
+}
+
 export interface Pagination {
   limit: number;
   offset: number;
@@ -298,6 +303,11 @@ export interface Mission {
 
 export interface MissionList {
   items: Mission[];
+}
+
+export interface MissionPage {
+  items: Mission[];
+  pagination: Pagination;
 }
 
 export interface MissionGenerationResult {
