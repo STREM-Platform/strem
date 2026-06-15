@@ -1,8 +1,10 @@
+import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, type ReactNode } from "react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
+import { FontAssets } from "@/constants/theme";
 import { installGlobalErrorHandler } from "@/lib/monitoring";
 import { AuthProvider, useAuth } from "@/lib/session/auth-context";
 
@@ -53,6 +55,15 @@ function RouteGuard({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
+  // Saira Condensed (display), Saira (UI), JetBrains Mono (labels). Hold the
+  // splash until the type system is ready so the first paint is on-brand rather
+  // than swapping fonts in after mount.
+  const [fontsLoaded, fontError] = useFonts(FontAssets);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <ErrorBoundary>
       <AuthProvider>
