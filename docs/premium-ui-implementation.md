@@ -11,7 +11,7 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
 | 1 | Tokens, type system, icon set, fonts | ✅ Done |
 | 2 | Medal artwork engine | ✅ Done |
 | 3 | Home (Ascent hero + rank ring) | ✅ Done |
-| 3 | Profile (trophy case + celebration) | ⏳ Not started |
+| 3 | Profile (trophy case + celebration) | ✅ Done |
 | 3 | Workout execution | ⏳ Not started |
 | 3 | Fuel (macros + hydration + logging) | ⏳ Not started |
 | 3 | Recaps + share/export | ⏳ Not started |
@@ -73,6 +73,31 @@ gradients — hero scrim, altitude fill).
 | Mission **progress bars** | — | **Omitted** — no per-mission progress in contract; not fabricated |
 | Coach recap teaser line | `GET /ai/coach/recap` (first sentence) | **Live** (falls back to a prompt if none) |
 | Hero photo / avatar image | — | **Decorative** stylized mountain backdrop + initials (no user photo slot wired on Home) |
+
+## Step 3b — Profile (trophy case + celebration)
+
+Ported from `design-spec/screen-profile.jsx`. New components:
+`components/ui/ring.tsx` (conic `Ring` → react-native-svg arc), `Btn` added to
+`components/ui/primitives.tsx`, and `components/ui/celebration.tsx` rebuilt to the
+premium `Celebration` (rank hex with the mountain mark, or the Medal engine; RN
+`Animated` spring pop-in that settles fully visible). `app/(app)/profile.tsx`
+rebuilt: header, rank `Ring` showcase, stat tiles, consistency calendar, the
+medal **trophy case** (mounts the step-2 Medal engine), recap teaser, and the
+existing accountability card.
+
+**Profile data ledger**
+
+| UI element | Source | Live / mock |
+|---|---|---|
+| Rank, rank index, % into rank, total XP | `GET /users/me/xp` | **Live** |
+| Trophy case earned vs. locked, earned dates | `GET /users/me/medals` + static rarity/emblem metadata | **Live** (no fabricated locked progress) |
+| Consistency calendar (last 5 weeks) | real activity dates from `GET /training/sessions` + `/nutrition/days`; current-streak highlight from `xp.current_streak_days` | **Live** |
+| Longest streak tile, streak status line | `GET /users/me/xp` | **Live** |
+| "MEDALS" stat tile | earned medal count | **Live** (substituted for the prototype's "active days", which the contract doesn't expose) |
+| Rank-up / new-medal celebration | fires on real advancement via `detectMoment` (unchanged) | **Live** |
+| "PREVIEW … UNLOCK" button | shows the next rank's celebration, explicitly labelled a preview | **Preview** (not server progress) |
+| Recap teaser | — | **Placeholder** → routes to Coach; real recap share lands in the Recaps step |
+| Accountability reminders card | existing `NotificationsCard` (local prefs) | **Live** (kept, layered into new layout) |
 
 ## Data wiring ledger (filled in as screens land)
 

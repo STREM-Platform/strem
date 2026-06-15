@@ -10,10 +10,54 @@
  */
 
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { Icon, type IconName } from "@/components/ui/icon";
 import { T, disp, mono, ui } from "@/constants/theme";
+
+// ── Btn ──────────────────────────────────────────────────────────────────────
+type BtnKind = "primary" | "inverse" | "ghost" | "danger" | "soft";
+
+const BTN_KINDS: Record<BtnKind, { bg: string; fg: string; border?: string }> = {
+  primary: { bg: T.green, fg: "#06130D" },
+  inverse: { bg: T.text, fg: "#06130D" },
+  ghost: { bg: "transparent", fg: T.text, border: T.line2 },
+  danger: { bg: T.redSoft, fg: T.red, border: T.redLine },
+  soft: { bg: T.greenSoft, fg: T.green, border: T.greenLine },
+};
+
+interface BtnProps {
+  label: string;
+  icon?: IconName;
+  kind?: BtnKind;
+  onPress?: () => void;
+  full?: boolean;
+  style?: StyleProp<ViewStyle>;
+}
+
+export function Btn({ label, icon, kind = "primary", onPress, full, style }: BtnProps) {
+  const k = BTN_KINDS[kind];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.btn,
+        {
+          backgroundColor: k.bg,
+          borderWidth: k.border ? 1 : 0,
+          borderColor: k.border,
+          width: full ? "100%" : undefined,
+          opacity: pressed ? 0.85 : 1,
+        },
+        style,
+      ]}
+    >
+      {icon ? <Icon name={icon} size={17} color={k.fg} sw={2.2} /> : null}
+      <Text style={[styles.btnText, { color: k.fg }]}>{label}</Text>
+    </Pressable>
+  );
+}
 
 // ── Bar ──────────────────────────────────────────────────────────────────────
 interface BarProps {
@@ -169,6 +213,19 @@ export function IconTile({ name, color = T.green, size = 42, iconSize = 21, bg =
 }
 
 const styles = StyleSheet.create({
+  btn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 13,
+  },
+  btnText: {
+    ...ui(14, 700),
+    letterSpacing: 0.3,
+  },
   chip: {
     flexDirection: "row",
     alignItems: "center",
