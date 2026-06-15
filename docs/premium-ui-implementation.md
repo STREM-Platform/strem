@@ -12,7 +12,7 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
 | 2 | Medal artwork engine | ✅ Done |
 | 3 | Home (Ascent hero + rank ring) | ✅ Done |
 | 3 | Profile (trophy case + celebration) | ✅ Done |
-| 3 | Workout execution | ⏳ Not started |
+| 3 | Workout execution | ✅ Done |
 | 3 | Fuel (macros + hydration + logging) | ⏳ Not started |
 | 3 | Recaps + share/export | ⏳ Not started |
 | 3 | Onboarding + celebrations | ⏳ Not started |
@@ -98,6 +98,28 @@ existing accountability card.
 | "PREVIEW … UNLOCK" button | shows the next rank's celebration, explicitly labelled a preview | **Preview** (not server progress) |
 | Recap teaser | — | **Placeholder** → routes to Coach; real recap share lands in the Recaps step |
 | Accountability reminders card | existing `NotificationsCard` (local prefs) | **Live** (kept, layered into new layout) |
+
+## Step 3c — Workout execution (Train)
+
+Ported from `design-spec/workout-exec.jsx` + `screen-train.jsx`. New:
+`lib/workout.ts` (types, helpers, `SAMPLE_WORKOUT`), `lib/flags.ts`,
+`components/workout/{stepper,workout-exec,workout-summary,workout-preview}.tsx`,
+and `app/(app)/log.tsx` rebuilt as the Train orchestrator
+(landing → preview → guided exec → summary, plus the real quick-log).
+
+**Train data ledger**
+
+| UI element | Source | Live / mock |
+|---|---|---|
+| Quick-log a completed session | `POST /training/sessions` | **Live** |
+| Recent proof list | `GET /training/sessions` | **Live** |
+| Guided set-by-set execution (reps/weight/rest/volume) | local state machine on `SAMPLE_WORKOUT` | **Preview** (flag `guidedWorkoutsPreview`); no server-side workout tracking exists |
+| Guided session persistence | on "Save to training log" → `POST /training/sessions` (final session only: type + elapsed minutes + note) | **Live** |
+| Photo / text / voice import | — | **Unsupported, honest** (flag `workoutImport` off): shown as "SOON"; tapping explains it isn't live; no extracted data fabricated |
+| Summary "+XP" and "NEW PERSONAL RECORD" | — | **Dropped** — contract returns neither per-session XP nor PR data, so not invented |
+
+Guardrails: structured tracking is clearly a *preview*; the only persistence is
+the real final session; imports never fabricate parsed workouts; no fake PR/XP.
 
 ## Data wiring ledger (filled in as screens land)
 
