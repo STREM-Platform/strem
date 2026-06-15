@@ -9,7 +9,7 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
 | Step | Area | State |
 |------|------|-------|
 | 1 | Tokens, type system, icon set, fonts | ✅ Done |
-| 2 | Medal artwork engine | ⏳ Not started |
+| 2 | Medal artwork engine | ✅ Done |
 | 3 | Home (Ascent hero + rank ring) | ⏳ Not started |
 | 3 | Profile (trophy case + celebration) | ⏳ Not started |
 | 3 | Workout execution | ⏳ Not started |
@@ -28,6 +28,27 @@ Pure presentation; no data. Ported from `design-spec/strem-kit.jsx`:
   `react-native-svg`.
 - Fonts: Saira Condensed / Saira / JetBrains Mono via `@expo-google-fonts/*`,
   loaded in `app/_layout.tsx`.
+
+## Step 2 — Medal artwork engine
+
+Pure presentation. Ported from `design-spec/medal-art.jsx`:
+
+- `lib/medals.ts` — added `MEDAL_META` (per-rarity rim/core/accent/glow/rays),
+  `rarity` + `emblem` static display metadata on every catalogue medal, and a
+  `medalDefinitionFor(type)` lookup to hydrate the earned-medals API response.
+- `components/medals/medal.tsx` — `<Medal>` SVG engine (metallic rims, knurled
+  ticks, glowing core, ribbon + star, sport emblem, sunburst rays on
+  epic/legendary, holographic sheen, desaturated locked state).
+- `components/medals/medal-card.tsx` — `<MedalCard>` (art + title + rarity/locked
+  label), tappable.
+
+RN translation: web `transform` rotate strings → `rotation`/`originX`/`originY`;
+composed `translate/scale/translate` → nested `<G>`; the CSS `blur()` halo and
+svg `drop-shadow` → a soft `RadialGradient` halo (cross-platform).
+
+Not yet mounted in any screen — the Profile trophy case swaps onto this engine in
+step 3. **Data:** still earned-vs-locked only from the existing medals API;
+rarity/emblem are static display metadata (no faked progress).
 
 ## Data wiring ledger (filled in as screens land)
 
