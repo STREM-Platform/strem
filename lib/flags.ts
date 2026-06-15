@@ -20,4 +20,12 @@ export const FLAGS = {
    * extracted workout data is fabricated.
    */
   workoutImport: false,
+
+  /**
+   * Meal-level macros + hydration on Fuel. The nutrition contract is day-level
+   * only (`targets_met` + notes), so the macro rings / hydration / photo→food
+   * logging render as a clearly-labelled *preview* on sample data and persist
+   * nothing. The real, persisted action stays the day-level check-in.
+   */
+  nutritionMacrosPreview: true,
 } as const;

@@ -13,7 +13,7 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
 | 3 | Home (Ascent hero + rank ring) | ✅ Done |
 | 3 | Profile (trophy case + celebration) | ✅ Done |
 | 3 | Workout execution | ✅ Done |
-| 3 | Fuel (macros + hydration + logging) | ⏳ Not started |
+| 3 | Fuel (macros + hydration + logging) | ✅ Done |
 | 3 | Recaps + share/export | ⏳ Not started |
 | 3 | Onboarding + celebrations | ⏳ Not started |
 
@@ -120,6 +120,25 @@ and `app/(app)/log.tsx` rebuilt as the Train orchestrator
 
 Guardrails: structured tracking is clearly a *preview*; the only persistence is
 the real final session; imports never fabricate parsed workouts; no fake PR/XP.
+
+## Step 3d — Fuel (performance nutrition)
+
+Ported from `design-spec/screen-fuel.jsx` into `app/(app)/nutrition.tsx`.
+
+**Fuel data ledger**
+
+| UI element | Source | Live / mock |
+|---|---|---|
+| Today's fuel check-in (on/off target + note) | `POST /nutrition/days` (date = today) | **Live** |
+| Consistency ledger (recent days, on/off target) | `GET /nutrition/days` | **Live** |
+| Streak chip | consecutive logged days from `/nutrition/days` | **Live** |
+| Calorie ring + protein/carbs/fat bars | sample targets/today | **Preview** (flag `nutritionMacrosPreview`); contract is day-level, so labelled "PREVIEW · sample targets", persists nothing |
+| Hydration cups | local-only | **Preview** (labelled "preview", not persisted — no hydration field in contract) |
+| Photo / voice / manual meal logging | — | **Unsupported, honest**: shown as "SOON"; tapping explains photo/voice macro estimation isn't live and won't fabricate values |
+
+Guardrails: nutrition persistence stays day-level; macros/hydration/meal logging
+are a clearly-labelled preview that saves nothing and never fabricates macros;
+no calorie-shaming copy (framing is performance-fuel + consistency).
 
 ## Data wiring ledger (filled in as screens land)
 
