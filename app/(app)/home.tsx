@@ -151,7 +151,7 @@ export default function HomeScreen() {
             <View style={styles.stack}>
               <WeekRidge
                 data={data}
-                onShare={() => router.push("/(app)/coach")}
+                onShare={() => router.push("/(app)/recaps")}
               />
               <View>
                 <SectionHead

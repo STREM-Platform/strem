@@ -11,6 +11,7 @@
  * reload reveals real advancement (unchanged mechanism).
  */
 
+import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -153,6 +154,7 @@ function ProfileBody({
   earnedCount: number;
   onCelebrate: (c: CelebrationData) => void;
 }) {
+  const router = useRouter();
   const { xp } = data;
   const pct = progressFraction(xp);
   const rankIndex = Math.max(0, RANKS.indexOf(xp.rank)) + 1;
@@ -247,6 +249,7 @@ function ProfileBody({
                             rarity: def.rarity,
                             emblem: def.emblem,
                             when: formatShortDate(earned.earned_at.slice(0, 10)),
+                            onShare: () => router.push("/(app)/recaps"),
                           })
                       : undefined
                   }
@@ -260,16 +263,16 @@ function ProfileBody({
       {/* recap teaser */}
       <SectionHead icon="sparkles" title="SHARE YOUR PROOF" sub="Story-ready recaps" />
       <Panel raised style={styles.sideMargin} accent={T.greenLine} pad={0}>
-        <View style={styles.teaser}>
+        <Pressable style={styles.teaser} onPress={() => router.push("/(app)/recaps")}>
           <View style={styles.teaserTile}>
             <Icon name="sparkles" size={23} color={T.green} />
           </View>
           <View style={styles.shrink}>
             <Text style={styles.teaserTitle}>Create a recap</Text>
-            <Text style={styles.teaserSub}>Weekly, monthly, PRs & medals — built for stories. Coming soon.</Text>
+            <Text style={styles.teaserSub}>Weekly, monthly, medals & consistency — built for stories.</Text>
           </View>
           <Icon name="chevron" size={18} color={T.sub} />
-        </View>
+        </Pressable>
       </Panel>
 
       {/* accountability (existing feature, kept) */}

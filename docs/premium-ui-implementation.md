@@ -14,7 +14,7 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
 | 3 | Profile (trophy case + celebration) | ✅ Done |
 | 3 | Workout execution | ✅ Done |
 | 3 | Fuel (macros + hydration + logging) | ✅ Done |
-| 3 | Recaps + share/export | ⏳ Not started |
+| 3 | Recaps + share/export | ✅ Done |
 | 3 | Onboarding + celebrations | ⏳ Not started |
 
 ## Step 1 — Tokens & type (foundation)
@@ -139,6 +139,29 @@ Ported from `design-spec/screen-fuel.jsx` into `app/(app)/nutrition.tsx`.
 Guardrails: nutrition persistence stays day-level; macros/hydration/meal logging
 are a clearly-labelled preview that saves nothing and never fabricates macros;
 no calorie-shaming copy (framing is performance-fuel + consistency).
+
+## Step 3e — Recaps + share/export
+
+Ported from `design-spec/story-recaps.jsx`. New: `lib/recaps.ts` (real-data
+builders), `components/recaps/story-card.tsx` (9:16 story layouts), and
+`app/(app)/recaps.tsx` (viewer + selector + export). Entry points wired: Profile
+"Share your proof" teaser, Profile medal celebration "Share", and the Home
+week-ridge share arrow → `/(app)/recaps`. New deps: `react-native-view-shot`,
+`expo-sharing`, `expo-media-library`.
+
+**Recaps data ledger**
+
+| Recap | Source | Live / mock |
+|---|---|---|
+| Weekly (sessions, distance, streak, total XP, per-day bars) | `/training/sessions` (this week) + `/users/me/xp` | **Live** |
+| Consistency (training days, fueled days, streak) | `/training/sessions` + `/nutrition/days` + `xp` | **Live** |
+| Monthly (sessions, km, hours, top medal) | `/training/sessions` (this month) + `/users/me/medals` | **Live** |
+| Latest-medal | most recent `/users/me/medals` + static display metadata | **Live** (only shown if a medal is earned) |
+| PR / lift-volume recaps | — | **Dropped** — no PR or structured-volume history in the contract; not faked |
+| PNG export → Download / Share | `captureRef` → `expo-media-library` / `expo-sharing` | **Live on device**; web/unsupported shows a clear notice |
+
+Guardrails: every recap is built from real account data (or omitted); the
+prototype's fabricated PR/volume stories are dropped; no vanity/follower metrics.
 
 ## Data wiring ledger (filled in as screens land)
 
