@@ -204,7 +204,7 @@ function HeroAscent({ data, topInset, onNav }: { data: HomeData; topInset: numbe
   const firstName = (profile.display_name || "Athlete").split(" ")[0];
 
   return (
-    <View style={[styles.hero, { height: topInset + 360 }]}>
+    <View style={[styles.hero, { paddingTop: topInset + 18 }]}>
       <HeroBackdrop tone="green" />
       <MountainMark size={300} color="#9fb0a8" style={styles.watermark} />
       <LinearGradient
@@ -213,9 +213,8 @@ function HeroAscent({ data, topInset, onNav }: { data: HomeData; topInset: numbe
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={[styles.heroContent, { paddingTop: topInset + 18 }]}>
-        {/* brand + greeting */}
-        <View style={styles.sideMargin}>
+      {/* brand + greeting */}
+      <View style={styles.sideMargin}>
           <View style={styles.heroTopRow}>
             <View style={styles.brand}>
               <MountainMark size={24} />
@@ -236,7 +235,7 @@ function HeroAscent({ data, topInset, onNav }: { data: HomeData; topInset: numbe
           ) : null}
         </View>
 
-        <View style={styles.flexSpacer} />
+        <View style={styles.heroGap} />
 
         {/* rank block + altitude track */}
         <View style={[styles.sideMargin, styles.rankRow]}>
@@ -279,7 +278,6 @@ function HeroAscent({ data, topInset, onNav }: { data: HomeData; topInset: numbe
           </View>
         </View>
       </View>
-    </View>
   );
 }
 
@@ -391,7 +389,7 @@ const styles = StyleSheet.create({
   // hero
   hero: { width: "100%", overflow: "hidden", backgroundColor: "#0a0c10" },
   watermark: { position: "absolute", top: 70, right: -70, opacity: 0.07 },
-  heroContent: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, flexDirection: "column" },
+  heroGap: { height: 26 },
   heroTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
   brandText: { ...disp(14, 700), letterSpacing: 3.4, color: "#fff" },
@@ -409,7 +407,6 @@ const styles = StyleSheet.create({
   avatarText: { ...mono(12, 700), color: T.green },
   greeting: { ...ui(14, 700), color: "rgba(255,255,255,0.72)", marginTop: 13 },
   identity: { ...mono(11, 600), color: T.green, letterSpacing: 0.6, marginTop: 4 },
-  flexSpacer: { flex: 1 },
   rankRow: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
   rankOverline: { ...mono(10, 700), color: T.sub, letterSpacing: 1.6 },
   rankName: { ...disp(62, 800), color: "#fff", lineHeight: 58, letterSpacing: 0.6, marginTop: 4 },
