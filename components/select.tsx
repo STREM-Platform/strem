@@ -1,10 +1,11 @@
 /**
- * Selectable option lists for onboarding and logging.
+ * Selectable option lists for onboarding and logging, in the premium kit
+ * (design-spec OptionRow): green-soft active fill, ring radio, mono/UI type.
  */
 
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
+import { T, ui } from "@/constants/theme";
 
 export interface Option<T extends string> {
   value: T;
@@ -39,14 +40,14 @@ export function OptionSelect<T extends string>({
               pressed ? styles.optionPressed : null,
             ]}
           >
-            <View style={[styles.radio, active ? styles.radioActive : null]}>
-              {active ? <View style={styles.radioDot} /> : null}
-            </View>
             <View style={styles.optionCopy}>
               <Text style={[styles.optionLabel, active ? styles.optionLabelActive : null]}>
                 {option.label}
               </Text>
               {option.hint ? <Text style={styles.optionHint}>{option.hint}</Text> : null}
+            </View>
+            <View style={[styles.radio, active ? styles.radioActive : null]}>
+              {active ? <View style={styles.radioDot} /> : null}
             </View>
           </Pressable>
         );
@@ -94,87 +95,81 @@ export function MultiOptionSelect<T extends string>({
 
 const styles = StyleSheet.create({
   group: {
-    gap: Spacing.sm,
+    gap: 10,
   },
   option: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.backgroundElevated,
-    borderColor: Colors.border,
+    backgroundColor: T.surf,
+    borderColor: T.line,
     borderWidth: 1,
-    borderRadius: Radius.xl,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    gap: Spacing.md,
+    borderRadius: 14,
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+    gap: 13,
   },
   optionActive: {
-    borderColor: Colors.accentGreen,
-    backgroundColor: Colors.accentGreenSoft,
+    borderColor: T.greenLine,
+    backgroundColor: T.greenSoft,
   },
   optionPressed: {
     opacity: 0.82,
   },
+  optionCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  optionLabel: {
+    ...ui(15, 700),
+    color: T.text,
+  },
+  optionLabelActive: {
+    color: T.text,
+  },
+  optionHint: {
+    ...ui(12, 500),
+    color: T.sub,
+  },
   radio: {
-    width: 20,
-    height: 20,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: T.line2,
     alignItems: "center",
     justifyContent: "center",
   },
   radioActive: {
-    borderColor: Colors.accentGreenBright,
+    borderColor: T.green,
   },
   radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.accentGreenBright,
-  },
-  optionCopy: {
-    flex: 1,
-    gap: Spacing.xxs,
-  },
-  optionLabel: {
-    color: Colors.text,
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-  optionLabelActive: {
-    color: Colors.text,
-  },
-  optionHint: {
-    ...Typography.body,
-    color: Colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: T.green,
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: Spacing.sm,
+    gap: 10,
   },
   tile: {
     minWidth: "47%",
     flexGrow: 1,
-    borderRadius: Radius.lg,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.backgroundElevated,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    borderColor: T.line,
+    backgroundColor: T.surf,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
   },
   tileActive: {
-    borderColor: Colors.accentGreen,
-    backgroundColor: Colors.accentGreenSoft,
+    borderColor: T.greenLine,
+    backgroundColor: T.greenSoft,
   },
   tileLabel: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: "800",
+    ...ui(14, 800),
+    color: T.mut,
     textAlign: "center",
   },
 });

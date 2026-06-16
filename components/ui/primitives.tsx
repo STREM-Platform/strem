@@ -10,7 +10,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { Icon, type IconName } from "@/components/ui/icon";
 import { T, disp, mono, ui } from "@/constants/theme";
@@ -32,14 +32,19 @@ interface BtnProps {
   kind?: BtnKind;
   onPress?: () => void;
   full?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Btn({ label, icon, kind = "primary", onPress, full, style }: BtnProps) {
+export function Btn({ label, icon, kind = "primary", onPress, full, loading, disabled, style }: BtnProps) {
   const k = BTN_KINDS[kind];
+  const blocked = disabled || loading;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(blocked) }}
+      disabled={blocked}
       onPress={onPress}
       style={({ pressed }) => [
         styles.btn,
@@ -48,13 +53,19 @@ export function Btn({ label, icon, kind = "primary", onPress, full, style }: Btn
           borderWidth: k.border ? 1 : 0,
           borderColor: k.border,
           width: full ? "100%" : undefined,
-          opacity: pressed ? 0.85 : 1,
+          opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
         },
         style,
       ]}
     >
-      {icon ? <Icon name={icon} size={17} color={k.fg} sw={2.2} /> : null}
-      <Text style={[styles.btnText, { color: k.fg }]}>{label}</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={k.fg} />
+      ) : (
+        <>
+          {icon ? <Icon name={icon} size={17} color={k.fg} sw={2.2} /> : null}
+          {label ? <Text style={[styles.btnText, { color: k.fg }]}>{label}</Text> : null}
+        </>
+      )}
     </Pressable>
   );
 }

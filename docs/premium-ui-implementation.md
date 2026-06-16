@@ -15,7 +15,7 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
 | 3 | Workout execution | ✅ Done |
 | 3 | Fuel (macros + hydration + logging) | ✅ Done |
 | 3 | Recaps + share/export | ✅ Done |
-| 3 | Onboarding + celebrations | ⏳ Not started |
+| 3 | Onboarding + celebrations | ✅ Done |
 
 ## Step 1 — Tokens & type (foundation)
 
@@ -162,6 +162,24 @@ week-ridge share arrow → `/(app)/recaps`. New deps: `react-native-view-shot`,
 
 Guardrails: every recap is built from real account data (or omitted); the
 prototype's fabricated PR/volume stories are dropped; no vanity/follower metrics.
+
+## Step 3f — Onboarding + celebrations
+
+Re-skinned to the premium frame from `design-spec/screen-onboarding.jsx` via the
+shared `components/onboarding-scaffold.tsx` (gradient bg, brand + skip, segmented
+progress, hex emblem, mono overline + display title, back/continue footer) and
+the shared `components/select.tsx` (`OptionSelect`/`MultiOptionSelect` → premium
+rows). `ONBOARDING_META` (emblem + overline per step) added to `lib/onboarding.ts`;
+`Btn` gained `loading`/`disabled`. The existing per-screen real submission flow
+(`useOnboardingStep` → `POST /users/onboarding`) is unchanged.
+
+**Onboarding data ledger**
+
+| UI element | Source | Live / mock |
+|---|---|---|
+| All 7 steps' answers (identity, goal, level, cadence, nutrition, tribe, name/timezone) | `POST /users/onboarding` per screen | **Live** (unchanged) |
+| Step emblem + overline + progress | static `ONBOARDING_META` / order | **Live** (presentation) |
+| Launch "Initiate" rank-unlock celebration | plays after a successful launch submit, before `refreshOnboardingStatus()` enters the app | **Live moment** (real rank — every account starts at Initiate) |
 
 ## Data wiring ledger (filled in as screens land)
 
