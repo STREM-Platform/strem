@@ -6,6 +6,8 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ["dist/*", ".expo/*", "node_modules/*"],
+    // design-spec/ is the web reference prototype (globals via window), not RN
+    // app source — exclude it from linting.
+    ignores: ["dist/*", ".expo/*", "node_modules/*", "design-spec/*"],
   },
 ]);
