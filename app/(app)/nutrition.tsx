@@ -15,15 +15,13 @@ import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
-import { FormError, TextField } from "@/components/form";
 import { Icon, MountainMark, type IconName } from "@/components/ui/icon";
-import { Bar, Btn, Chip, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
+import { Bar, Chip, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
 import { Ring } from "@/components/ui/ring";
 import { T, disp, mono, ui } from "@/constants/theme";
-import { ApiError, api } from "@/lib/api/client";
+import { api } from "@/lib/api/client";
 import type { NutritionDay } from "@/lib/api/types";
 import { FLAGS } from "@/lib/flags";
-import { formatShortDate } from "@/lib/format";
 import { useAsync } from "@/lib/use-async";
 
 const SAMPLE_TARGETS = { cal: 2600, protein: 180, carbs: 280, fat: 80, water: 3.0 };
@@ -52,11 +50,6 @@ const SAMPLE_MEALS = [
   { name: "Salmon & sweet potato", time: "19:30", tag: "Dinner", method: "photo", cal: 400, p: 20, c: 14, f: 24 },
 ] as const;
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 /** Consecutive logged-day streak ending today or yesterday. */
 function nutritionStreak(days: NutritionDay[]): number {
   const logged = new Set(days.map((d) => d.date));
@@ -79,9 +72,7 @@ export default function FuelScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data, loading, reload } = useAsync(() => api.listNutritionDays());
-  const days = data?.items ?? [];
-  const streak = nutritionStreak(days);
-  const loggedToday = days.some((d) => d.date === todayKey());
+  const streak = nutritionStreak(data?.items ?? []);
 
   return (
     <View style={styles.root}>
@@ -105,35 +96,6 @@ export default function FuelScreen() {
             <MealsTimeline onShare={() => router.push("/(app)/recaps")} />
           </>
         ) : null}
-
-        {/* real, persisted day-level check-in */}
-        <DayCheckIn loggedToday={loggedToday} onLogged={reload} />
-
-        {/* consistency — real */}
-        <SectionHead icon="chart" title="CONSISTENCY" sub="Day-level proof" />
-        <View style={styles.list}>
-          {days.length > 0 ? (
-            days.map((day) => (
-              <View key={day.id} style={styles.dayRow}>
-                <View style={styles.shrink}>
-                  <Text style={styles.dayDate}>{formatShortDate(day.date)}</Text>
-                  <Text style={styles.dayRaw}>{day.date}</Text>
-                </View>
-                <Chip
-                  label={day.targets_met ? "ON TARGET" : "OFF TARGET"}
-                  color={day.targets_met ? T.green : T.mut}
-                  bg={day.targets_met ? T.greenSoft : "rgba(255,255,255,0.05)"}
-                  border={day.targets_met ? T.greenLine : T.line2}
-                  iconFill={false}
-                />
-              </View>
-            ))
-          ) : (
-            <Panel style={styles.sideMargin}>
-              <Text style={styles.emptyText}>No days logged yet. Your first honest entry starts the ledger.</Text>
-            </Panel>
-          )}
-        </View>
       </ScrollView>
       <BottomNav />
     </View>
@@ -215,70 +177,6 @@ function MacroHero() {
         </View>
       </View>
     </Panel>
-  );
-}
-
-function DayCheckIn({ loggedToday, onLogged }: { loggedToday: boolean; onLogged: () => void }) {
-  const [met, setMet] = useState(true);
-  const [notes, setNotes] = useState("");
-  const [error, setError] = useState<string | undefined>();
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const submit = async () => {
-    setError(undefined);
-    setSubmitting(true);
-    try {
-      await api.logNutritionDay({ date: todayKey(), targets_met: met, notes: notes.trim() || undefined });
-      setDone(true);
-      setNotes("");
-      onLogged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn’t log that. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <>
-      <SectionHead icon="check" title="LOG TODAY" sub="Consistency over perfect macro math" />
-      <Panel style={styles.sideMargin}>
-        {done || loggedToday ? (
-          <View style={styles.checkedRow}>
-            <Icon name="check" size={18} color={T.green} sw={2.6} />
-            <Text style={styles.checkedText}>Today’s fuel is logged. XP updates through the progression ledger.</Text>
-          </View>
-        ) : (
-          <>
-            <View style={styles.toggle}>
-              <ToggleBtn label="On target" active={met} onPress={() => setMet(true)} tone="green" />
-              <ToggleBtn label="Off target" active={!met} onPress={() => setMet(false)} tone="muted" />
-            </View>
-            <View style={styles.noteField}>
-              <TextField label="Notes" helperText="Optional" value={notes} onChangeText={setNotes} placeholder="Hit protein, light on veg" multiline maxLength={500} />
-            </View>
-            {error ? <FormError message={error} /> : null}
-            <Btn kind="primary" full icon="check" label={submitting ? "Logging…" : "Log today"} onPress={submit} />
-          </>
-        )}
-      </Panel>
-    </>
-  );
-}
-
-function ToggleBtn({ label, active, onPress, tone }: { label: string; active: boolean; onPress: () => void; tone: "green" | "muted" }) {
-  const color = tone === "green" ? T.green : T.mut;
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.toggleBtn,
-        active ? { backgroundColor: tone === "green" ? T.greenSoft : T.surf2, borderColor: tone === "green" ? T.greenLine : T.line2 } : styles.toggleIdle,
-      ]}
-    >
-      <Text style={[styles.toggleLabel, { color: active ? color : T.sub }]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -364,14 +262,6 @@ const styles = StyleSheet.create({
   macroVal: { ...mono(11, 700), color: T.mut },
   macroMuted: { color: T.mut },
 
-  checkedRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  checkedText: { ...ui(14, 600), color: T.text, flexShrink: 1, lineHeight: 20 },
-  toggle: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  toggleBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, alignItems: "center" },
-  toggleIdle: { backgroundColor: T.surf, borderColor: T.line },
-  toggleLabel: { ...ui(14, 700) },
-  noteField: { marginBottom: 14 },
-
   hydrationRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   cups: { flex: 1, flexDirection: "row", gap: 7 },
   cup: { flex: 1, height: 44, borderRadius: 9, alignItems: "center", justifyContent: "center", borderWidth: 1 },
@@ -384,12 +274,6 @@ const styles = StyleSheet.create({
   methodLabel: { ...ui(12, 700), color: T.text, marginTop: 8, textAlign: "center" },
   methodSub: { ...ui(10, 500), color: T.sub, marginTop: 1, textAlign: "center", lineHeight: 13 },
   methodChip: { marginTop: 8 },
-
-  list: { gap: 9, marginHorizontal: 16 },
-  dayRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 13, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
-  dayDate: { ...ui(15, 700), color: T.text },
-  dayRaw: { ...mono(10, 600), color: T.sub, marginTop: 1 },
-  emptyText: { ...ui(13, 500), color: T.mut, lineHeight: 19 },
 
   share: { ...mono(10, 700), color: T.green, letterSpacing: 0.8 },
   meals: { gap: 9, marginHorizontal: 16 },
