@@ -26,7 +26,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { MedalCard } from "@/components/medals/medal-card";
-import { NotificationsCard } from "@/components/notifications-card";
 import { Celebration, celebrationFromMoment, type CelebrationData } from "@/components/ui/celebration";
 import { HeroBackdrop } from "@/components/ui/hero-backdrop";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -277,12 +276,6 @@ function ProfileBody({
           <Icon name="chevron" size={18} color={T.sub} />
         </Pressable>
       </Panel>
-
-      {/* accountability (existing feature, kept) */}
-      <SectionHead icon="bell" title="ACCOUNTABILITY" sub="Reminders that keep you honest" />
-      <View style={styles.sideMargin}>
-        <NotificationsCard xp={xp} />
-      </View>
     </>
   );
 }

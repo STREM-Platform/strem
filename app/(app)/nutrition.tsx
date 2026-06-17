@@ -9,6 +9,7 @@
  * persist nothing and never fabricate saved macros.
  */
 
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -40,6 +41,17 @@ const LOG_METHODS: { id: string; icon: IconName; label: string; sub: string; neu
   { id: "manual", icon: "edit", label: "Search & add", sub: "Manual entry", neutral: true },
 ];
 
+const METHOD_ICON: Record<string, IconName> = { photo: "grid", voice: "bot", manual: "edit" };
+
+// Sample meals (preview only — the contract is day-level, so these persist
+// nothing). Mirrors `DATA.fuel.meals` from the prototype.
+const SAMPLE_MEALS = [
+  { name: "Oats, whey & berries", time: "07:10", tag: "Pre-train", method: "voice", cal: 520, p: 38, c: 72, f: 10 },
+  { name: "Chicken, rice & greens", time: "12:40", tag: "Recovery", method: "photo", cal: 680, p: 52, c: 78, f: 16 },
+  { name: "Greek yogurt & honey", time: "16:05", tag: "Snack", method: "manual", cal: 240, p: 22, c: 24, f: 6 },
+  { name: "Salmon & sweet potato", time: "19:30", tag: "Dinner", method: "photo", cal: 400, p: 20, c: 14, f: 24 },
+] as const;
+
 function todayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -64,6 +76,7 @@ function nutritionStreak(days: NutritionDay[]): number {
 }
 
 export default function FuelScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data, loading, reload } = useAsync(() => api.listNutritionDays());
   const days = data?.items ?? [];
@@ -83,18 +96,21 @@ export default function FuelScreen() {
           action={streak > 0 ? <Chip label={`${streak}-DAY`} icon="flame" /> : undefined}
         />
 
-        {/* macro hero — preview (sample data) */}
-        {FLAGS.nutritionMacrosPreview ? <MacroHero /> : null}
+        {/* preview, matching the prototype order: macros → log → hydration → meals */}
+        {FLAGS.nutritionMacrosPreview ? (
+          <>
+            <MacroHero />
+            <LogMethods />
+            <HydrationPreview />
+            <MealsTimeline onShare={() => router.push("/(app)/recaps")} />
+          </>
+        ) : null}
 
         {/* real, persisted day-level check-in */}
         <DayCheckIn loggedToday={loggedToday} onLogged={reload} />
 
-        {/* hydration + logging — preview */}
-        {FLAGS.nutritionMacrosPreview ? <HydrationPreview /> : null}
-        {FLAGS.nutritionMacrosPreview ? <LogMethods /> : null}
-
         {/* consistency — real */}
-        <SectionHead icon="utensils" title="CONSISTENCY" sub="Day-level proof" />
+        <SectionHead icon="chart" title="CONSISTENCY" sub="Day-level proof" />
         <View style={styles.list}>
           {days.length > 0 ? (
             days.map((day) => (
@@ -121,6 +137,43 @@ export default function FuelScreen() {
       </ScrollView>
       <BottomNav />
     </View>
+  );
+}
+
+function MealsTimeline({ onShare }: { onShare: () => void }) {
+  return (
+    <>
+      <SectionHead
+        icon="utensils"
+        title="TODAY’S FUEL"
+        sub={`${SAMPLE_MEALS.length} entries · preview`}
+        action={
+          <Pressable onPress={onShare}>
+            <Text style={styles.share}>SHARE</Text>
+          </Pressable>
+        }
+      />
+      <View style={styles.meals}>
+        {SAMPLE_MEALS.map((m, i) => (
+          <View key={i} style={styles.mealCard}>
+            <View style={styles.mealThumb}>
+              <Icon name={METHOD_ICON[m.method]} size={16} color="rgba(255,255,255,0.55)" />
+            </View>
+            <View style={styles.mealBody}>
+              <View style={styles.mealTop}>
+                <Text style={styles.mealName} numberOfLines={1}>{m.name}</Text>
+                <Text style={styles.mealCal}>{m.cal} kcal</Text>
+              </View>
+              <View style={styles.mealMeta}>
+                <Chip label={m.tag.toUpperCase()} color={T.mut} bg="rgba(255,255,255,0.05)" border={T.line2} iconFill={false} />
+                <Text style={styles.mealMacros}>{m.p}P · {m.c}C · {m.f}F</Text>
+                <Text style={styles.mealTime}>{m.time}</Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </>
   );
 }
 
@@ -189,7 +242,7 @@ function DayCheckIn({ loggedToday, onLogged }: { loggedToday: boolean; onLogged:
 
   return (
     <>
-      <SectionHead icon="check" title="TODAY’S FUEL" sub="Consistency over perfect macro math" />
+      <SectionHead icon="check" title="LOG TODAY" sub="Consistency over perfect macro math" />
       <Panel style={styles.sideMargin}>
         {done || loggedToday ? (
           <View style={styles.checkedRow}>
@@ -337,4 +390,16 @@ const styles = StyleSheet.create({
   dayDate: { ...ui(15, 700), color: T.text },
   dayRaw: { ...mono(10, 600), color: T.sub, marginTop: 1 },
   emptyText: { ...ui(13, 500), color: T.mut, lineHeight: 19 },
+
+  share: { ...mono(10, 700), color: T.green, letterSpacing: 0.8 },
+  meals: { gap: 9, marginHorizontal: 16 },
+  mealCard: { flexDirection: "row", borderRadius: 14, overflow: "hidden", backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
+  mealThumb: { width: 56, backgroundColor: "#0c0f13", alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderRightColor: T.line },
+  mealBody: { flex: 1, paddingVertical: 11, paddingHorizontal: 13, gap: 5 },
+  mealTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  mealName: { ...ui(14, 700), color: T.text, flexShrink: 1 },
+  mealCal: { ...ui(13, 700), color: T.green },
+  mealMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
+  mealMacros: { ...mono(10, 600), color: T.sub },
+  mealTime: { ...mono(10, 600), color: T.sub, marginLeft: "auto" },
 });
