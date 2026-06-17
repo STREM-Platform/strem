@@ -7,7 +7,7 @@
 
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, G } from "react-native-svg";
 
 import { T } from "@/constants/theme";
 
@@ -32,20 +32,25 @@ export function Ring({
   const circumference = 2 * Math.PI * r;
   const filled = Math.max(0, Math.min(1, pct)) * circumference;
 
+  const cx = size / 2;
   return (
     <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size} style={styles.rotated}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={color}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${filled} ${circumference - filled}`}
-        />
+      <Svg width={size} height={size}>
+        {/* rotate -90° via an SVG group transform (web-safe; avoids the RN-svg
+            transform-origin prop that errors on web). */}
+        <G transform={`rotate(-90 ${cx} ${cx})`}>
+          <Circle cx={cx} cy={cx} r={r} stroke={track} strokeWidth={stroke} fill="none" />
+          <Circle
+            cx={cx}
+            cy={cx}
+            r={r}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${filled} ${circumference - filled}`}
+          />
+        </G>
       </Svg>
       <View style={styles.center}>{children}</View>
     </View>
@@ -53,9 +58,6 @@ export function Ring({
 }
 
 const styles = StyleSheet.create({
-  rotated: {
-    transform: [{ rotate: "-90deg" }],
-  },
   center: {
     position: "absolute",
     top: 0,

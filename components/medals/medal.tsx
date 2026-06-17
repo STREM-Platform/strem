@@ -126,9 +126,7 @@ export const Medal = memo(function Medal({
               rx={1.2}
               fill={accent}
               opacity={i % 2 ? 0.16 : 0.28}
-              rotation={(i / RAYS.length) * 360}
-              originX={CX}
-              originY={CY}
+              transform={`rotate(${(i / RAYS.length) * 360} ${CX} ${CY})`}
             />
           ))
         : null}
@@ -148,12 +146,8 @@ export const Medal = memo(function Medal({
           opacity={0.6}
         />
         {/* star on ribbon */}
-        <G x={CX} y={CY + 40}>
-          <G scale={0.5}>
-            <G x={-12} y={-12}>
-              <Path d={PATHS.star} fill={earned ? accent : "#3A4047"} />
-            </G>
-          </G>
+        <G transform={`translate(${CX} ${CY + 40}) scale(0.5) translate(-12 -12)`}>
+          <Path d={PATHS.star} fill={earned ? accent : "#3A4047"} />
         </G>
       </G>
 
@@ -172,9 +166,7 @@ export const Medal = memo(function Medal({
           rx={0.7}
           fill={rim[2]}
           opacity={0.55}
-          rotation={(i / TICKS.length) * 360}
-          originX={CX}
-          originY={CY}
+          transform={`rotate(${(i / TICKS.length) * 360} ${CX} ${CY})`}
         />
       ))}
 
@@ -184,29 +176,25 @@ export const Medal = memo(function Medal({
       <Circle cx={CX} cy={CY} r={34} fill="none" stroke="#000" strokeWidth={2} opacity={0.35} />
 
       {/* emblem (earned) or lock (locked) */}
-      <G x={CX} y={CY}>
-        <G scale={earned ? 1.42 : 1.2}>
-          <G x={-12} y={-12}>
-            {earned ? (
-              embArr.map((p, i) => (
-                <Path
-                  key={`emb-${i}`}
-                  d={p}
-                  stroke={accent}
-                  strokeWidth={1.8}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))
-            ) : (
-              <>
-                <Path d={PATHS.lock[0]} stroke="#69727B" strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                <Path d={PATHS.lock[1]} stroke="#69727B" strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </>
-            )}
-          </G>
-        </G>
+      <G transform={`translate(${CX} ${CY}) scale(${earned ? 1.42 : 1.2}) translate(-12 -12)`}>
+        {earned ? (
+          embArr.map((p, i) => (
+            <Path
+              key={`emb-${i}`}
+              d={p}
+              stroke={accent}
+              strokeWidth={1.8}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))
+        ) : (
+          <>
+            <Path d={PATHS.lock[0]} stroke="#69727B" strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d={PATHS.lock[1]} stroke="#69727B" strokeWidth={1.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        )}
       </G>
 
       {/* glossy sheen over the top */}

@@ -34,7 +34,7 @@ import { Panel, SectionHead } from "@/components/ui/primitives";
 import { Ring } from "@/components/ui/ring";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
-import type { EarnedMedal, XPSummary } from "@/lib/api/types";
+import type { EarnedMedal, UserProfile, XPSummary } from "@/lib/api/types";
 import { formatShortDate } from "@/lib/format";
 import { MEDAL_CATALOGUE } from "@/lib/medals";
 import { detectMoment, type ProgressionSnapshot } from "@/lib/progression";
@@ -43,6 +43,7 @@ import { useAsync } from "@/lib/use-async";
 const RANKS = ["Initiate", "Builder", "Forged", "Hybrid", "Warrior", "Titan", "Ascended"];
 
 interface ProfileData {
+  profile: UserProfile;
   xp: XPSummary;
   medals: EarnedMedal[];
   activeDates: Set<string>;
@@ -56,7 +57,7 @@ function dayKey(d: Date): string {
 }
 
 async function loadProfile(): Promise<ProfileData> {
-  const [xp, medals] = await Promise.all([api.getXpSummary(), api.getMedals()]);
+  const [profile, xp, medals] = await Promise.all([api.getUserProfile(), api.getXpSummary(), api.getMedals()]);
   const activeDates = new Set<string>();
   try {
     const [sessions, nutrition] = await Promise.all([
@@ -68,7 +69,7 @@ async function loadProfile(): Promise<ProfileData> {
   } catch {
     // Calendar degrades to "no recorded activity" if these fail.
   }
-  return { xp, medals: medals.items, activeDates };
+  return { profile, xp, medals: medals.items, activeDates };
 }
 
 function progressFraction(xp: XPSummary): number {
@@ -155,10 +156,12 @@ function ProfileBody({
   onCelebrate: (c: CelebrationData) => void;
 }) {
   const router = useRouter();
-  const { xp } = data;
+  const { profile, xp } = data;
   const pct = progressFraction(xp);
   const rankIndex = Math.max(0, RANKS.indexOf(xp.rank)) + 1;
-  const identity = "Permanent proof of the identity you are building.";
+  const name = profile.display_name || "Athlete";
+  const initials = name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  const identity = profile.identity_statement || "Permanent proof of the identity you are building.";
 
   return (
     <>
@@ -166,11 +169,11 @@ function ProfileBody({
       <View style={[styles.header, { paddingTop: topInset + 16 }]}>
         <View style={styles.headerLeft}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{rankIndex.toString().padStart(2, "0")}</Text>
+            <Text style={styles.avatarText}>{initials || "·"}</Text>
           </View>
           <View style={styles.shrink}>
-            <Text style={styles.name}>{xp.rank.toUpperCase()}</Text>
-            <Text style={styles.handle}>RANK {String(rankIndex).padStart(2, "0")} OF {String(RANKS.length).padStart(2, "0")}</Text>
+            <Text style={styles.name} numberOfLines={1}>{name.toUpperCase()}</Text>
+            <Text style={styles.handle}>{xp.rank.toUpperCase()} · RANK {String(rankIndex).padStart(2, "0")} OF {String(RANKS.length).padStart(2, "0")}</Text>
           </View>
         </View>
         <View style={styles.settingsTile}>

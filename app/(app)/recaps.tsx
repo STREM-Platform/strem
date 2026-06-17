@@ -7,18 +7,16 @@
  */
 
 import { useRouter } from "expo-router";
-import * as MediaLibrary from "expo-media-library";
-import * as Sharing from "expo-sharing";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { captureRef } from "react-native-view-shot";
 
 import { StoryCard } from "@/components/recaps/story-card";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Btn } from "@/components/ui/primitives";
 import { T, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
+import { downloadRecap, shareRecap } from "@/lib/recap-export";
 import { buildRecaps, type Recap, type RecapType } from "@/lib/recaps";
 import { useAsync } from "@/lib/use-async";
 
@@ -52,23 +50,13 @@ export default function RecapsScreen() {
   const recap = recaps[Math.min(idx, recaps.length - 1)];
   const rank = data?.rank ?? "STREM";
 
-  const capture = async (): Promise<string | null> => {
-    if (Platform.OS === "web") return null;
-    return (await captureRef(cardRef, { format: "png", quality: 1 })) ?? null;
-  };
-
   const onShare = async () => {
     setBusy(true);
     try {
-      const uri = await capture();
-      if (uri && (await Sharing.isAvailableAsync())) {
-        await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share your recap" });
-        setShared(true);
-      } else {
-        Alert.alert("Sharing unavailable", "Recap sharing runs on a device build. It isn’t available in this environment.");
-      }
-    } catch {
-      Alert.alert("Couldn’t share", "Something went wrong creating the image.");
+      const result = await shareRecap(cardRef);
+      if (result === "shared") setShared(true);
+      else if (result === "unavailable") Alert.alert("Sharing unavailable", "Recap sharing runs on a device build. It isn’t available in this environment.");
+      else Alert.alert("Couldn’t share", "Something went wrong creating the image.");
     } finally {
       setBusy(false);
     }
@@ -77,20 +65,11 @@ export default function RecapsScreen() {
   const onDownload = async () => {
     setBusy(true);
     try {
-      const uri = await capture();
-      if (!uri) {
-        Alert.alert("Saving unavailable", "Recap export runs on a device build.");
-        return;
-      }
-      const perm = await MediaLibrary.requestPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert("Permission needed", "Allow photo access to save your recap.");
-        return;
-      }
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert("Saved", "Your recap is in your photo library.");
-    } catch {
-      Alert.alert("Couldn’t save", "Something went wrong saving the image.");
+      const result = await downloadRecap(cardRef);
+      if (result === "saved") Alert.alert("Saved", "Your recap is in your photo library.");
+      else if (result === "denied") Alert.alert("Permission needed", "Allow photo access to save your recap.");
+      else if (result === "unavailable") Alert.alert("Saving unavailable", "Recap export runs on a device build.");
+      else Alert.alert("Couldn’t save", "Something went wrong saving the image.");
     } finally {
       setBusy(false);
     }
