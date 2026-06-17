@@ -1,26 +1,29 @@
-/** Bottom navigation across the main app screens. */
+/** Floating bottom navigation, ported from `AppNav` in design-spec/app-shell.jsx. */
 
+import { BlurView } from "expo-blur";
 import { usePathname, useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Colors, Radius, Shadows, Spacing, Typography } from "@/constants/theme";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { T, ui } from "@/constants/theme";
 
-const TABS: { label: string; path: string; match: string }[] = [
-  { label: "Home", path: "/(app)/home", match: "/home" },
-  { label: "Log", path: "/(app)/log", match: "/log" },
-  { label: "Nutrition", path: "/(app)/nutrition", match: "/nutrition" },
-  { label: "Tribe", path: "/(app)/tribe", match: "/tribe" },
-  { label: "Profile", path: "/(app)/profile", match: "/profile" },
+const TABS: { label: string; icon: IconName; path: string; match: string }[] = [
+  { label: "Home", icon: "home", path: "/(app)/home", match: "/home" },
+  { label: "Train", icon: "dumbbell", path: "/(app)/log", match: "/log" },
+  { label: "Fuel", icon: "leaf", path: "/(app)/nutrition", match: "/nutrition" },
+  { label: "Tribe", icon: "users", path: "/(app)/tribe", match: "/tribe" },
+  { label: "You", icon: "shield", path: "/(app)/profile", match: "/profile" },
 ];
 
 export function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-      <View style={styles.bar}>
+    <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+      <BlurView intensity={28} tint="dark" style={styles.bar}>
         {TABS.map((tab) => {
           const active = pathname === tab.match;
           return (
@@ -29,74 +32,60 @@ export function BottomNav() {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => router.replace(tab.path)}
-              style={({ pressed }) => [
-                styles.tab,
-                active ? styles.tabActive : null,
-                pressed ? styles.tabPressed : null,
-              ]}
+              style={styles.tab}
             >
-              <View style={[styles.marker, active ? styles.markerActive : null]} />
-              <Text style={[styles.label, active ? styles.labelActive : null]} numberOfLines={1}>
+              {active ? <View style={styles.marker} /> : null}
+              <Icon name={tab.icon} size={22} color={active ? T.green : T.sub} sw={active ? 2.4 : 2} />
+              <Text style={[styles.label, { color: active ? T.text : T.sub }]} numberOfLines={1}>
                 {tab.label}
               </Text>
             </Pressable>
           );
         })}
-      </View>
-    </SafeAreaView>
+      </BlurView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  wrap: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "transparent",
+    left: 12,
+    right: 12,
+    zIndex: 50,
   },
   bar: {
     flexDirection: "row",
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    borderColor: Colors.borderStrong,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 22,
     borderWidth: 1,
-    borderRadius: Radius.xxl,
-    backgroundColor: Colors.surfaceRaised,
-    padding: Spacing.xs,
-    ...Shadows.nav,
+    borderColor: T.line2,
+    overflow: "hidden",
+    // BlurView is translucent; a fallback tint keeps it legible where blur is weak.
+    backgroundColor: Platform.OS === "android" ? "rgba(13,16,21,0.94)" : "rgba(13,16,21,0.7)",
+    boxShadow: "0px 14px 34px rgba(0,0,0,0.55)",
   },
   tab: {
     flex: 1,
-    minHeight: 54,
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: Radius.xl,
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.xs,
-  },
-  tabActive: {
-    backgroundColor: Colors.backgroundElevated,
-  },
-  tabPressed: {
-    opacity: 0.82,
+    gap: 4,
+    paddingVertical: 5,
   },
   marker: {
-    width: 18,
+    position: "absolute",
+    top: -9,
+    width: 22,
     height: 3,
-    borderRadius: Radius.pill,
-    backgroundColor: "transparent",
-  },
-  markerActive: {
-    backgroundColor: Colors.accentGreenBright,
+    borderRadius: 3,
+    backgroundColor: T.green,
+    boxShadow: "0px 0px 10px #34E2A0",
   },
   label: {
-    ...Typography.caption,
-    color: Colors.textSubtle,
-    fontSize: 11,
-    letterSpacing: 0,
-  },
-  labelActive: {
-    color: Colors.text,
+    ...ui(9, 700),
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
 });

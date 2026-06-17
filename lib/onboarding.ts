@@ -1,6 +1,18 @@
 /** Onboarding screen order and resume helpers (mirrors onboarding-flow.md). */
 
+import type { IconName } from "@/components/ui/icon";
 import type { OnboardingScreen } from "@/lib/api/types";
+
+/** Per-step premium display metadata (emblem + overline), from screen-onboarding.jsx. */
+export const ONBOARDING_META: Record<OnboardingScreen, { emblem: IconName; overline: string }> = {
+  welcome: { emblem: "mountain", overline: "Welcome" },
+  identity: { emblem: "compass", overline: "Identity" },
+  "training-background": { emblem: "dumbbell", overline: "Background" },
+  commitment: { emblem: "flame", overline: "Commitment" },
+  nutrition: { emblem: "leaf", overline: "Nutrition" },
+  tribe: { emblem: "users", overline: "Tribe" },
+  launch: { emblem: "star", overline: "Launch" },
+};
 
 export const ONBOARDING_ORDER: OnboardingScreen[] = [
   "welcome",
