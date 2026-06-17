@@ -16,6 +16,31 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
 | 3 | Fuel (macros + hydration + logging) | ✅ Done |
 | 3 | Recaps + share/export | ✅ Done |
 | 3 | Onboarding + celebrations | ✅ Done |
+| + | Tribe (locker room) | ✅ Done |
+| + | Coach (weekly recap) | ✅ Done |
+| + | Bottom nav (icons + labels) | ✅ Done |
+
+## Live-review fixes (after running the full stack)
+
+- **Bottom nav** (`components/bottom-nav.tsx`): real icons + prototype labels
+  **Home / Train / Fuel / Tribe / You** in a floating expo-blur pill with an
+  active indicator (ported from `app-shell.jsx`). Routes unchanged (Train→/log,
+  Fuel→/nutrition, You→/profile).
+- **Profile DOM error (web)**: `react-native-svg`'s `rotation`/`originX`/`originY`
+  (medal ticks/rays/emblem/star) and the Ring's style transform emit an invalid
+  `transform-origin` attribute on web (a red runtime error overlay). Converted all
+  to SVG `transform` strings — gone. (Static export had masked it.)
+- **Profile header**: shows the real display name + identity statement
+  (`getUserProfile`) instead of the rank, matching the prototype.
+- **Tribe** (`app/(app)/tribe.tsx`): premium re-skin — power gauge, collective
+  challenge, check-in grid, activity timeline — over live community API
+  (`getMyTribe`/`listCheckins`/`listChallenges`/`createCheckin`); join flow kept.
+  Challenge shown read-only; admin create/contribute/complete deferred.
+- **Coach** (`app/(app)/coach.tsx`): premium re-skin — narrative + quote, weekly
+  proof bars, mission outcomes, generate — over live recap/history API.
+- **Recaps web crash**: `react-native-view-shot`/`expo-media-library` crash route
+  loading on web; capture/share moved behind a platform-split
+  `lib/recap-export(.web).ts` so web never imports them.
 
 ## Step 1 — Tokens & type (foundation)
 
