@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>STREM — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700&family=Saira+Condensed:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0a0a0b; }
+  body { font-family: 'Saira', system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+    display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+  @keyframes screenIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes popIn { 0% { transform: scale(0.84); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* entry switcher */
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 30px 0; }
+  .switcher { display: flex; gap: 6px; padding: 6px; border-radius: 14px;
+    background: #12161c; border: 1px solid rgba(255,255,255,0.1); }
+  .switcher button { font: 700 12px 'JetBrains Mono', monospace; letter-spacing: 0.06em;
+    color: #9AA3AB; background: transparent; border: none; padding: 9px 15px; border-radius: 9px;
+    cursor: pointer; text-transform: uppercase; }
+  .switcher button.on { background: #34E2A0; color: #06130D; }
+  .hint { font: 500 12px 'Saira', sans-serif; color: #6B747C; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#08090b"/>
+    <path d="M20 70 L40 38 L52 56 L62 30 L80 70 Z" fill="none" stroke="#34E2A0" stroke-width="2.5"/>
+    <text x="50" y="88" font-family="monospace" font-size="11" fill="#34E2A0" text-anchor="middle" letter-spacing="3">STREM</text>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="image-slot.js"></script>
+<script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="strem-kit.jsx"></script>
+<script type="text/babel" src="medal-art.jsx"></script>
+<script type="text/babel" src="strem-data.jsx"></script>
+<script type="text/babel" src="story-recaps.jsx"></script>
+<script type="text/babel" src="screen-home.jsx"></script>
+<script type="text/babel" src="screen-train.jsx"></script>
+<script type="text/babel" src="workout-exec.jsx"></script>
+<script type="text/babel" src="screen-fuel.jsx"></script>
+<script type="text/babel" src="screen-tribe.jsx"></script>
+<script type="text/babel" src="screen-coach.jsx"></script>
+<script type="text/babel" src="screen-profile.jsx"></script>
+<script type="text/babel" src="screen-onboarding.jsx"></script>
+<script type="text/babel" src="app-shell.jsx"></script>
+
+<script type="text/babel">
+  const { useState } = React;
+
+  function Root() {
+    const [entry, setEntry] = useState("app"); // "app" | "onboarding"
+    return (
+      <div className="stage">
+        <div className="switcher">
+          <button className={entry === "app" ? "on" : ""} onClick={() => setEntry("app")}>The App</button>
+          <button className={entry === "onboarding" ? "on" : ""} onClick={() => setEntry("onboarding")}>Onboarding</button>
+        </div>
+        {entry === "app"
+          ? <StremApp key="app" start="home" />
+          : <StremApp key="onb" start="onboarding" />}
+        <div className="hint">Tap the bottom nav · open missions / coach · start a live session · tap a medal</div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
+</script>
+</body>
+</html>
