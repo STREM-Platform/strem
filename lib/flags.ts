@@ -28,4 +28,14 @@ export const FLAGS = {
    * nothing. The real, persisted action stays the day-level check-in.
    */
   nutritionMacrosPreview: true,
+
+  /**
+   * Forge — the omniscient AI agent. The context graph (A1), signals (A4),
+   * memory (A5), coach chat (B1), proactive nudges/run-loop (B3), adaptive
+   * missions + plan import (B4), insights (B8), live-workout autoregulation
+   * (D1/D2) and photo/voice capture (D3/D4/D6) run against `lib/services/agent.mock`
+   * until the real endpoints land. Every Forge surface is honestly grounded in
+   * this one mocked graph and cites it; nothing is persisted server-side yet.
+   */
+  forgeAgentMock: true,
 } as const;
