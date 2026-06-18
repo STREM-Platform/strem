@@ -10,16 +10,18 @@
  * lands, swap the corresponding `forge.*` call in `lib/agent/index.ts` — the UI
  * shapes do not change.
  *
- *   TODO(BE-A1/A4/A5): Athlete Context Graph + signals + memory  — see issue #__
- *   TODO(BE-A6):       context assembler                          — see issue #__
- *   TODO(BE-A8):       guardrail filter                           — see issue #__
- *   TODO(BE-B1):       agent / LLM endpoint (chat, plan, debrief) — see issue #__
- *   TODO(BE-B3):       proactive trigger engine (nudge, run-loop) — see issue #__
- *   TODO(BE-B4):       adaptive missions + plan import            — see issue #__
- *   TODO(BE-B8):       cross-domain insights                      — see issue #__
- *   TODO(BE-D1/D2):    live-workout autoregulation + PR detect    — see issue #__
- *   TODO(BE-D3/D4/D6): photo/voice capture                        — see issue #__
- *   TODO(BE-A7):       consent / source toggles / export-delete   — see issue #__
+ *   TODO(BE-A6):       context assembler                          — see issue #43
+ *   TODO(BE-A4):       signals engine                             — see issue #44
+ *   TODO(BE-A1/A5):    context graph store + memory               — see issue #45
+ *   TODO(BE-A3):       connected-source ingestion                 — see issue #46
+ *   TODO(BE-A8):       guardrail filter                           — see issue #47
+ *   TODO(BE-B1):       agent / LLM endpoint (chat, plan, debrief) — see issue #48
+ *   TODO(BE-B3):       proactive trigger engine (nudge, run-loop) — see issue #49
+ *   TODO(BE-B4):       adaptive missions + plan import            — see issue #50
+ *   TODO(BE-B8):       cross-domain insights                      — see issue #51
+ *   TODO(BE-D1/D2):    live-workout autoregulation + PR detect    — see issue #52
+ *   TODO(BE-D3/D4/D6): photo/voice capture                        — see issue #53
+ *   TODO(BE-A7):       consent / source toggles / export-delete   — see issue #54
  */
 
 import type {
