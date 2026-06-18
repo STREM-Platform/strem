@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     training_service_base_url: str = "http://localhost:8003/v1"
     nutrition_service_base_url: str = "http://localhost:8004/v1"
 
+    # Anthropic (Claude) for the omniscient coach (B1). Empty key → the
+    # deterministic, offline coach client is used (local dev, tests, and as the
+    # LLM-unavailable fallback). Use the latest model id.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-4-8"
+
 
 @lru_cache
 def get_settings() -> Settings:
