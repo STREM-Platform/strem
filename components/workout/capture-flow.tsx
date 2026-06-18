@@ -148,7 +148,7 @@ export function CaptureFlow({ data, kind, onClose }: { data: CaptureData; kind: 
 }
 
 const styles = StyleSheet.create({
-  root: { ...StyleSheet.absoluteFillObject, zIndex: 70, backgroundColor: "rgba(6,7,9,0.97)", paddingTop: 58, paddingHorizontal: 18, paddingBottom: 24 },
+  root: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 70, backgroundColor: "rgba(6,7,9,0.97)", paddingTop: 58, paddingHorizontal: 18, paddingBottom: 24 },
   shrink: { flexShrink: 1, flex: 1 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   headLeft: { flexDirection: "row", alignItems: "center", gap: 9 },

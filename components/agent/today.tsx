@@ -127,7 +127,7 @@ export function TodaysClimb({ onStart }: { onStart: () => void }) {
           <View style={styles.shrink}>
             <View style={styles.climbEyebrowRow}>
               <Icon name="bot" size={14} color={T.green} />
-              <Text style={styles.climbEyebrow}>TODAY'S CLIMB</Text>
+              <Text style={styles.climbEyebrow}>TODAY’S CLIMB</Text>
             </View>
             <Text style={styles.climbHeadline}>{b.headline}</Text>
             <Text style={[styles.climbReadiness, { color: c }]}>◇ {b.label.toUpperCase()} READINESS</Text>
@@ -288,9 +288,9 @@ const styles = StyleSheet.create({
   whyText: { ...mono(10, 700), color: T.mut },
   whyEm: { ...mono(10, 700) },
   actionWrap: { marginTop: 15, height: 96, overflow: "hidden", borderTopWidth: 1, borderTopColor: T.line },
-  actionImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-  actionScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(13,16,21,0.62)" },
-  actionRow: { ...StyleSheet.absoluteFillObject, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 12 },
+  actionImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  actionScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13,16,21,0.62)" },
+  actionRow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 12 },
   actionEyebrow: { ...mono(8, 700), letterSpacing: 1, color: T.green },
   actionLabel: { ...disp(20, 800), color: "#fff", marginTop: 3, lineHeight: 21 },
   actionSub: { ...mono(9, 700), letterSpacing: 0.6, color: "#cdd3d8", marginTop: 4 },

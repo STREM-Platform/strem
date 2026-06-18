@@ -66,6 +66,7 @@ export function ChatView() {
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seeds the opener once the async conversation loads.
     if (C && thread.length === 0) setThread([{ role: "coach", text: C.opener.text, cites: C.opener.cites }]);
   }, [C, thread.length]);
 
@@ -214,7 +215,7 @@ function PlanImportView({ onBack }: { onBack: () => void }) {
           <View style={styles.introCopy}>
             <Text style={styles.introTitle}>IMPORT ANY PLAN</Text>
             <Text style={styles.introBody}>
-              Snap a coach's plan, a screenshot, a scribbled notebook — Forge turns it into a clean plan, then tunes it to your week.
+              Snap a coach’s plan, a screenshot, a scribbled notebook — Forge turns it into a clean plan, then tunes it to your week.
             </Text>
           </View>
           <Btn kind="primary" icon="grid" label="Import from photo" onPress={() => { setStep(0); setState("scanning"); }} />

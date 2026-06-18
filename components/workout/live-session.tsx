@@ -53,9 +53,15 @@ export function LiveWorkout({ workout, onFinish, onCancel }: { workout: LiveWork
   const [restMsg, setRestMsg] = useState("");
   const cur = flat[idx];
 
+  const goNext = () => {
+    setPhase("work");
+    setIdx((i) => Math.min(flat.length - 1, i + 1));
+  };
+
   useEffect(() => {
     if (phase !== "rest") return;
     if (rest <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the rest countdown reaching 0 advances to the next set.
       goNext();
       return;
     }
@@ -93,11 +99,6 @@ export function LiveWorkout({ workout, onFinish, onCancel }: { workout: LiveWork
     setRestMsg(msg);
     setRpe(8);
     setPhase("rest");
-  };
-
-  const goNext = () => {
-    setPhase("work");
-    setIdx((i) => Math.min(flat.length - 1, i + 1));
   };
 
   return (
@@ -246,7 +247,7 @@ export function Debrief({ workout, onDone }: { workout: LiveWorkoutData; onDone:
           <Text style={styles.debriefForgeLabel}>FORGE DEBRIEF</Text>
         </View>
         <Text style={styles.debriefForgeText}>
-          Bar speed held even on the top set — a real PR on a low-recovery day. I'm moving Thursday lighter to bank the
+          Bar speed held even on the top set — a real PR on a low-recovery day. I’m moving Thursday lighter to bank the
           adaptation. Eat, sleep, and we keep the streak intact.
         </Text>
       </Panel>
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   debriefForgeLabel: { ...mono(9, 700), letterSpacing: 1.4, color: T.green },
   debriefForgeText: { ...ui(14, 500), color: "#cdd3d8", lineHeight: 22 },
   prCard: { marginTop: 12, width: "100%" },
-  prTapTarget: { ...StyleSheet.absoluteFillObject, zIndex: 2 },
+  prTapTarget: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 2 },
   prRow: { flexDirection: "row", alignItems: "center", gap: 13 },
   prEyebrow: { ...mono(9, 700), letterSpacing: 1.4, color: T.red },
   prLift: { ...ui(15, 700), color: T.text, marginTop: 2 },

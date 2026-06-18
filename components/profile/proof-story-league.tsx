@@ -9,7 +9,7 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { Icon, MountainMark } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Bar, IconTile, Panel } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { forge } from "@/lib/agent";
@@ -244,8 +244,8 @@ const styles = StyleSheet.create({
 
   // league
   seasonImgWrap: { height: 124, position: "relative", overflow: "hidden", borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  seasonImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-  seasonScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(13,16,21,0.45)" },
+  seasonImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  seasonScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13,16,21,0.45)" },
   seasonCaption: { position: "absolute", left: 14, right: 14, bottom: 10 },
   seasonName: { ...disp(20, 800), color: "#fff" },
   seasonMeta: { ...mono(9, 700), letterSpacing: 0.6, color: T.green, marginTop: 2 },
