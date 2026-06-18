@@ -71,9 +71,7 @@ def test_recap_redirects_on_unsafe_identity_signal() -> None:
 
 def test_recap_not_found_when_none_yet() -> None:
     async def scenario(harness: Harness) -> None:
-        response = await harness.client.get(
-            "/v1/ai/coach/recap", headers=auth_header(uuid.uuid4())
-        )
+        response = await harness.client.get("/v1/ai/coach/recap", headers=auth_header(uuid.uuid4()))
         assert response.status_code == 404
         assert response.json()["code"] == "no_recap_yet"
 

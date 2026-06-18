@@ -15,7 +15,7 @@ from app.db import configure
 from app.errors import register_error_handlers
 from app.events import configure_publisher
 from app.observability import configure_logging, install_request_logging
-from app.routers import coaching, missions, season, tribe
+from app.routers import agent, coaching, missions, season, tribe
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
     application.include_router(coaching.router)
     application.include_router(season.router)
     application.include_router(tribe.router)
+    application.include_router(agent.router)
 
     @application.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:

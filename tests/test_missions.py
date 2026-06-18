@@ -29,8 +29,16 @@ def test_generation_produces_structured_missions_and_event() -> None:
         mission = body["missions"][0]
         # Contract shape + enums.
         assert set(mission) >= {
-            "id", "user_id", "title", "description", "duration_days", "xp_reward",
-            "type", "completion_condition", "difficulty", "state",
+            "id",
+            "user_id",
+            "title",
+            "description",
+            "duration_days",
+            "xp_reward",
+            "type",
+            "completion_condition",
+            "difficulty",
+            "state",
         }
         assert mission["state"] == "active"
         assert 75 <= mission["xp_reward"] <= 150

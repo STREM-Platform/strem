@@ -47,3 +47,37 @@ def detect_unsafe(text: str) -> str | None:
     if _SUPPLEMENT.search(text):
         return NUTRITION_REDIRECT
     return None
+
+
+# ── Forge agent guardrails (A8) ──────────────────────────────────────────────
+# Beyond the care-redirects above, every agent answer/action must honour the
+# product's non-negotiables: no shame, no vanity metrics, no medical diagnosis,
+# no faked progress. Kept in sync with strem-mobile/lib/agent/guardrails.ts.
+_SHAME = re.compile(
+    r"\b(lazy|laziness|you failed|no excuses|pathetic|disappointing|weak[- ]?willed)\b",
+    re.IGNORECASE,
+)
+_VANITY = re.compile(r"\b(bmi|skinny|beach body|flab|how you look|lose the gut)\b", re.IGNORECASE)
+_DIAGNOSIS = re.compile(
+    r"\b(you have (?:a |an )?(?:injury|condition|disease|deficiency)"
+    r"|diagnos(?:e|is|ed)"
+    r"|you are (?:anemic|depressed|overtrained clinically))\b",
+    re.IGNORECASE,
+)
+
+
+def check_guardrails(text: str) -> list[str]:
+    """Return the guardrail categories the text violates (empty = clean)."""
+    violations: list[str] = []
+    if _SHAME.search(text):
+        violations.append("shame")
+    if _VANITY.search(text):
+        violations.append("vanity-metric")
+    if _DIAGNOSIS.search(text):
+        violations.append("medical-diagnosis")
+    return violations
+
+
+def guardrails_ok(text: str) -> bool:
+    """True when the agent copy is clean of shame/vanity/diagnosis."""
+    return not check_guardrails(text)
