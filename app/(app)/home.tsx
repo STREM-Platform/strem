@@ -23,12 +23,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CoachChatTeaser, CoachSees, ProactiveCheckin, TodaysClimb } from "@/components/agent/today";
 import { BottomNav } from "@/components/bottom-nav";
 import { AscentTrack } from "@/components/ui/ascent";
 import { HeroBackdrop } from "@/components/ui/hero-backdrop";
 import { Icon, MountainMark, type IconName } from "@/components/ui/icon";
 import { Bar, Chip, IconTile, Panel, SectionHead } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
+import { FLAGS } from "@/lib/flags";
 import { api } from "@/lib/api/client";
 import type {
   Mission,
@@ -149,6 +151,16 @@ export default function HomeScreen() {
           <>
             <HeroAscent data={data} topInset={insets.top} onNav={(p) => router.push(p)} />
             <View style={styles.stack}>
+              {/* Forge — the omniscient agent leads Today: proactive nudge + the
+                  one coached action + the data behind it. (lib/agent) */}
+              {FLAGS.forgeAgentMock ? (
+                <>
+                  <ProactiveCheckin />
+                  <TodaysClimb onStart={() => router.push("/(app)/log")} />
+                  <CoachSees onManage={() => router.push("/(app)/privacy")} />
+                  <CoachChatTeaser onPress={() => router.push("/(app)/coach")} />
+                </>
+              ) : null}
               <WeekRidge
                 data={data}
                 onShare={() => router.push("/(app)/recaps")}

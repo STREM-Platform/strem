@@ -8,9 +8,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { T, ui } from "@/constants/theme";
 
+// Coach (Forge) earns a permanent seat — the agent is the product's spine, reached
+// from every surface. Today leads; Fuel and Tribe are kept (real backends).
 const TABS: { label: string; icon: IconName; path: string; match: string }[] = [
-  { label: "Home", icon: "home", path: "/(app)/home", match: "/home" },
+  { label: "Today", icon: "home", path: "/(app)/home", match: "/home" },
   { label: "Train", icon: "dumbbell", path: "/(app)/log", match: "/log" },
+  { label: "Coach", icon: "bot", path: "/(app)/coach", match: "/coach" },
   { label: "Fuel", icon: "leaf", path: "/(app)/nutrition", match: "/nutrition" },
   { label: "Tribe", icon: "users", path: "/(app)/tribe", match: "/tribe" },
   { label: "You", icon: "shield", path: "/(app)/profile", match: "/profile" },
