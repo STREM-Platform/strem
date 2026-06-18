@@ -168,18 +168,22 @@ function TrainLanding({
         ) : null}
 
         {/* recent proof */}
-        <SectionHead icon="clock" title="RECENT PROOF" />
+        <SectionHead icon="clock" title="RECENT PROOF" sub="The work, banked" />
         <View style={styles.list}>
           {recent.length > 0 ? (
             recent.map((s) => (
-              <View key={s.id} style={styles.recentRow}>
-                <IconTile name={s.session_type === "running" ? "route" : "dumbbell"} size={38} iconSize={18} color={T.mut} bg={T.surf2} border={T.line} />
-                <View style={styles.shrink}>
-                  <Text style={styles.recentLabel}>{sessionLabel(s)}</Text>
-                  <Text style={styles.recentMeta}>{sessionMeta(s)}</Text>
+              <Panel key={s.id} pad={12}>
+                <View style={styles.recentInner}>
+                  <IconTile name={s.session_type === "running" ? "route" : "dumbbell"} size={42} iconSize={20} />
+                  <View style={styles.shrink}>
+                    <Text style={styles.recentLabel}>{sessionLabel(s)}</Text>
+                    <Text style={styles.recentMeta}>{sessionMeta(s).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.recentWhenPill}>
+                    <Text style={styles.recentWhenText}>{relativeDay(s.logged_at)}</Text>
+                  </View>
                 </View>
-                <Text style={styles.recentWhen}>{relativeDay(s.logged_at)}</Text>
-              </View>
+              </Panel>
             ))
           ) : (
             <Panel style={styles.sideMargin}>
@@ -299,10 +303,11 @@ const styles = StyleSheet.create({
   captureLabel: { ...ui(15, 700), color: T.text },
   captureSub: { ...ui(12, 500), color: T.sub, marginTop: 1 },
 
-  recentRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 13, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
-  recentLabel: { ...ui(15, 600), color: T.text },
-  recentMeta: { ...ui(12, 500), color: T.sub, marginTop: 1 },
-  recentWhen: { ...mono(9, 600), color: T.sub },
+  recentInner: { flexDirection: "row", alignItems: "center", gap: 12 },
+  recentLabel: { ...ui(14.5, 700), color: T.text },
+  recentMeta: { ...mono(10, 600), color: T.sub, letterSpacing: 0.5, marginTop: 2 },
+  recentWhenPill: { paddingVertical: 5, paddingHorizontal: 9, borderRadius: 8, backgroundColor: T.surf2, borderWidth: 1, borderColor: T.line },
+  recentWhenText: { ...mono(9, 700), color: T.mut, letterSpacing: 0.4 },
   emptyText: { ...ui(13, 500), color: T.mut, lineHeight: 19 },
 
   back: { alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 0, backgroundColor: "transparent", borderWidth: 0 },
