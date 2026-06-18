@@ -26,6 +26,23 @@ authenticated with the access token from `strem-auth-service`.
 | `POST` | `/v1/ai/missions/{mission_id}/expire` | Expire (no punishment). |
 | `GET`  | `/v1/ai/coach/recap` | Latest weekly narrative recap (`404` if none yet). |
 | `GET`  | `/v1/ai/coach/recaps` | Paginated recap history. |
+| `GET`  | `/v1/ai/context` | The assembled Athlete Context Graph: sources + signals (A4) + memory (A5). |
+| `GET`/`POST`/`DELETE` | `/v1/ai/memory[/{id}]` | Long-term agent memory (A5). |
+| `POST` | `/v1/ai/agent/chat` | Forge — the omniscient coach (LangGraph agent, cited). |
+| `POST` | `/v1/ai/agent/actions` | Record a typed, autonomy-gated, reversible action (B3). |
+| `GET`  | `/v1/ai/agent/activity` | The agent activity feed (newest first). |
+| `POST` | `/v1/ai/agent/actions/{id}/approve` · `/undo` | Approve a proposed action · reverse one. |
+| `GET`  | `/v1/ai/agent/metrics` | Agent run metrics for ops inspection (model/tool/guardrail counters). |
+
+## The Forge agent (B1)
+
+`app/agent/` is a LangChain `create_agent` (over LangGraph) with a middleware
+stack — **grounding** (injects context + long-term memory into the prompt),
+**output guardrail** (A8 safety net), **model metrics**, and **action logging**
+(records a reversible, autonomy-gated `AgentAction` around every tool call). A
+LangGraph checkpointer gives per-user thread memory; the model is Claude
+(`langchain-anthropic`) when `ANTHROPIC_API_KEY` is set, else a deterministic
+offline fallback. Set `LANGSMITH_API_KEY` for full per-run tracing in production.
 
 ## How it works
 

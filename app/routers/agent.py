@@ -9,13 +9,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app import agent_actions, agent_chat, memory
+from app import agent_actions, memory
+from app.agent import run_chat
+from app.agent.metrics import METRICS
+from app.agent.runtime_context import ForgeContext
 from app.deps import (
+    AgentModelDep,
     AthleteContextProviderDep,
     BearerTokenDep,
     ContextProviderDep,
     CurrentUserDep,
-    LLMClientDep,
     PublisherDep,
     SessionDep,
 )
@@ -89,22 +92,27 @@ async def chat(
     session: SessionDep,
     provider: AthleteContextProviderDep,
     bundle_provider: ContextProviderDep,
-    client: LLMClientDep,
+    model: AgentModelDep,
+    publisher: PublisherDep,
     token: BearerTokenDep,
 ) -> CoachReply:
-    """A cited, grounded coach reply over the assembled context (A6)."""
+    """A cited, grounded coach reply over the assembled context (A6), via the
+    LangGraph agent — which may call tools (logged, reversible) mid-turn."""
     snapshot = await provider.for_user(str(current.user_id), token)
     if snapshot is None:
         raise AppError(409, "insufficient_context", "Not enough context yet to coach.")
     bundle = await bundle_provider.for_user(str(current.user_id), token)
     items = await memory.list_items(session, current.user_id)
-    text, cites = await agent_chat.reply(
-        client,
+    ctx = ForgeContext(
+        user_id=current.user_id,
+        session=session,
+        publisher=publisher,
+        signals=snapshot.signals,
         identity=bundle.identity_statement if bundle else None,
-        snapshot=snapshot,
         memory=items,
-        message=body.message,
     )
+    text, cites = await run_chat(model, ctx, body.message)
+    await session.commit()  # persist any tool actions the agent took mid-turn
     return CoachReply(text=text, cites=cites)
 
 
@@ -175,3 +183,10 @@ async def undo_action(
         raise AppError(404, "not_found", "No action to undo.")
     await session.commit()
     return action
+
+
+@router.get("/ai/agent/metrics")
+async def agent_metrics(current: CurrentUserDep) -> dict[str, object]:
+    """Agent run metrics (model/tool/guardrail counters + avg latency) for
+    production inspection. Full per-run traces go to LangSmith."""
+    return METRICS.snapshot()

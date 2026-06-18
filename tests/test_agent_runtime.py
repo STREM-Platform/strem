@@ -4,12 +4,58 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 
-from tests.support import Harness, ai_app, auth_header
+from langchain_core.messages import AIMessage
+
+from tests.support import Harness, ScriptedChatModel, ai_app, auth_header
 
 
 def run(scenario: Callable[[Harness], Awaitable[None]]) -> None:
     async def _inner() -> None:
         async with ai_app() as harness:
+            await scenario(harness)
+
+    asyncio.run(_inner())
+
+
+def test_agent_calls_a_tool_mid_turn_and_logs_it() -> None:
+    """The LangGraph agent reasons → calls a tool → reasons → answers, and the
+    tool call lands in the Activity feed (writeMemory, AUTO → done)."""
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "remember",
+                        "args": {"text": "Lunges bug the left knee", "icon": "heart"},
+                        "id": "call_1",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content="Noted — I'll keep you off lunges and sub split squats."),
+        ]
+    )
+
+    async def scenario(h: Harness) -> None:
+        uid = uuid.uuid4()
+        res = await h.client.post(
+            "/v1/ai/agent/chat",
+            headers=auth_header(uid),
+            json={"message": "Please note that lunges bug my left knee."},
+        )
+        assert res.status_code == 200
+        assert "lunges" in res.json()["text"].lower()
+
+        mem = await h.client.get("/v1/ai/memory", headers=auth_header(uid))
+        assert any("knee" in m["text"].lower() for m in mem.json()["items"])
+
+        feed = await h.client.get("/v1/ai/agent/activity", headers=auth_header(uid))
+        actions = feed.json()["items"]
+        assert any(a["capability"] == "writeMemory" and a["status"] == "done" for a in actions)
+
+    async def _inner() -> None:
+        async with ai_app(model=model) as harness:
             await scenario(harness)
 
     asyncio.run(_inner())
@@ -95,6 +141,46 @@ def test_auto_action_is_done_ask_action_is_proposed() -> None:
 
         # an event was published per transition
         assert len(h.publisher.of_type("ai.agent_action")) >= 3
+
+    run(scenario)
+
+
+def test_output_guardrail_middleware_replaces_a_shaming_reply() -> None:
+    """The after_model middleware catches shame/vanity/diagnosis and ships a safe
+    line instead — and the block is counted for production inspection."""
+    model = ScriptedChatModel(
+        responses=[AIMessage(content="You were lazy and you failed this week. No excuses.")]
+    )
+
+    async def scenario(h: Harness) -> None:
+        uid = uuid.uuid4()
+        res = await h.client.post(
+            "/v1/ai/agent/chat", headers=auth_header(uid), json={"message": "how did I do?"}
+        )
+        assert res.status_code == 200
+        text = res.json()["text"].lower()
+        assert "lazy" not in text and "failed" not in text
+
+        metrics = await h.client.get("/v1/ai/agent/metrics", headers=auth_header(uid))
+        assert metrics.json()["guardrail_blocks"] >= 1
+
+    async def _inner() -> None:
+        async with ai_app(model=model) as harness:
+            await scenario(harness)
+
+    asyncio.run(_inner())
+
+
+def test_metrics_count_model_calls() -> None:
+    async def scenario(h: Harness) -> None:
+        uid = uuid.uuid4()
+        await h.client.post(
+            "/v1/ai/agent/chat", headers=auth_header(uid), json={"message": "what should I train?"}
+        )
+        metrics = await h.client.get("/v1/ai/agent/metrics", headers=auth_header(uid))
+        body = metrics.json()
+        assert body["model_calls"] >= 1
+        assert "avg_model_ms" in body
 
     run(scenario)
 

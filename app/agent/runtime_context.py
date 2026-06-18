@@ -1,0 +1,26 @@
+"""The runtime context passed to the agent on every turn.
+
+Carried as LangChain's typed ``context`` (not persisted by the checkpointer), so
+middleware and tools can reach the request-scoped session/publisher and the
+assembled athlete context without it leaking into thread state.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.events import EventPublisher
+from app.schemas import ContextSignals, MemoryItem
+
+
+@dataclass
+class ForgeContext:
+    user_id: uuid.UUID
+    session: AsyncSession
+    publisher: EventPublisher
+    signals: ContextSignals
+    identity: str | None = None
+    memory: list[MemoryItem] = field(default_factory=list)

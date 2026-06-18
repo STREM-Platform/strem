@@ -6,9 +6,10 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends, Request
+from langchain_core.language_models import BaseChatModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_chat import LLMClient, get_llm_client
+from app.agent.llm import get_agent_model
 from app.config import Settings, get_settings
 from app.context import (
     AthleteContextProvider,
@@ -28,7 +29,7 @@ PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
 ContextProviderDep = Annotated[ContextProvider, Depends(get_context_provider)]
 AthleteContextProviderDep = Annotated[AthleteContextProvider, Depends(get_athlete_context_provider)]
 TribeSummaryProviderDep = Annotated[TribeSummaryProvider, Depends(get_tribe_summary_provider)]
-LLMClientDep = Annotated[LLMClient, Depends(get_llm_client)]
+AgentModelDep = Annotated[BaseChatModel, Depends(get_agent_model)]
 
 
 def get_bearer_token(request: Request) -> str:

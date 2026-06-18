@@ -8,3 +8,10 @@ alembic>=1.13
 pyjwt>=2.8
 redis>=5.0
 httpx>=0.27
+# Forge agent — LangChain create_agent middleware over LangGraph + Claude (B1),
+# with LangSmith tracing for production observability.
+langchain>=1.3,<2
+langgraph>=1.2,<2
+langchain-core>=1.4,<2
+langchain-anthropic>=1.4,<2
+langsmith>=0.8,<1
