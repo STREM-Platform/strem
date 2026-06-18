@@ -8,6 +8,7 @@
  * quick-log (always-real) and recent proof are preserved.
  */
 
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,8 +34,19 @@ type Mode = "landing" | "live" | "debrief" | "quicklog";
 type CaptureKind = "workout" | "food" | "voice";
 
 export default function TrainScreen() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("landing");
   const { data: workout } = useAsync<LiveWorkoutData>(forge.getLiveWorkout);
+
+  // Persist the completed session — the always-real proof path.
+  const persistSession = async (): Promise<void> => {
+    if (!workout) return;
+    try {
+      await api.logTrainingSession({ session_type: "strength", duration_minutes: 47, notes: `Forge live session: ${workout.title}` });
+    } catch {
+      // Surfaced on the proof screens; never blocks the debrief.
+    }
+  };
 
   if (mode === "live" && workout) {
     return <LiveWorkout workout={workout} onCancel={() => setMode("landing")} onFinish={() => setMode("debrief")} />;
@@ -44,17 +56,12 @@ export default function TrainScreen() {
       <Debrief
         workout={workout}
         onDone={async () => {
-          // Persist the completed session — the always-real proof path.
-          try {
-            await api.logTrainingSession({
-              session_type: "strength",
-              duration_minutes: 47,
-              notes: `Forge live session: ${workout.title}`,
-            });
-          } catch {
-            // Surfaced on the proof screens; never blocks the debrief.
-          }
+          await persistSession();
           setMode("landing");
+        }}
+        onShare={async () => {
+          await persistSession();
+          router.push("/(app)/recaps");
         }}
       />
     );
@@ -62,7 +69,14 @@ export default function TrainScreen() {
   if (mode === "quicklog") {
     return <QuickLog onBack={() => setMode("landing")} />;
   }
-  return <TrainLanding workout={workout} onStartLive={() => setMode("live")} onQuickLog={() => setMode("quicklog")} />;
+  return (
+    <TrainLanding
+      workout={workout}
+      onStartLive={() => setMode("live")}
+      onQuickLog={() => setMode("quicklog")}
+      onShare={() => router.push("/(app)/recaps")}
+    />
+  );
 }
 
 // ── Landing ──────────────────────────────────────────────────────────────────
@@ -91,10 +105,12 @@ function TrainLanding({
   workout,
   onStartLive,
   onQuickLog,
+  onShare,
 }: {
   workout: LiveWorkoutData | undefined;
   onStartLive: () => void;
   onQuickLog: () => void;
+  onShare: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { data, loading, reload } = useAsync(() => api.listTrainingSessions(8));
@@ -190,6 +206,30 @@ function TrainLanding({
               <Text style={styles.emptyText}>No sessions logged yet. Your completed work shows up here.</Text>
             </Panel>
           )}
+        </View>
+
+        {/* share to story — export your training week as an image (Strava-style) */}
+        <SectionHead icon="sparkles" title="SHARE YOUR WEEK" sub="Story-ready training recaps" />
+        <View style={styles.sideMargin}>
+          <Panel raised accent={T.greenLine} pad={0}>
+            <Pressable onPress={onShare}>
+              <View style={styles.shareImgWrap}>
+                <HeroBackdrop tone="green" glow={false} />
+                <Image source={PHOTOS.identity} style={styles.shareImg} resizeMode="cover" />
+                <View style={styles.shareScrim} />
+                <View style={styles.shareRow}>
+                  <View style={styles.shrink}>
+                    <Text style={styles.shareEyebrow}>RECAP · SHARE TO STORY</Text>
+                    <Text style={styles.shareTitle}>Your training week, as a story</Text>
+                    <Text style={styles.shareSub}>Save the image · post it anywhere</Text>
+                  </View>
+                  <View style={styles.shareIcon}>
+                    <Icon name="arrowUR" size={20} color="#06130D" />
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          </Panel>
         </View>
       </ScrollView>
       <BottomNav />
@@ -302,6 +342,15 @@ const styles = StyleSheet.create({
   captureRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, paddingHorizontal: 13, borderRadius: 14, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
   captureLabel: { ...ui(15, 700), color: T.text },
   captureSub: { ...ui(12, 500), color: T.sub, marginTop: 1 },
+
+  shareImgWrap: { height: 120, position: "relative", overflow: "hidden", borderRadius: 16 },
+  shareImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  shareScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13,16,21,0.58)" },
+  shareRow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16 },
+  shareEyebrow: { ...mono(9, 700), letterSpacing: 1.2, color: T.green },
+  shareTitle: { ...disp(21, 800), color: "#fff", marginTop: 4, lineHeight: 22 },
+  shareSub: { ...ui(12.5, 500), color: "#cdd3d8", marginTop: 4 },
+  shareIcon: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: T.green },
 
   recentRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 14 },
   recentDivider: { borderTopWidth: 1, borderTopColor: T.line },

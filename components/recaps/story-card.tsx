@@ -6,20 +6,28 @@
 
 import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 
 import { Medal } from "@/components/medals/medal";
 import { HeroBackdrop } from "@/components/ui/hero-backdrop";
 import { MountainMark } from "@/components/ui/icon";
 import { Ring } from "@/components/ui/ring";
 import { RARITY, T, disp, mono, ui } from "@/constants/theme";
+import { PHOTOS } from "@/lib/photos";
 import type { Recap } from "@/lib/recaps";
 
-function StoryShell({ tone = "green", rank, footer, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; children: ReactNode }) {
+function StoryShell({ tone = "green", rank, footer, photo, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; children: ReactNode }) {
   const accent = tone === "red" ? T.red : tone === "legendary" ? "#F4C45A" : T.green;
   return (
     <View style={styles.shell}>
-      <HeroBackdrop tone={tone === "red" ? "red" : "green"} />
+      {photo ? (
+        <>
+          <Image source={photo} style={styles.photo} resizeMode="cover" />
+          <View style={styles.photoScrim} />
+        </>
+      ) : (
+        <HeroBackdrop tone={tone === "red" ? "red" : "green"} />
+      )}
       <MountainMark size={420} color="#9fb0a8" style={styles.watermark} />
       <LinearGradient
         colors={[`${accent}22`, "transparent"]}
@@ -82,7 +90,7 @@ function MiniBars({ data, color = T.green }: { data: { d: string; v: number }[];
 export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   if (recap.type === "weekly") {
     return (
-      <StoryShell rank={rank} footer={`Hold the line. — ${recap.weekLabel}`}>
+      <StoryShell rank={rank} photo={PHOTOS.heroRun} footer={`Hold the line. — ${recap.weekLabel}`}>
         <Text style={styles.eyebrow}>WEEKLY RECAP</Text>
         <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={84} />
         <View style={styles.statRow}>
@@ -99,7 +107,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
   if (recap.type === "monthly") {
     return (
-      <StoryShell rank={rank} footer="The base you built.">
+      <StoryShell rank={rank} photo={PHOTOS.strength} footer="The base you built.">
         <Text style={styles.eyebrow}>MONTHLY RECAP</Text>
         <Text style={styles.monthName}>{recap.monthLabel}</Text>
         <View style={styles.monthGrid}>
@@ -141,7 +149,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   // consistency
   const total = recap.trainingDays + recap.nutritionDays;
   return (
-    <StoryShell rank={rank} footer="Consistency, not perfection.">
+    <StoryShell rank={rank} photo={PHOTOS.identity} footer="Consistency, not perfection.">
       <Text style={styles.eyebrow}>CONSISTENCY</Text>
       <View style={styles.consRow}>
         <Ring size={128} stroke={12} pct={Math.min(1, total / 14)}>
@@ -160,6 +168,8 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
 const styles = StyleSheet.create({
   shell: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden", backgroundColor: "#08090b" },
+  photo: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  photoScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(8,9,11,0.5)" },
   watermark: { position: "absolute", top: 120, right: -130, opacity: 0.08 },
   topGlow: { position: "absolute", top: 0, left: 0, right: 0, height: "55%" },
   content: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingTop: 64, paddingBottom: 70, flexDirection: "column" },

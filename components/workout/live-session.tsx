@@ -210,7 +210,7 @@ export function LiveWorkout({ workout, onFinish, onCancel }: { workout: LiveWork
 }
 
 // ── Finish debrief (PR detection → celebration) ──────────────────────────────
-export function Debrief({ workout, onDone }: { workout: LiveWorkoutData; onDone: () => void }) {
+export function Debrief({ workout, onDone, onShare }: { workout: LiveWorkoutData; onDone: () => void; onShare?: () => void }) {
   const pr = workout.prDetected;
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
   const stats = [
@@ -274,7 +274,7 @@ export function Debrief({ workout, onDone }: { workout: LiveWorkoutData; onDone:
       </Pressable>
 
       <View style={styles.debriefActions}>
-        <Btn kind="ghost" full icon="arrowUR" label="Share recap" onPress={onDone} style={styles.shrink} />
+        <Btn kind="ghost" full icon="arrowUR" label="Share recap" onPress={onShare ?? onDone} style={styles.shrink} />
         <Btn kind="primary" full icon="check" label="Done" onPress={onDone} style={styles.shrink} />
       </View>
 
