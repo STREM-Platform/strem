@@ -209,3 +209,34 @@ class AgentActionOut(CamelModel):
 class AgentActionPage(CamelModel):
     items: list[AgentActionOut]
     pagination: Pagination
+
+
+# ── Forge agent: insights (B8) + adaptive plan (B4) ──────────────────────────
+class Insight(CamelModel):
+    """A cross-domain correlation, grounded in a sample size (B8)."""
+
+    icon: str
+    tone: str  # "green" | "amber" | "red"
+    title: str
+    body: str
+    chip: str
+
+
+class InsightList(CamelModel):
+    items: list[Insight]
+
+
+class AdaptiveMission(CamelModel):
+    icon: str
+    title: str
+    tone: str  # "green" | "amber" | "red"
+    xp: int
+    days: int
+    why: str
+
+
+class AdaptivePlan(CamelModel):
+    """Readiness-aware mission suggestions for the Coach Plan view (B4)."""
+
+    reason: str
+    missions: list[AdaptiveMission]

@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from app import agent_actions, memory
+from app.adaptive_plan import build_adaptive_plan
 from app.agent import run_chat
 from app.agent.metrics import METRICS
 from app.agent.runtime_context import ForgeContext
@@ -24,13 +25,16 @@ from app.deps import (
 )
 from app.enums import AgentCapability
 from app.errors import AppError
+from app.insights import build_insights
 from app.schemas import (
     ActionCreate,
+    AdaptivePlan,
     AgentActionOut,
     AgentActionPage,
     AthleteContext,
     ChatRequest,
     CoachReply,
+    InsightList,
     MemoryCreate,
     MemoryItem,
     MemoryList,
@@ -190,3 +194,38 @@ async def agent_metrics(current: CurrentUserDep) -> dict[str, object]:
     """Agent run metrics (model/tool/guardrail counters + avg latency) for
     production inspection. Full per-run traces go to LangSmith."""
     return METRICS.snapshot()
+
+
+# ── Insights (B8) + adaptive plan (B4) ───────────────────────────────────────
+@router.get("/ai/insights", response_model=InsightList)
+async def insights(
+    current: CurrentUserDep, provider: AthleteContextProviderDep, token: BearerTokenDep
+) -> InsightList:
+    """Cross-domain correlations the data supports — empty below the sample gate
+    (never a fabricated pattern)."""
+    snapshot = await provider.for_user(str(current.user_id), token)
+    if snapshot is None:
+        return InsightList(items=[])
+    return InsightList(items=build_insights(snapshot.sessions, snapshot.nutrition))
+
+
+@router.get("/ai/agent/plan", response_model=AdaptivePlan)
+async def adaptive_plan(
+    current: CurrentUserDep,
+    session: SessionDep,
+    provider: AthleteContextProviderDep,
+    bundle_provider: ContextProviderDep,
+    token: BearerTokenDep,
+) -> AdaptivePlan:
+    """Readiness-aware mission suggestions for the Coach Plan view (B4)."""
+    snapshot = await provider.for_user(str(current.user_id), token)
+    if snapshot is None:
+        raise AppError(409, "insufficient_context", "Not enough context yet to plan.")
+    bundle = await bundle_provider.for_user(str(current.user_id), token)
+    items = await memory.list_items(session, current.user_id)
+    return build_adaptive_plan(
+        snapshot.signals,
+        goal=bundle.transformation_goal if bundle else None,
+        weekly_target=bundle.weekly_target_days if bundle else None,
+        memory=items,
+    )

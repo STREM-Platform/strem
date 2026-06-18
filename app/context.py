@@ -117,6 +117,7 @@ def get_context_provider() -> ContextProvider:
 # the router and merged in. Still copies no raw logs into the orchestrator DB.
 
 from dataclasses import dataclass as _dataclass  # noqa: E402
+from dataclasses import field as _field  # noqa: E402
 
 from app import signals as _signals  # noqa: E402
 from app.schemas import ContextSignals, ContextSource  # noqa: E402
@@ -124,10 +125,13 @@ from app.schemas import ContextSignals, ContextSource  # noqa: E402
 
 @_dataclass(frozen=True)
 class GraphSnapshot:
-    """The graph minus memory: connected sources + derived signals."""
+    """The graph minus memory: connected sources + derived signals, plus the raw
+    rows the insight engine (B8) correlates over (kept out of the API response)."""
 
     sources: list[ContextSource]
     signals: ContextSignals
+    sessions: list[dict[str, Any]] = _field(default_factory=list)
+    nutrition: list[dict[str, Any]] = _field(default_factory=list)
 
 
 def _to_context_signals(s: _signals.Signals) -> ContextSignals:
@@ -159,9 +163,10 @@ class HttpAthleteContextProvider:
     service, then derives signals (A4). Wearable sources arrive with A3 — until
     then only the always-on in-app log source is reported (never fabricated)."""
 
-    def __init__(self, user_base_url: str, training_base_url: str) -> None:
+    def __init__(self, user_base_url: str, training_base_url: str, nutrition_base_url: str) -> None:
         self._user = user_base_url.rstrip("/")
         self._training = training_base_url.rstrip("/")
+        self._nutrition = nutrition_base_url.rstrip("/")
 
     async def for_user(self, user_id: str, bearer_token: str) -> GraphSnapshot | None:
         headers = {"Authorization": f"Bearer {bearer_token}"}
@@ -175,6 +180,7 @@ class HttpAthleteContextProvider:
 
             streak_state: str | None = None
             sessions: list[dict[str, Any]] = []
+            nutrition: list[dict[str, Any]] = []
             try:
                 xp_res = await client.get(f"{self._user}/users/me/xp", headers=headers)
                 if xp_res.status_code == 200:
@@ -184,6 +190,11 @@ class HttpAthleteContextProvider:
                 )
                 if sess_res.status_code == 200:
                     sessions = sess_res.json().get("items", [])
+                nut_res = await client.get(
+                    f"{self._nutrition}/nutrition/days?limit=40", headers=headers
+                )
+                if nut_res.status_code == 200:
+                    nutrition = nut_res.json().get("items", [])
             except httpx.RequestError:
                 pass
 
@@ -198,7 +209,12 @@ class HttpAthleteContextProvider:
                 metric="Sets · Meals · RPE",
             )
         ]
-        return GraphSnapshot(sources=sources, signals=_to_context_signals(derived))
+        return GraphSnapshot(
+            sources=sources,
+            signals=_to_context_signals(derived),
+            sessions=sessions,
+            nutrition=nutrition,
+        )
 
 
 _athlete_provider: AthleteContextProvider | None = None
@@ -210,6 +226,8 @@ def get_athlete_context_provider() -> AthleteContextProvider:
     if _athlete_provider is None:
         settings = get_settings()
         _athlete_provider = HttpAthleteContextProvider(
-            settings.user_service_base_url, settings.training_service_base_url
+            settings.user_service_base_url,
+            settings.training_service_base_url,
+            settings.nutrition_service_base_url,
         )
     return _athlete_provider
