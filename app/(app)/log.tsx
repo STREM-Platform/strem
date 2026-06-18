@@ -167,26 +167,26 @@ function TrainLanding({
           </>
         ) : null}
 
-        {/* recent proof */}
-        <SectionHead icon="clock" title="RECENT PROOF" sub="The work, banked" />
-        <View style={styles.list}>
+        {/* recent proof — compact, grouped, last few only */}
+        <SectionHead icon="clock" title="RECENT PROOF" sub="Your last sessions" />
+        <View style={styles.sideMargin}>
           {recent.length > 0 ? (
-            recent.map((s) => (
-              <Panel key={s.id} pad={12}>
-                <View style={styles.recentInner}>
-                  <IconTile name={s.session_type === "running" ? "route" : "dumbbell"} size={42} iconSize={20} />
-                  <View style={styles.shrink}>
-                    <Text style={styles.recentLabel}>{sessionLabel(s)}</Text>
-                    <Text style={styles.recentMeta}>{sessionMeta(s).toUpperCase()}</Text>
+            <Panel pad={0}>
+              {recent.slice(0, 4).map((s, i) => (
+                <View key={s.id} style={[styles.recentRow, i > 0 && styles.recentDivider]}>
+                  <View style={styles.recentIcon}>
+                    <Icon name={s.session_type === "running" ? "route" : "dumbbell"} size={15} color={T.green} />
                   </View>
-                  <View style={styles.recentWhenPill}>
-                    <Text style={styles.recentWhenText}>{relativeDay(s.logged_at)}</Text>
-                  </View>
+                  <Text style={styles.recentLabel}>{sessionLabel(s)}</Text>
+                  <Text style={styles.recentMeta} numberOfLines={1}>
+                    {sessionMeta(s)}
+                  </Text>
+                  <Text style={styles.recentWhen}>{relativeDay(s.logged_at)}</Text>
                 </View>
-              </Panel>
-            ))
+              ))}
+            </Panel>
           ) : (
-            <Panel style={styles.sideMargin}>
+            <Panel>
               <Text style={styles.emptyText}>No sessions logged yet. Your completed work shows up here.</Text>
             </Panel>
           )}
@@ -303,11 +303,12 @@ const styles = StyleSheet.create({
   captureLabel: { ...ui(15, 700), color: T.text },
   captureSub: { ...ui(12, 500), color: T.sub, marginTop: 1 },
 
-  recentInner: { flexDirection: "row", alignItems: "center", gap: 12 },
-  recentLabel: { ...ui(14.5, 700), color: T.text },
-  recentMeta: { ...mono(10, 600), color: T.sub, letterSpacing: 0.5, marginTop: 2 },
-  recentWhenPill: { paddingVertical: 5, paddingHorizontal: 9, borderRadius: 8, backgroundColor: T.surf2, borderWidth: 1, borderColor: T.line },
-  recentWhenText: { ...mono(9, 700), color: T.mut, letterSpacing: 0.4 },
+  recentRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 14 },
+  recentDivider: { borderTopWidth: 1, borderTopColor: T.line },
+  recentIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
+  recentLabel: { ...ui(14, 700), color: T.text },
+  recentMeta: { flex: 1, ...mono(10, 600), color: T.sub, letterSpacing: 0.3 },
+  recentWhen: { ...mono(9, 700), color: T.sub, letterSpacing: 0.4 },
   emptyText: { ...ui(13, 500), color: T.mut, lineHeight: 19 },
 
   back: { alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 0, backgroundColor: "transparent", borderWidth: 0 },

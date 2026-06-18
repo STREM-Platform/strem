@@ -16,7 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CoachChatTeaser, CoachSees, ProactiveCheckin, TodaysClimb } from "@/components/agent/today";
 import { BottomNav } from "@/components/bottom-nav";
-import { Icon, MountainMark } from "@/components/ui/icon";
+import { BrandLogo } from "@/components/brand-logo";
+import { Icon } from "@/components/ui/icon";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import type { UserProfile, XPSummary } from "@/lib/api/types";
@@ -94,7 +95,7 @@ function CompactHeader({ data, topInset, onProfile }: { data: HomeData; topInset
     <View style={[styles.header, { paddingTop: topInset + 16 }]}>
       <View style={styles.shrink}>
         <View style={styles.brand}>
-          <MountainMark size={22} />
+          <BrandLogo variant="symbol" style={styles.brandMark} />
           <Text style={styles.brandText}>STREM</Text>
         </View>
         <Text style={styles.greeting}>
@@ -126,7 +127,8 @@ const styles = StyleSheet.create({
   stack: { gap: 16 },
 
   header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 18, paddingBottom: 18 },
-  brand: { flexDirection: "row", alignItems: "center", gap: 9 },
+  brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  brandMark: { width: 26, height: 26 },
   brandText: { ...disp(14, 700), letterSpacing: 3.4, color: "#fff" },
   greeting: { ...ui(13, 600), color: T.mut, marginTop: 10 },
   identity: { ...mono(10, 600), color: T.green, letterSpacing: 0.6, marginTop: 4 },
