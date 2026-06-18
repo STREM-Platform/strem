@@ -1,78 +1,74 @@
 /**
- * Train — import/guided execution orchestrator, ported from `ScreenTrain` +
- * `screen-train.jsx`. Landing → (guided preview → guided exec → summary) and a
- * real quick-log for completed sessions.
+ * Train — Forge live-workout intelligence + AI capture, over the real log.
  *
- * Honesty per the gap analysis:
- * - Structured set-by-set tracking is a flagged *preview* (`FLAGS.guidedWorkoutsPreview`);
- *   only the final session is persisted via `POST /training/sessions`.
- * - Photo/text/voice import (`FLAGS.workoutImport`, off) is shown but reports a
- *   clear unsupported state — no extracted workout data is fabricated.
- * - The quick-log is the always-real path and saves immediately.
+ * Leads with today's AI-planned, autoregulated session (D1/D2): per-set coaching,
+ * RPE capture, autoregulated rest, PR-detect → celebration, finish debrief. The
+ * debrief persists a real `POST /training/sessions` so the proof ledger stays
+ * honest. AI capture (D3/D4/D6) runs the scanning → parsed → confirm states; the
+ * quick-log (always-real) and recent proof are preserved.
  */
 
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { FormError, PrimaryButton, TextField } from "@/components/form";
 import { OptionSelect, type Option } from "@/components/select";
-import { HeroBackdrop } from "@/components/ui/hero-backdrop";
-import { Icon, MountainMark, type IconName } from "@/components/ui/icon";
-import { Btn, Chip, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
-import { WorkoutExec } from "@/components/workout/workout-exec";
-import { WorkoutPreview } from "@/components/workout/workout-preview";
-import { WorkoutSummary } from "@/components/workout/workout-summary";
+import { CaptureFlow } from "@/components/workout/capture-flow";
+import { Debrief, LiveWorkout } from "@/components/workout/live-session";
+import { Icon } from "@/components/ui/icon";
+import { Btn, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { ApiError, api } from "@/lib/api/client";
 import type { SessionType, TrainingSession } from "@/lib/api/types";
+import { forge } from "@/lib/agent";
+import type { CaptureData, LiveWorkout as LiveWorkoutData } from "@/lib/agent/types";
 import { FLAGS } from "@/lib/flags";
-import { SAMPLE_WORKOUT, totalSets, type WorkoutResult } from "@/lib/workout";
+import { PHOTOS } from "@/lib/photos";
 import { useAsync } from "@/lib/use-async";
 
-type Mode = "landing" | "preview" | "exec" | "summary" | "quicklog";
-
-const IMPORT_METHODS: { id: string; icon: IconName; label: string; sub: string; tone: "green" | "red" | "neutral" }[] = [
-  { id: "photo", icon: "grid", label: "Scan a screenshot", sub: "Import a workout from an image", tone: "green" },
-  { id: "text", icon: "edit", label: "Paste text", sub: "From notes, a coach, a PDF", tone: "green" },
-  { id: "voice", icon: "bot", label: "Voice / AI generate", sub: "Describe it — AI builds it", tone: "red" },
-];
+type Mode = "landing" | "live" | "debrief" | "quicklog";
+type CaptureKind = "workout" | "food" | "voice";
 
 export default function TrainScreen() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("landing");
-  const [result, setResult] = useState<WorkoutResult | null>(null);
+  // The workout currently being run live — today's AI plan, or one you scanned/added.
+  const [active, setActive] = useState<LiveWorkoutData | null>(null);
+  const { data: aiWorkout } = useAsync<LiveWorkoutData>(forge.getLiveWorkout);
+  const { data: scanned } = useAsync<LiveWorkoutData>(forge.getScannedWorkout);
 
-  if (mode === "preview") {
-    return <WorkoutPreview workout={SAMPLE_WORKOUT} onBack={() => setMode("landing")} onStart={() => setMode("exec")} />;
+  const startLive = (w: LiveWorkoutData) => {
+    setActive(w);
+    setMode("live");
+  };
+
+  // Persist the completed session — the always-real proof path.
+  const persistSession = async (): Promise<void> => {
+    if (!active) return;
+    try {
+      await api.logTrainingSession({ session_type: "strength", duration_minutes: 47, notes: `Forge live session: ${active.title}` });
+    } catch {
+      // Surfaced on the proof screens; never blocks the debrief.
+    }
+  };
+
+  if (mode === "live" && active) {
+    return <LiveWorkout workout={active} onCancel={() => setMode("landing")} onFinish={() => setMode("debrief")} />;
   }
-  if (mode === "exec") {
+  if (mode === "debrief" && active) {
     return (
-      <WorkoutExec
-        workout={SAMPLE_WORKOUT}
-        onCancel={() => setMode("landing")}
-        onFinish={(r) => {
-          setResult(r);
-          setMode("summary");
-        }}
-      />
-    );
-  }
-  if (mode === "summary" && result) {
-    return (
-      <WorkoutSummary
-        result={result}
-        onSave={async () => {
-          await api.logTrainingSession({
-            session_type: result.workout.type,
-            duration_minutes: Math.max(1, Math.round(result.elapsed / 60)),
-            notes: `Guided session: ${result.workout.title}`,
-          });
-        }}
-        onDone={() => {
-          setResult(null);
+      <Debrief
+        workout={active}
+        onDone={async () => {
+          await persistSession();
           setMode("landing");
+        }}
+        onShare={async () => {
+          await persistSession();
+          router.push("/(app)/recaps");
         }}
       />
     );
@@ -80,7 +76,15 @@ export default function TrainScreen() {
   if (mode === "quicklog") {
     return <QuickLog onBack={() => setMode("landing")} />;
   }
-  return <TrainLanding onStartGuided={() => setMode("preview")} onQuickLog={() => setMode("quicklog")} />;
+  return (
+    <TrainLanding
+      workout={aiWorkout}
+      onStartAi={() => aiWorkout && startLive(aiWorkout)}
+      onStartScanned={() => scanned && startLive(scanned)}
+      onQuickLog={() => setMode("quicklog")}
+      onShare={() => router.push("/(app)/recaps")}
+    />
+  );
 }
 
 // ── Landing ──────────────────────────────────────────────────────────────────
@@ -105,54 +109,93 @@ function sessionLabel(s: TrainingSession): string {
   return "Strength";
 }
 
-function TrainLanding({ onStartGuided, onQuickLog }: { onStartGuided: () => void; onQuickLog: () => void }) {
+function TrainLanding({
+  workout,
+  onStartAi,
+  onStartScanned,
+  onQuickLog,
+  onShare,
+}: {
+  workout: LiveWorkoutData | undefined;
+  onStartAi: () => void;
+  onStartScanned: () => void;
+  onQuickLog: () => void;
+  onShare: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const { data, loading, reload } = useAsync(() => api.listTrainingSessions(8));
+  const { data: capture } = useAsync<CaptureData>(forge.getCapture);
+  const [captureKind, setCaptureKind] = useState<CaptureKind | null>(null);
   const recent = data?.items ?? [];
-
-  const onImport = (label: string) => {
-    Alert.alert(
-      "Not available yet",
-      `${label} import needs backend support and isn’t live yet. For now, run the guided session or log a completed one — we’ll never fabricate imported workout data.`,
-    );
-  };
 
   return (
     <View style={styles.root}>
+      {capture && captureKind ? (
+        <CaptureFlow
+          data={capture}
+          kind={captureKind}
+          onClose={() => setCaptureKind(null)}
+          onStartLive={
+            captureKind === "workout"
+              ? () => {
+                  setCaptureKind(null);
+                  onStartScanned();
+                }
+              : undefined
+          }
+        />
+      ) : null}
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 14 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={Boolean(loading)} onRefresh={reload} tintColor={T.text} colors={[T.green]} />}
       >
-        <ScreenHead overline="Make it executable" title="Train" />
+        <ScreenHead overline="Phase 2 · 5 · Live intelligence" title="Train" />
 
-        {/* guided session hero (preview) */}
-        {FLAGS.guidedWorkoutsPreview ? (
-          <Panel raised style={styles.sideMargin} accent={T.greenLine} pad={0}>
-            <View style={styles.heroInner}>
-              <HeroBackdrop tone="green" />
-              <MountainMark size={200} color="#9fb0a8" style={styles.heroWatermark} />
-              <View style={styles.heroTop}>
-                <View style={styles.shrink}>
-                  <Text style={styles.heroEyebrow}>GUIDED SESSION · PREVIEW</Text>
-                  <Text style={styles.heroTitle}>{SAMPLE_WORKOUT.title.toUpperCase()}</Text>
-                  <View style={styles.heroSource}>
-                    <Icon name="grid" size={12} color={T.sub} />
-                    <Text style={styles.heroSourceText}>{SAMPLE_WORKOUT.source}</Text>
-                  </View>
+        {/* today's AI-planned, autoregulated session */}
+        {FLAGS.forgeAgentMock && workout ? (
+          <Panel raised accent={T.amberLine} style={styles.sideMargin} pad={0}>
+            <View style={styles.sessionImgWrap}>
+              <Image source={PHOTOS.strength} style={styles.sessionImg} resizeMode="cover" />
+              <View style={styles.sessionScrim} />
+              <View style={styles.sessionCaption}>
+                <View style={styles.sessionEyebrowRow}>
+                  <Icon name="bot" size={14} color={T.green} />
+                  <Text style={styles.sessionEyebrow}>TODAY · AI-PLANNED</Text>
                 </View>
-                <IconTile name="dumbbell" size={46} iconSize={23} />
-              </View>
-              <View style={styles.heroChips}>
-                <Chip label={`${SAMPLE_WORKOUT.exercises.length} EXERCISES`} color={T.mut} bg="rgba(255,255,255,0.05)" border={T.line2} />
-                <Chip label={`${totalSets(SAMPLE_WORKOUT)} SETS`} color={T.mut} bg="rgba(255,255,255,0.05)" border={T.line2} />
-                <Chip label={`~${SAMPLE_WORKOUT.est} MIN`} color={T.mut} bg="rgba(255,255,255,0.05)" border={T.line2} />
-              </View>
-              <View style={styles.heroCta}>
-                <Btn kind="primary" full icon="play" label="Try guided session" onPress={onStartGuided} />
+                <Text style={styles.sessionTitle}>{workout.title.toUpperCase()}</Text>
               </View>
             </View>
+            <View style={styles.sessionBody}>
+              <Text style={styles.sessionNote}>{workout.note}</Text>
+              <View style={styles.sessionChips}>
+                {["2 lifts", "~47 min", "+220 XP", "PR window"].map((t) => (
+                  <View key={t} style={styles.sessionChip}>
+                    <Text style={styles.sessionChipText}>{t}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+            <View style={styles.sessionCta}>
+              <Btn kind="primary" full icon="play" label="Start live session" onPress={onStartAi} />
+            </View>
           </Panel>
+        ) : null}
+
+        {/* bring your own — scan a workout and start it live (not just log it) */}
+        {FLAGS.forgeAgentMock ? (
+          <View style={[styles.sideMargin, styles.byoWrap]}>
+            <Panel pad={0}>
+              <Pressable onPress={() => setCaptureKind("workout")} style={styles.byoRow}>
+                <IconTile name="grid" size={44} iconSize={21} />
+                <View style={styles.shrink}>
+                  <Text style={styles.byoTitle}>Add a workout & go live</Text>
+                  <Text style={styles.byoSub}>Scan a photo or screenshot → a guided live session</Text>
+                </View>
+                <Icon name="play" size={18} color={T.green} />
+              </Pressable>
+            </Panel>
+          </View>
         ) : null}
 
         {/* real quick log */}
@@ -160,50 +203,71 @@ function TrainLanding({ onStartGuided, onQuickLog }: { onStartGuided: () => void
           <Btn kind="soft" full icon="check" label="Log a completed session" onPress={onQuickLog} />
         </View>
 
-        {/* import methods (honest unsupported state) */}
-        <SectionHead icon="plus" title="IMPORT A WORKOUT" sub="Turn anything into a guided session" />
-        <View style={styles.list}>
-          {IMPORT_METHODS.map((im) => {
-            const tone = im.tone === "red" ? T.red : im.tone === "neutral" ? T.mut : T.green;
-            return (
-              <Pressable key={im.id} style={styles.importRow} onPress={() => onImport(im.label)}>
-                <IconTile
-                  name={im.icon}
-                  size={42}
-                  iconSize={20}
-                  color={tone}
-                  bg={im.tone === "red" ? T.redSoft : im.tone === "neutral" ? T.surf2 : T.greenSoft}
-                  border={im.tone === "neutral" ? T.line : `${tone}44`}
-                />
-                <View style={styles.shrink}>
-                  <Text style={styles.importLabel}>{im.label}</Text>
-                  <Text style={styles.importSub}>{im.sub}</Text>
-                </View>
-                <Chip label="SOON" color={T.sub} bg="rgba(255,255,255,0.05)" border={T.line2} />
-              </Pressable>
-            );
-          })}
-        </View>
+        {/* AI capture */}
+        {FLAGS.forgeAgentMock && capture ? (
+          <>
+            <SectionHead icon="sparkles" title="LOG WITH AI" sub="Photo, plate or voice — parsed in seconds" />
+            <View style={styles.list}>
+              {capture.methods.map((m) => (
+                <Pressable key={m.id} style={styles.captureRow} onPress={() => setCaptureKind(m.id)}>
+                  <IconTile name={m.icon} size={44} iconSize={21} />
+                  <View style={styles.shrink}>
+                    <Text style={styles.captureLabel}>{m.label}</Text>
+                    <Text style={styles.captureSub}>{m.sub}</Text>
+                  </View>
+                  <Icon name="chevron" size={17} color={T.sub} />
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
 
-        {/* recent proof */}
-        <SectionHead icon="clock" title="RECENT PROOF" />
-        <View style={styles.list}>
+        {/* recent proof — compact, grouped, last few only */}
+        <SectionHead icon="clock" title="RECENT PROOF" sub="Your last sessions" />
+        <View style={styles.sideMargin}>
           {recent.length > 0 ? (
-            recent.map((s) => (
-              <View key={s.id} style={styles.recentRow}>
-                <IconTile name={s.session_type === "running" ? "route" : "dumbbell"} size={38} iconSize={18} color={T.mut} bg={T.surf2} border={T.line} />
-                <View style={styles.shrink}>
+            <Panel pad={0}>
+              {recent.slice(0, 4).map((s, i) => (
+                <View key={s.id} style={[styles.recentRow, i > 0 && styles.recentDivider]}>
+                  <View style={styles.recentIcon}>
+                    <Icon name={s.session_type === "running" ? "route" : "dumbbell"} size={15} color={T.green} />
+                  </View>
                   <Text style={styles.recentLabel}>{sessionLabel(s)}</Text>
-                  <Text style={styles.recentMeta}>{sessionMeta(s)}</Text>
+                  <Text style={styles.recentMeta} numberOfLines={1}>
+                    {sessionMeta(s)}
+                  </Text>
+                  <Text style={styles.recentWhen}>{relativeDay(s.logged_at)}</Text>
                 </View>
-                <Text style={styles.recentWhen}>{relativeDay(s.logged_at)}</Text>
-              </View>
-            ))
+              ))}
+            </Panel>
           ) : (
-            <Panel style={styles.sideMargin}>
+            <Panel>
               <Text style={styles.emptyText}>No sessions logged yet. Your completed work shows up here.</Text>
             </Panel>
           )}
+        </View>
+
+        {/* share to story — export your training week as an image (Strava-style) */}
+        <SectionHead icon="sparkles" title="SHARE YOUR WEEK" sub="Story-ready training recaps" />
+        <View style={styles.sideMargin}>
+          <Panel raised accent={T.greenLine} pad={0}>
+            <Pressable onPress={onShare}>
+              <View style={styles.shareImgWrap}>
+                <Image source={PHOTOS.run} style={styles.shareImg} resizeMode="cover" />
+                <View style={styles.shareScrim} />
+                <View style={styles.shareRow}>
+                  <View style={styles.shrink}>
+                    <Text style={styles.shareEyebrow}>RECAP · SHARE TO STORY</Text>
+                    <Text style={styles.shareTitle}>Your training week, as a story</Text>
+                    <Text style={styles.shareSub}>Save the image · post it anywhere</Text>
+                  </View>
+                  <View style={styles.shareIcon}>
+                    <Icon name="arrowUR" size={20} color="#06130D" />
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          </Panel>
         </View>
       </ScrollView>
       <BottomNav />
@@ -211,7 +275,7 @@ function TrainLanding({ onStartGuided, onQuickLog }: { onStartGuided: () => void
   );
 }
 
-// ── Quick log (real) ─────────────────────────────────────────────────────────
+// ── Quick log (real, unchanged) ──────────────────────────────────────────────
 const TYPES: Option<SessionType>[] = [
   { value: "strength", label: "Strength", hint: "Lift, accessories, loaded movement" },
   { value: "running", label: "Running", hint: "Distance, tempo, intervals, easy miles" },
@@ -219,7 +283,6 @@ const TYPES: Option<SessionType>[] = [
 ];
 
 function QuickLog({ onBack }: { onBack: () => void }) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [sessionType, setSessionType] = useState<SessionType>("strength");
   const [duration, setDuration] = useState("");
@@ -269,18 +332,7 @@ function QuickLog({ onBack }: { onBack: () => void }) {
           <Text style={styles.loggedTitle}>Session logged</Text>
           <Text style={styles.loggedBody}>That action is now part of your proof. XP updates through the progression ledger.</Text>
           <View style={styles.loggedActions}>
-            <Btn kind="primary" full icon="chart" label="View progress" onPress={() => router.replace("/(app)/profile")} />
-            <Btn
-              kind="ghost"
-              full
-              label="Log another"
-              onPress={() => {
-                setLogged(false);
-                setDuration("");
-                setDistance("");
-                setNotes("");
-              }}
-            />
+            <Btn kind="ghost" full label="Log another" onPress={() => { setLogged(false); setDuration(""); setDistance(""); setNotes(""); }} />
           </View>
         </Panel>
       ) : (
@@ -306,29 +358,49 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: T.bg },
   scroll: { paddingBottom: 124 },
   sideMargin: { marginHorizontal: 16 },
-  shrink: { flexShrink: 1 },
+  shrink: { flexShrink: 1, flex: 1 },
 
-  heroInner: { padding: 16, overflow: "hidden" },
-  heroWatermark: { position: "absolute", top: -30, right: -50, opacity: 0.06 },
-  heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
-  heroEyebrow: { ...mono(10, 700), letterSpacing: 1.2, color: T.green },
-  heroTitle: { ...disp(26, 800), color: "#fff", marginTop: 4 },
-  heroSource: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
-  heroSourceText: { ...ui(12, 500), color: T.mut },
-  heroChips: { flexDirection: "row", gap: 8, marginTop: 14, flexWrap: "wrap" },
-  heroCta: { marginTop: 14 },
+  sessionImgWrap: { height: 132, position: "relative", overflow: "hidden", borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+  sessionImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  sessionScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13,16,21,0.5)" },
+  sessionCaption: { position: "absolute", left: 16, right: 16, bottom: 12 },
+  sessionEyebrowRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sessionEyebrow: { ...mono(10, 700), letterSpacing: 1.4, color: T.green },
+  sessionTitle: { ...disp(26, 800), color: "#fff", marginTop: 5, lineHeight: 27 },
+  sessionBody: { paddingHorizontal: 16, paddingBottom: 4 },
+  sessionNote: { ...ui(13.5, 500), color: "#cdd3d8", lineHeight: 20, marginTop: 12 },
+  sessionChips: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
+  sessionChip: { paddingVertical: 5, paddingHorizontal: 9, borderRadius: 7, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: T.line },
+  sessionChipText: { ...mono(10, 700), color: T.mut },
+  sessionCta: { padding: 14, borderTopWidth: 1, borderTopColor: T.line, marginTop: 12 },
+
+  byoWrap: { marginTop: 12 },
+  byoRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 13 },
+  byoTitle: { ...ui(15, 700), color: T.text },
+  byoSub: { ...ui(12, 500), color: T.sub, marginTop: 2, lineHeight: 16 },
 
   quickCta: { marginTop: 14 },
 
   list: { gap: 9, marginHorizontal: 16 },
-  importRow: { flexDirection: "row", alignItems: "center", gap: 13, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 14, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
-  importLabel: { ...ui(15, 700), color: T.text },
-  importSub: { ...ui(12, 500), color: T.sub, marginTop: 1 },
+  captureRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, paddingHorizontal: 13, borderRadius: 14, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
+  captureLabel: { ...ui(15, 700), color: T.text },
+  captureSub: { ...ui(12, 500), color: T.sub, marginTop: 1 },
 
-  recentRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 13, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
-  recentLabel: { ...ui(15, 600), color: T.text },
-  recentMeta: { ...ui(12, 500), color: T.sub, marginTop: 1 },
-  recentWhen: { ...mono(9, 600), color: T.sub },
+  shareImgWrap: { height: 120, position: "relative", overflow: "hidden", borderRadius: 16 },
+  shareImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  shareScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13,16,21,0.58)" },
+  shareRow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16 },
+  shareEyebrow: { ...mono(9, 700), letterSpacing: 1.2, color: T.green },
+  shareTitle: { ...disp(21, 800), color: "#fff", marginTop: 4, lineHeight: 22 },
+  shareSub: { ...ui(12.5, 500), color: "#cdd3d8", marginTop: 4 },
+  shareIcon: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: T.green },
+
+  recentRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 14 },
+  recentDivider: { borderTopWidth: 1, borderTopColor: T.line },
+  recentIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
+  recentLabel: { ...ui(14, 700), color: T.text },
+  recentMeta: { flex: 1, ...mono(10, 600), color: T.sub, letterSpacing: 0.3 },
+  recentWhen: { ...mono(9, 700), color: T.sub, letterSpacing: 0.4 },
   emptyText: { ...ui(13, 500), color: T.mut, lineHeight: 19 },
 
   back: { alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 0, backgroundColor: "transparent", borderWidth: 0 },

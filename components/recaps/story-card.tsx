@@ -6,40 +6,84 @@
 
 import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { Medal } from "@/components/medals/medal";
 import { HeroBackdrop } from "@/components/ui/hero-backdrop";
-import { MountainMark } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Ring } from "@/components/ui/ring";
 import { RARITY, T, disp, mono, ui } from "@/constants/theme";
-import type { Recap } from "@/lib/recaps";
+import { PHOTOS } from "@/lib/photos";
+import type { Recap, SessionBreakdown } from "@/lib/recaps";
 
-function StoryShell({ tone = "green", rank, footer, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; children: ReactNode }) {
+/** "74" → "1h14m"; "48" → "48m"; "120" → "2h". */
+function fmtDur(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  if (h <= 0) return `${m}m`;
+  return m > 0 ? `${h}h${m}m` : `${h}h`;
+}
+
+/** Per-discipline list: count · time · distance · elevation (each shown only if present). */
+function Breakdown({ items }: { items: SessionBreakdown[] }) {
+  if (items.length === 0) return null;
+  return (
+    <View style={styles.breakdown}>
+      {items.slice(0, 5).map((b, i) => (
+        <View key={b.type} style={[styles.bdRow, i > 0 && styles.bdDivider]}>
+          <Icon name={b.icon} size={16} color="#fff" />
+          <Text style={styles.bdLabel}>{b.label}</Text>
+          <Text style={styles.bdMeta} numberOfLines={1}>
+            {b.sessions}× · {fmtDur(b.minutes)}
+            {b.km > 0 ? ` · ${b.km}km` : ""}
+            {b.elevationM > 0 ? ` · ↑${Math.round(b.elevationM)}m` : ""}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function Brand({ rank }: { rank: string }) {
+  return (
+    <View style={styles.topRow}>
+      <View style={styles.brand}>
+        <BrandLogo variant="symbol" style={styles.brandMark} />
+        <Text style={styles.brandText}>STREM</Text>
+      </View>
+      <Text style={styles.rank}>{rank.toUpperCase()}</Text>
+    </View>
+  );
+}
+
+function StoryShell({ tone = "green", rank, footer, photo, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; children: ReactNode }) {
   const accent = tone === "red" ? T.red : tone === "legendary" ? "#F4C45A" : T.green;
+
+  // Photo recaps: the image sits as a natural 16:9 top banner (not stretched
+  // full-bleed → no zoom), with the stats on a clean dark panel below.
+  if (photo) {
+    return (
+      <View style={styles.shell}>
+        <View style={styles.banner}>
+          <Image source={photo} style={styles.bannerImg} resizeMode="cover" />
+          <LinearGradient colors={["rgba(8,9,11,0.55)", "transparent"]} style={styles.bannerTopShade} />
+          <LinearGradient colors={["transparent", "transparent", "#08090b"]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+        </View>
+        <View style={styles.photoBody}>{children}</View>
+        {footer ? <Text style={styles.footerAbs}>{footer}</Text> : null}
+      </View>
+    );
+  }
+
+  // No-photo recaps (medal): full-bleed brand backdrop, content centered.
   return (
     <View style={styles.shell}>
       <HeroBackdrop tone={tone === "red" ? "red" : "green"} />
-      <MountainMark size={420} color="#9fb0a8" style={styles.watermark} />
-      <LinearGradient
-        colors={[`${accent}22`, "transparent"]}
-        style={styles.topGlow}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.5 }}
-      />
-      <LinearGradient
-        colors={["rgba(8,9,11,0.5)", "transparent", "rgba(8,9,11,0.55)", "#08090b"]}
-        locations={[0, 0.3, 0.7, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      <LinearGradient colors={[`${accent}22`, "transparent"]} style={styles.topGlow} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }} />
+      <LinearGradient colors={["rgba(8,9,11,0.5)", "transparent", "rgba(8,9,11,0.55)", "#08090b"]} locations={[0, 0.3, 0.7, 1]} style={StyleSheet.absoluteFill} />
       <View style={styles.content}>
-        <View style={styles.topRow}>
-          <View style={styles.brand}>
-            <MountainMark size={20} />
-            <Text style={styles.brandText}>STREM</Text>
-          </View>
-          <Text style={styles.rank}>{rank.toUpperCase()}</Text>
-        </View>
+        <Brand rank={rank} />
         <View style={styles.body}>{children}</View>
         {footer ? <Text style={styles.footer}>{footer}</Text> : null}
       </View>
@@ -59,39 +103,20 @@ function BigStat({ value, unit, label, color = "#fff", size = 72 }: { value: str
   );
 }
 
-function MiniBars({ data, color = T.green }: { data: { d: string; v: number }[]; color?: string }) {
-  const max = Math.max(...data.map((d) => d.v), 1);
-  return (
-    <View style={styles.miniBars}>
-      {data.map((d, i) => (
-        <View key={i} style={styles.miniCol}>
-          <View
-            style={[
-              styles.miniBar,
-              { height: Math.max(6, (d.v / max) * 54), backgroundColor: d.v ? color : "rgba(255,255,255,0.12)" },
-              d.v ? { boxShadow: `0px 0px 8px ${color}66` } : null,
-            ]}
-          />
-          <Text style={styles.miniLabel}>{d.d}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   if (recap.type === "weekly") {
     return (
-      <StoryShell rank={rank} footer={`Hold the line. — ${recap.weekLabel}`}>
+      <StoryShell rank={rank} photo={PHOTOS.tribe} footer={`Hold the line. — ${recap.weekLabel}`}>
         <Text style={styles.eyebrow}>WEEKLY RECAP</Text>
-        <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={84} />
-        <View style={styles.statRow}>
-          <BigStat value={recap.distanceKm > 0 ? String(recap.distanceKm) : "0"} unit="km" label="DISTANCE" size={40} />
-          <BigStat value={recap.totalXp.toLocaleString()} unit="XP" label="TOTAL" color={T.green} size={40} />
-          <BigStat value={String(recap.streak)} unit={recap.streak === 1 ? "day" : "days"} label="STREAK" size={40} />
+        <View style={styles.weekHead}>
+          <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={72} />
+          {recap.minutes > 0 ? <BigStat value={fmtDur(recap.minutes)} label="TOTAL TIME" color={T.green} size={36} /> : null}
         </View>
-        <View style={styles.barsWrap}>
-          <MiniBars data={recap.bars} />
+        <Breakdown items={recap.byType} />
+        <View style={styles.statRow}>
+          <BigStat value={recap.distanceKm > 0 ? String(recap.distanceKm) : "0"} unit="km" label="DISTANCE" size={36} />
+          <BigStat value={recap.totalXp.toLocaleString()} unit="XP" label="TOTAL" color={T.green} size={36} />
+          <BigStat value={String(recap.streak)} unit={recap.streak === 1 ? "day" : "days"} label="STREAK" size={36} />
         </View>
       </StoryShell>
     );
@@ -99,14 +124,14 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
   if (recap.type === "monthly") {
     return (
-      <StoryShell rank={rank} footer="The base you built.">
+      <StoryShell rank={rank} photo={PHOTOS.strength} footer="The base you built.">
         <Text style={styles.eyebrow}>MONTHLY RECAP</Text>
         <Text style={styles.monthName}>{recap.monthLabel}</Text>
-        <View style={styles.monthGrid}>
-          <BigStat value={String(recap.sessions)} unit="sessions" label="TRAINED" size={44} />
-          <BigStat value={String(recap.distanceKm)} unit="km" label="RUN" size={44} />
-          <BigStat value={String(recap.hours)} unit="h" label="MOVING" size={44} />
+        <View style={styles.monthTotals}>
+          <BigStat value={String(recap.sessions)} unit="sessions" label="TRAINED" size={40} />
+          <BigStat value={String(recap.hours)} unit="h" label="MOVING" color={T.green} size={40} />
         </View>
+        <Breakdown items={recap.byType} />
         {recap.topMedal ? (
           <View style={styles.topMedalRow}>
             <Medal rarity={recap.topMedal.rarity} emblem={recap.topMedal.emblem} size={56} />
@@ -141,7 +166,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   // consistency
   const total = recap.trainingDays + recap.nutritionDays;
   return (
-    <StoryShell rank={rank} footer="Consistency, not perfection.">
+    <StoryShell rank={rank} photo={PHOTOS.hyrox} footer="Consistency, not perfection.">
       <Text style={styles.eyebrow}>CONSISTENCY</Text>
       <View style={styles.consRow}>
         <Ring size={128} stroke={12} pct={Math.min(1, total / 14)}>
@@ -160,11 +185,19 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
 const styles = StyleSheet.create({
   shell: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden", backgroundColor: "#08090b" },
-  watermark: { position: "absolute", top: 120, right: -130, opacity: 0.08 },
   topGlow: { position: "absolute", top: 0, left: 0, right: 0, height: "55%" },
   content: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingTop: 64, paddingBottom: 70, flexDirection: "column" },
+
+  // photo-banner layout (un-zoomed)
+  banner: { width: "100%", aspectRatio: 16 / 9, position: "relative" },
+  bannerImg: { width: "100%", height: "100%" },
+  bannerTopShade: { position: "absolute", top: 0, left: 0, right: 0, height: "42%" },
+  photoBody: { flex: 1, paddingHorizontal: 26, paddingTop: 28, justifyContent: "flex-start" },
+  footerAbs: { position: "absolute", left: 0, right: 0, bottom: 64, paddingHorizontal: 26, ...ui(13, 600), color: "rgba(255,255,255,0.6)", textAlign: "center" },
+
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 26 },
   brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  brandMark: { width: 24, height: 24 },
   brandText: { ...disp(13, 700), letterSpacing: 3.1, color: "#fff" },
   rank: { ...mono(11, 600), color: "rgba(255,255,255,0.7)", letterSpacing: 0.8 },
   body: { flex: 1, justifyContent: "center", paddingHorizontal: 26, gap: 0 },
@@ -176,15 +209,18 @@ const styles = StyleSheet.create({
   bigStatUnit: { color: "rgba(255,255,255,0.6)" },
   bigStatLabel: { ...mono(10, 700), letterSpacing: 1.4, color: "rgba(255,255,255,0.55)", marginTop: 6 },
   statRow: { flexDirection: "row", gap: 22, marginTop: 22 },
-  barsWrap: { marginTop: 26 },
-  miniBars: { flexDirection: "row", alignItems: "flex-end", gap: 8, height: 60 },
-  miniCol: { flex: 1, alignItems: "center", gap: 6 },
-  miniBar: { width: "100%", borderRadius: 4 },
-  miniLabel: { ...mono(9, 600), color: "rgba(255,255,255,0.5)" },
+  weekHead: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 16 },
 
-  monthName: { ...disp(96, 800), color: "#fff", lineHeight: 82, marginTop: 4 },
-  monthGrid: { flexDirection: "row", flexWrap: "wrap", gap: 26, marginTop: 26 },
-  topMedalRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 28 },
+  // per-discipline breakdown
+  breakdown: { marginTop: 22, gap: 0 },
+  bdRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  bdDivider: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.12)" },
+  bdLabel: { ...ui(15, 700), color: "#fff", width: 96 },
+  bdMeta: { flex: 1, ...mono(11, 600), color: "rgba(255,255,255,0.72)", letterSpacing: 0.2, textAlign: "right" },
+
+  monthName: { ...disp(80, 800), color: "#fff", lineHeight: 70, marginTop: 4 },
+  monthTotals: { flexDirection: "row", gap: 26, marginTop: 18 },
+  topMedalRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 22 },
   topMedalLabel: { ...mono(10, 700), color: T.green, letterSpacing: 1 },
   topMedalName: { ...ui(17, 700), color: "#fff" },
 

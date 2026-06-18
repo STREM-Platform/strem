@@ -11,7 +11,7 @@
 
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
@@ -22,6 +22,7 @@ import { T, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import type { NutritionDay } from "@/lib/api/types";
 import { FLAGS } from "@/lib/flags";
+import { PHOTOS } from "@/lib/photos";
 import { useAsync } from "@/lib/use-async";
 
 const SAMPLE_TARGETS = { cal: 2600, protein: 180, carbs: 280, fat: 80, water: 3.0 };
@@ -86,6 +87,18 @@ export default function FuelScreen() {
           title="Fuel"
           action={streak > 0 ? <Chip label={`${streak}-DAY`} icon="flame" /> : undefined}
         />
+
+        {/* photo banner — fuel for the session */}
+        <View style={styles.sideMargin}>
+          <View style={styles.banner}>
+            <Image source={PHOTOS.fuel} style={styles.bannerImg} resizeMode="cover" />
+            <View style={styles.bannerScrim} />
+            <View style={styles.bannerCaption}>
+              <Text style={styles.bannerEyebrow}>PERFORMANCE FUEL</Text>
+              <Text style={styles.bannerTitle}>Eat for the session, not the scale</Text>
+            </View>
+          </View>
+        </View>
 
         {/* preview, matching the prototype order: macros → log → hydration → meals */}
         {FLAGS.nutritionMacrosPreview ? (
@@ -248,6 +261,13 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 124 },
   sideMargin: { marginHorizontal: 16 },
   shrink: { flexShrink: 1, flex: 1 },
+
+  banner: { height: 140, borderRadius: 16, overflow: "hidden", marginBottom: 16, position: "relative" },
+  bannerImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  bannerScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(8,9,11,0.4)" },
+  bannerCaption: { position: "absolute", left: 14, right: 14, bottom: 12 },
+  bannerEyebrow: { ...mono(9, 700), letterSpacing: 1.4, color: T.green },
+  bannerTitle: { ...disp(20, 800), color: "#fff", marginTop: 3, lineHeight: 21 },
 
   heroWatermark: { position: "absolute", top: -30, right: -50, opacity: 0.05 },
   previewTag: { ...mono(9, 700), letterSpacing: 1.2, color: T.sub, marginBottom: 12 },

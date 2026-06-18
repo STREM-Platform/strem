@@ -152,7 +152,19 @@ export const T = {
   red: "#E5402A",
   redSoft: "rgba(229,64,42,0.12)",
   redLine: "rgba(229,64,42,0.30)",
+  // Amber marks "moderate" readiness and proactive (caution-not-alarm) agent
+  // states — the third signal between green (proof/go) and red (at-risk/stop).
+  amber: "#F4B740",
+  amberSoft: "rgba(244,183,64,0.12)",
+  amberLine: "rgba(244,183,64,0.30)",
 } as const;
+
+/** Readiness → signal colour. ≥75 green · ≥50 amber · else red. */
+export function readinessColor(v: number): string {
+  if (v >= 75) return T.green;
+  if (v >= 50) return T.amber;
+  return T.red;
+}
 
 export type ThemeToken = keyof typeof T;
 
