@@ -8,6 +8,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
 import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { Medal } from "@/components/medals/medal";
 import { HeroBackdrop } from "@/components/ui/hero-backdrop";
 import { MountainMark } from "@/components/ui/icon";
@@ -43,7 +44,7 @@ function StoryShell({ tone = "green", rank, footer, photo, children }: { tone?: 
       <View style={styles.content}>
         <View style={styles.topRow}>
           <View style={styles.brand}>
-            <MountainMark size={20} />
+            <BrandLogo variant="symbol" style={styles.brandMark} />
             <Text style={styles.brandText}>STREM</Text>
           </View>
           <Text style={styles.rank}>{rank.toUpperCase()}</Text>
@@ -90,7 +91,7 @@ function MiniBars({ data, color = T.green }: { data: { d: string; v: number }[];
 export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   if (recap.type === "weekly") {
     return (
-      <StoryShell rank={rank} photo={PHOTOS.heroRun} footer={`Hold the line. — ${recap.weekLabel}`}>
+      <StoryShell rank={rank} photo={PHOTOS.coachData} footer={`Hold the line. — ${recap.weekLabel}`}>
         <Text style={styles.eyebrow}>WEEKLY RECAP</Text>
         <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={84} />
         <View style={styles.statRow}>
@@ -107,7 +108,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
   if (recap.type === "monthly") {
     return (
-      <StoryShell rank={rank} photo={PHOTOS.strength} footer="The base you built.">
+      <StoryShell rank={rank} photo={PHOTOS.heroRun} footer="The base you built.">
         <Text style={styles.eyebrow}>MONTHLY RECAP</Text>
         <Text style={styles.monthName}>{recap.monthLabel}</Text>
         <View style={styles.monthGrid}>
@@ -149,7 +150,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   // consistency
   const total = recap.trainingDays + recap.nutritionDays;
   return (
-    <StoryShell rank={rank} photo={PHOTOS.identity} footer="Consistency, not perfection.">
+    <StoryShell rank={rank} photo={PHOTOS.tribe} footer="Consistency, not perfection.">
       <Text style={styles.eyebrow}>CONSISTENCY</Text>
       <View style={styles.consRow}>
         <Ring size={128} stroke={12} pct={Math.min(1, total / 14)}>
@@ -175,6 +176,7 @@ const styles = StyleSheet.create({
   content: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingTop: 64, paddingBottom: 70, flexDirection: "column" },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 26 },
   brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  brandMark: { width: 24, height: 24 },
   brandText: { ...disp(13, 700), letterSpacing: 3.1, color: "#fff" },
   rank: { ...mono(11, 600), color: "rgba(255,255,255,0.7)", letterSpacing: 0.8 },
   body: { flex: 1, justifyContent: "center", paddingHorizontal: 26, gap: 0 },

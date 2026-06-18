@@ -234,7 +234,7 @@ function IdentityHero({
   const rankIndex = Math.max(0, RANKS.indexOf(profile.rank)) + 1;
   return (
     <View style={styles.hero}>
-      <Image source={PHOTOS.profileBg} style={styles.heroImg} resizeMode="cover" />
+      <Image source={PHOTOS.identity} style={styles.heroImg} resizeMode="cover" />
       <View style={styles.heroScrim} />
       <View style={[styles.heroTop, { paddingTop: topInset + 14 }]}>
         <Text style={styles.heroBrand}>STREM</Text>
