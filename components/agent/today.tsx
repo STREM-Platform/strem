@@ -16,7 +16,6 @@ import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CiteChips, ReadinessRing } from "@/components/agent/shared";
-import { HeroBackdrop } from "@/components/ui/hero-backdrop";
 import { Icon } from "@/components/ui/icon";
 import { Btn, IconTile, Panel } from "@/components/ui/primitives";
 import { T, disp, mono, readinessColor, ui } from "@/constants/theme";
@@ -149,7 +148,6 @@ export function TodaysClimb({ onStart }: { onStart: () => void }) {
 
       {/* recommended action — photo-backed, settles fully visible */}
       <View style={styles.actionWrap}>
-        <HeroBackdrop tone="green" glow={false} />
         <Image source={PHOTOS.heroRun} style={styles.actionImg} resizeMode="cover" />
         <View style={styles.actionScrim} />
         <View style={styles.actionRow}>

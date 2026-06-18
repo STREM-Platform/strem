@@ -18,7 +18,6 @@ import { FormError, PrimaryButton, TextField } from "@/components/form";
 import { OptionSelect, type Option } from "@/components/select";
 import { CaptureFlow } from "@/components/workout/capture-flow";
 import { Debrief, LiveWorkout } from "@/components/workout/live-session";
-import { HeroBackdrop } from "@/components/ui/hero-backdrop";
 import { Icon } from "@/components/ui/icon";
 import { Btn, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
@@ -132,7 +131,6 @@ function TrainLanding({
         {FLAGS.forgeAgentMock && workout ? (
           <Panel raised accent={T.amberLine} style={styles.sideMargin} pad={0}>
             <View style={styles.sessionImgWrap}>
-              <HeroBackdrop tone="green" glow={false} />
               <Image source={PHOTOS.strength} style={styles.sessionImg} resizeMode="cover" />
               <View style={styles.sessionScrim} />
               <View style={styles.sessionCaption}>
@@ -214,7 +212,6 @@ function TrainLanding({
           <Panel raised accent={T.greenLine} pad={0}>
             <Pressable onPress={onShare}>
               <View style={styles.shareImgWrap}>
-                <HeroBackdrop tone="green" glow={false} />
                 <Image source={PHOTOS.run} style={styles.shareImg} resizeMode="cover" />
                 <View style={styles.shareScrim} />
                 <View style={styles.shareRow}>

@@ -11,7 +11,7 @@ import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-n
 import { BrandLogo } from "@/components/brand-logo";
 import { Medal } from "@/components/medals/medal";
 import { HeroBackdrop } from "@/components/ui/hero-backdrop";
-import { Icon, MountainMark } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Ring } from "@/components/ui/ring";
 import { RARITY, T, disp, mono, ui } from "@/constants/theme";
 import { PHOTOS } from "@/lib/photos";
@@ -45,38 +45,48 @@ function Breakdown({ items }: { items: SessionBreakdown[] }) {
   );
 }
 
+function Brand({ rank }: { rank: string }) {
+  return (
+    <View style={styles.topRow}>
+      <View style={styles.brand}>
+        <BrandLogo variant="symbol" style={styles.brandMark} />
+        <Text style={styles.brandText}>STREM</Text>
+      </View>
+      <Text style={styles.rank}>{rank.toUpperCase()}</Text>
+    </View>
+  );
+}
+
 function StoryShell({ tone = "green", rank, footer, photo, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; children: ReactNode }) {
   const accent = tone === "red" ? T.red : tone === "legendary" ? "#F4C45A" : T.green;
+
+  // Photo recaps: the image sits as a natural 16:9 top banner (not stretched
+  // full-bleed → no zoom), with the stats on a clean dark panel below.
+  if (photo) {
+    return (
+      <View style={styles.shell}>
+        <View style={styles.banner}>
+          <Image source={photo} style={styles.bannerImg} resizeMode="cover" />
+          <LinearGradient colors={["rgba(8,9,11,0.55)", "transparent"]} style={styles.bannerTopShade} />
+          <LinearGradient colors={["transparent", "transparent", "#08090b"]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+        </View>
+        <View style={styles.photoBody}>{children}</View>
+        <View style={styles.topRowAbs}>
+          <Brand rank={rank} />
+        </View>
+        {footer ? <Text style={styles.footerAbs}>{footer}</Text> : null}
+      </View>
+    );
+  }
+
+  // No-photo recaps (medal): full-bleed brand backdrop, content centered.
   return (
     <View style={styles.shell}>
-      {photo ? (
-        <>
-          <Image source={photo} style={styles.photo} resizeMode="cover" />
-          <View style={styles.photoScrim} />
-        </>
-      ) : (
-        <HeroBackdrop tone={tone === "red" ? "red" : "green"} />
-      )}
-      <MountainMark size={420} color="#9fb0a8" style={styles.watermark} />
-      <LinearGradient
-        colors={[`${accent}22`, "transparent"]}
-        style={styles.topGlow}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.5 }}
-      />
-      <LinearGradient
-        colors={["rgba(8,9,11,0.5)", "transparent", "rgba(8,9,11,0.55)", "#08090b"]}
-        locations={[0, 0.3, 0.7, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      <HeroBackdrop tone={tone === "red" ? "red" : "green"} />
+      <LinearGradient colors={[`${accent}22`, "transparent"]} style={styles.topGlow} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }} />
+      <LinearGradient colors={["rgba(8,9,11,0.5)", "transparent", "rgba(8,9,11,0.55)", "#08090b"]} locations={[0, 0.3, 0.7, 1]} style={StyleSheet.absoluteFill} />
       <View style={styles.content}>
-        <View style={styles.topRow}>
-          <View style={styles.brand}>
-            <BrandLogo variant="symbol" style={styles.brandMark} />
-            <Text style={styles.brandText}>STREM</Text>
-          </View>
-          <Text style={styles.rank}>{rank.toUpperCase()}</Text>
-        </View>
+        <Brand rank={rank} />
         <View style={styles.body}>{children}</View>
         {footer ? <Text style={styles.footer}>{footer}</Text> : null}
       </View>
@@ -178,11 +188,17 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
 const styles = StyleSheet.create({
   shell: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden", backgroundColor: "#08090b" },
-  photo: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
-  photoScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(8,9,11,0.5)" },
-  watermark: { position: "absolute", top: 120, right: -130, opacity: 0.08 },
   topGlow: { position: "absolute", top: 0, left: 0, right: 0, height: "55%" },
   content: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingTop: 64, paddingBottom: 70, flexDirection: "column" },
+
+  // photo-banner layout (un-zoomed)
+  banner: { width: "100%", aspectRatio: 16 / 9, position: "relative" },
+  bannerImg: { width: "100%", height: "100%" },
+  bannerTopShade: { position: "absolute", top: 0, left: 0, right: 0, height: "42%" },
+  photoBody: { flex: 1, paddingHorizontal: 26, paddingTop: 24, justifyContent: "center" },
+  topRowAbs: { position: "absolute", top: 0, left: 0, right: 0, paddingTop: 56, paddingHorizontal: 26 },
+  footerAbs: { position: "absolute", left: 0, right: 0, bottom: 64, paddingHorizontal: 26, ...ui(13, 600), color: "rgba(255,255,255,0.6)", textAlign: "center" },
+
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 26 },
   brand: { flexDirection: "row", alignItems: "center", gap: 8 },
   brandMark: { width: 24, height: 24 },
