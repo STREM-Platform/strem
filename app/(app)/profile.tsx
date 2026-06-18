@@ -11,7 +11,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,6 +24,7 @@ import { ChaptersView, LeagueView, ProofTimeline } from "@/components/profile/pr
 import { BottomNav } from "@/components/bottom-nav";
 import { MedalCard } from "@/components/medals/medal-card";
 import { Celebration, celebrationFromMoment, type CelebrationData } from "@/components/ui/celebration";
+import { HeroBackdrop } from "@/components/ui/hero-backdrop";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Bar, Panel, SectionHead } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
@@ -33,7 +33,6 @@ import type { EarnedMedal, UserProfile, XPSummary } from "@/lib/api/types";
 import { FLAGS } from "@/lib/flags";
 import { formatShortDate } from "@/lib/format";
 import { MEDAL_CATALOGUE } from "@/lib/medals";
-import { PHOTOS } from "@/lib/photos";
 import { detectMoment, type ProgressionSnapshot } from "@/lib/progression";
 import { useAsync } from "@/lib/use-async";
 
@@ -234,7 +233,7 @@ function IdentityHero({
   const rankIndex = Math.max(0, RANKS.indexOf(profile.rank)) + 1;
   return (
     <View style={styles.hero}>
-      <Image source={PHOTOS.identity} style={styles.heroImg} resizeMode="cover" />
+      <HeroBackdrop tone="green" />
       <View style={styles.heroScrim} />
       <View style={[styles.heroTop, { paddingTop: topInset + 14 }]}>
         <Text style={styles.heroBrand}>STREM</Text>
@@ -276,8 +275,7 @@ const styles = StyleSheet.create({
 
   // identity hero
   hero: { height: 320, position: "relative", overflow: "hidden", backgroundColor: "#0a0c10" },
-  heroImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
-  heroScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(8,9,11,0.45)" },
+  heroScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(8,9,11,0.2)" },
   heroTop: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   heroBrand: { ...disp(13, 700), letterSpacing: 3.4, color: "#fff", textShadowColor: "rgba(0,0,0,0.6)", textShadowRadius: 12, textShadowOffset: { width: 0, height: 2 } },
   heroSettings: { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(13,16,21,0.5)", borderWidth: 1, borderColor: T.line2 },

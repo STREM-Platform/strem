@@ -7,6 +7,7 @@
  * omitted (no PR / structured-volume history in the contract) rather than faked.
  */
 
+import type { IconName } from "@/constants/theme";
 import type { EarnedMedal, NutritionDay, TrainingSession, XPSummary } from "@/lib/api/types";
 import { medalDefinitionFor, type MedalDefinition } from "@/lib/medals";
 
@@ -19,12 +20,58 @@ export interface RecapInputs {
   medals: EarnedMedal[];
 }
 
+/** Per-discipline rollup for a recap: count, time, distance and elevation. */
+export interface SessionBreakdown {
+  type: string;
+  label: string;
+  icon: IconName;
+  sessions: number;
+  minutes: number;
+  km: number;
+  elevationM: number;
+}
+
+// Discipline display map. The contract logs strength / running / mobility today;
+// the rest are wired so swim / bike / trail / hybrid + elevation light up the
+// moment the backend (BE-D5) starts returning them — no recap change needed.
+const DISCIPLINE: Record<string, { label: string; icon: IconName }> = {
+  strength: { label: "Strength", icon: "dumbbell" },
+  running: { label: "Run", icon: "route" },
+  trail_running: { label: "Trail run", icon: "mountain" },
+  cycling: { label: "Bike", icon: "compass" },
+  swimming: { label: "Swim", icon: "route" },
+  mobility: { label: "Mobility", icon: "refresh" },
+  hybrid: { label: "Hybrid", icon: "flame" },
+  hyrox: { label: "HYROX", icon: "timer" },
+};
+const FALLBACK = { label: "Session", icon: "bolt" as IconName };
+
+function breakdown(sessions: TrainingSession[]): SessionBreakdown[] {
+  const map = new Map<string, SessionBreakdown>();
+  for (const s of sessions) {
+    const d = DISCIPLINE[s.session_type] ?? FALLBACK;
+    const cur =
+      map.get(s.session_type) ??
+      { type: s.session_type, label: d.label, icon: d.icon, sessions: 0, minutes: 0, km: 0, elevationM: 0 };
+    cur.sessions += 1;
+    cur.minutes += s.duration_minutes;
+    cur.km += s.distance_km ?? 0;
+    cur.elevationM += s.elevation_m ?? 0;
+    map.set(s.session_type, cur);
+  }
+  return [...map.values()]
+    .map((b) => ({ ...b, km: Math.round(b.km * 10) / 10 }))
+    .sort((a, b) => b.minutes - a.minutes);
+}
+
 export interface WeeklyRecap {
   type: "weekly";
   sessions: number;
   distanceKm: number;
+  minutes: number;
   streak: number;
   totalXp: number;
+  byType: SessionBreakdown[];
   bars: { d: string; v: number }[];
   weekLabel: string;
 }
@@ -34,6 +81,7 @@ export interface MonthlyRecap {
   sessions: number;
   distanceKm: number;
   hours: number;
+  byType: SessionBreakdown[];
   topMedal?: MedalDefinition;
 }
 export interface MedalRecap {
@@ -72,22 +120,26 @@ function buildWeekly(inputs: RecapInputs): WeeklyRecap {
   const labels = ["M", "T", "W", "T", "F", "S", "S"];
   const counts = new Array(7).fill(0);
   let distanceKm = 0;
-  let sessions = 0;
+  let minutes = 0;
+  const weekSessions: TrainingSession[] = [];
   for (const s of inputs.sessions) {
     const t = new Date(s.logged_at);
     if (t >= monday) {
       const idx = (t.getDay() + 6) % 7;
       counts[idx] += 1;
-      sessions += 1;
       distanceKm += s.distance_km ?? 0;
+      minutes += s.duration_minutes;
+      weekSessions.push(s);
     }
   }
   return {
     type: "weekly",
-    sessions,
+    sessions: weekSessions.length,
     distanceKm: Math.round(distanceKm * 10) / 10,
+    minutes,
     streak: inputs.xp.current_streak_days,
     totalXp: inputs.xp.total_xp,
+    byType: breakdown(weekSessions),
     bars: labels.map((d, i) => ({ d, v: counts[i] })),
     weekLabel: `Week of ${shortDate(monday)}`,
   };
@@ -97,23 +149,24 @@ function buildMonthly(inputs: RecapInputs): MonthlyRecap {
   const now = new Date();
   const m = now.getMonth();
   const y = now.getFullYear();
-  let sessions = 0;
   let distanceKm = 0;
   let minutes = 0;
+  const monthSessions: TrainingSession[] = [];
   for (const s of inputs.sessions) {
     const t = new Date(s.logged_at);
     if (t.getMonth() === m && t.getFullYear() === y) {
-      sessions += 1;
       distanceKm += s.distance_km ?? 0;
       minutes += s.duration_minutes;
+      monthSessions.push(s);
     }
   }
   return {
     type: "monthly",
     monthLabel: MONTHS[m],
-    sessions,
+    sessions: monthSessions.length,
     distanceKm: Math.round(distanceKm),
     hours: Math.round(minutes / 60),
+    byType: breakdown(monthSessions),
     topMedal: latestMedalDef(inputs.medals),
   };
 }

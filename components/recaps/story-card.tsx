@@ -11,11 +11,39 @@ import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-n
 import { BrandLogo } from "@/components/brand-logo";
 import { Medal } from "@/components/medals/medal";
 import { HeroBackdrop } from "@/components/ui/hero-backdrop";
-import { MountainMark } from "@/components/ui/icon";
+import { Icon, MountainMark } from "@/components/ui/icon";
 import { Ring } from "@/components/ui/ring";
 import { RARITY, T, disp, mono, ui } from "@/constants/theme";
 import { PHOTOS } from "@/lib/photos";
-import type { Recap } from "@/lib/recaps";
+import type { Recap, SessionBreakdown } from "@/lib/recaps";
+
+/** "74" → "1h14m"; "48" → "48m"; "120" → "2h". */
+function fmtDur(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  if (h <= 0) return `${m}m`;
+  return m > 0 ? `${h}h${m}m` : `${h}h`;
+}
+
+/** Per-discipline list: count · time · distance · elevation (each shown only if present). */
+function Breakdown({ items }: { items: SessionBreakdown[] }) {
+  if (items.length === 0) return null;
+  return (
+    <View style={styles.breakdown}>
+      {items.slice(0, 5).map((b, i) => (
+        <View key={b.type} style={[styles.bdRow, i > 0 && styles.bdDivider]}>
+          <Icon name={b.icon} size={16} color="#fff" />
+          <Text style={styles.bdLabel}>{b.label}</Text>
+          <Text style={styles.bdMeta} numberOfLines={1}>
+            {b.sessions}× · {fmtDur(b.minutes)}
+            {b.km > 0 ? ` · ${b.km}km` : ""}
+            {b.elevationM > 0 ? ` · ↑${Math.round(b.elevationM)}m` : ""}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 function StoryShell({ tone = "green", rank, footer, photo, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; children: ReactNode }) {
   const accent = tone === "red" ? T.red : tone === "legendary" ? "#F4C45A" : T.green;
@@ -68,39 +96,20 @@ function BigStat({ value, unit, label, color = "#fff", size = 72 }: { value: str
   );
 }
 
-function MiniBars({ data, color = T.green }: { data: { d: string; v: number }[]; color?: string }) {
-  const max = Math.max(...data.map((d) => d.v), 1);
-  return (
-    <View style={styles.miniBars}>
-      {data.map((d, i) => (
-        <View key={i} style={styles.miniCol}>
-          <View
-            style={[
-              styles.miniBar,
-              { height: Math.max(6, (d.v / max) * 54), backgroundColor: d.v ? color : "rgba(255,255,255,0.12)" },
-              d.v ? { boxShadow: `0px 0px 8px ${color}66` } : null,
-            ]}
-          />
-          <Text style={styles.miniLabel}>{d.d}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   if (recap.type === "weekly") {
     return (
-      <StoryShell rank={rank} photo={PHOTOS.coachData} footer={`Hold the line. — ${recap.weekLabel}`}>
+      <StoryShell rank={rank} photo={PHOTOS.tribe} footer={`Hold the line. — ${recap.weekLabel}`}>
         <Text style={styles.eyebrow}>WEEKLY RECAP</Text>
-        <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={84} />
-        <View style={styles.statRow}>
-          <BigStat value={recap.distanceKm > 0 ? String(recap.distanceKm) : "0"} unit="km" label="DISTANCE" size={40} />
-          <BigStat value={recap.totalXp.toLocaleString()} unit="XP" label="TOTAL" color={T.green} size={40} />
-          <BigStat value={String(recap.streak)} unit={recap.streak === 1 ? "day" : "days"} label="STREAK" size={40} />
+        <View style={styles.weekHead}>
+          <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={72} />
+          {recap.minutes > 0 ? <BigStat value={fmtDur(recap.minutes)} label="TOTAL TIME" color={T.green} size={36} /> : null}
         </View>
-        <View style={styles.barsWrap}>
-          <MiniBars data={recap.bars} />
+        <Breakdown items={recap.byType} />
+        <View style={styles.statRow}>
+          <BigStat value={recap.distanceKm > 0 ? String(recap.distanceKm) : "0"} unit="km" label="DISTANCE" size={36} />
+          <BigStat value={recap.totalXp.toLocaleString()} unit="XP" label="TOTAL" color={T.green} size={36} />
+          <BigStat value={String(recap.streak)} unit={recap.streak === 1 ? "day" : "days"} label="STREAK" size={36} />
         </View>
       </StoryShell>
     );
@@ -108,14 +117,14 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
   if (recap.type === "monthly") {
     return (
-      <StoryShell rank={rank} photo={PHOTOS.heroRun} footer="The base you built.">
+      <StoryShell rank={rank} photo={PHOTOS.strength} footer="The base you built.">
         <Text style={styles.eyebrow}>MONTHLY RECAP</Text>
         <Text style={styles.monthName}>{recap.monthLabel}</Text>
-        <View style={styles.monthGrid}>
-          <BigStat value={String(recap.sessions)} unit="sessions" label="TRAINED" size={44} />
-          <BigStat value={String(recap.distanceKm)} unit="km" label="RUN" size={44} />
-          <BigStat value={String(recap.hours)} unit="h" label="MOVING" size={44} />
+        <View style={styles.monthTotals}>
+          <BigStat value={String(recap.sessions)} unit="sessions" label="TRAINED" size={40} />
+          <BigStat value={String(recap.hours)} unit="h" label="MOVING" color={T.green} size={40} />
         </View>
+        <Breakdown items={recap.byType} />
         {recap.topMedal ? (
           <View style={styles.topMedalRow}>
             <Medal rarity={recap.topMedal.rarity} emblem={recap.topMedal.emblem} size={56} />
@@ -150,7 +159,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   // consistency
   const total = recap.trainingDays + recap.nutritionDays;
   return (
-    <StoryShell rank={rank} photo={PHOTOS.tribe} footer="Consistency, not perfection.">
+    <StoryShell rank={rank} photo={PHOTOS.identity} footer="Consistency, not perfection.">
       <Text style={styles.eyebrow}>CONSISTENCY</Text>
       <View style={styles.consRow}>
         <Ring size={128} stroke={12} pct={Math.min(1, total / 14)}>
@@ -188,15 +197,18 @@ const styles = StyleSheet.create({
   bigStatUnit: { color: "rgba(255,255,255,0.6)" },
   bigStatLabel: { ...mono(10, 700), letterSpacing: 1.4, color: "rgba(255,255,255,0.55)", marginTop: 6 },
   statRow: { flexDirection: "row", gap: 22, marginTop: 22 },
-  barsWrap: { marginTop: 26 },
-  miniBars: { flexDirection: "row", alignItems: "flex-end", gap: 8, height: 60 },
-  miniCol: { flex: 1, alignItems: "center", gap: 6 },
-  miniBar: { width: "100%", borderRadius: 4 },
-  miniLabel: { ...mono(9, 600), color: "rgba(255,255,255,0.5)" },
+  weekHead: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 16 },
 
-  monthName: { ...disp(96, 800), color: "#fff", lineHeight: 82, marginTop: 4 },
-  monthGrid: { flexDirection: "row", flexWrap: "wrap", gap: 26, marginTop: 26 },
-  topMedalRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 28 },
+  // per-discipline breakdown
+  breakdown: { marginTop: 22, gap: 0 },
+  bdRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  bdDivider: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.12)" },
+  bdLabel: { ...ui(15, 700), color: "#fff", width: 96 },
+  bdMeta: { flex: 1, ...mono(11, 600), color: "rgba(255,255,255,0.72)", letterSpacing: 0.2, textAlign: "right" },
+
+  monthName: { ...disp(80, 800), color: "#fff", lineHeight: 70, marginTop: 4 },
+  monthTotals: { flexDirection: "row", gap: 26, marginTop: 18 },
+  topMedalRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 22 },
   topMedalLabel: { ...mono(10, 700), color: T.green, letterSpacing: 1 },
   topMedalName: { ...ui(17, 700), color: "#fff" },
 

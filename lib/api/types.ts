@@ -154,6 +154,8 @@ export interface TrainingSession {
   session_type: SessionType;
   duration_minutes: number;
   distance_km?: number | null;
+  /** Elevation gain in metres, when the source provides it (trail/run/bike). */
+  elevation_m?: number | null;
   notes?: string | null;
   logged_at: string;
   created_at: string;
