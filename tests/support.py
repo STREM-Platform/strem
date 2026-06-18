@@ -121,16 +121,24 @@ class ScriptedChatModel(BaseChatModel):
         return self
 
     def _generate(
-        self, messages: list[BaseMessage], stop: list[str] | None = None, **kwargs: Any
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
     ) -> ChatResult:
         idx = sum(1 for m in messages if isinstance(m, AIMessage))
         msg = self.responses[min(idx, len(self.responses) - 1)]
         return ChatResult(generations=[ChatGeneration(message=msg)])
 
     async def _agenerate(
-        self, messages: list[BaseMessage], stop: list[str] | None = None, **kwargs: Any
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
     ) -> ChatResult:
-        return self._generate(messages, stop, **kwargs)
+        return self._generate(messages, stop, run_manager, **kwargs)
 
 
 @dataclass

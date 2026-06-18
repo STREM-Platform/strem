@@ -9,7 +9,7 @@ from app import signals
 NOW = datetime(2026, 6, 18, 12, 0, tzinfo=UTC)
 
 
-def _session(days_ago: int, minutes: int, kind: str = "strength") -> dict:
+def _session(days_ago: int, minutes: int, kind: str = "strength") -> dict[str, object]:
     return {
         "logged_at": (NOW - timedelta(days=days_ago)).isoformat(),
         "duration_minutes": minutes,
