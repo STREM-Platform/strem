@@ -1,12 +1,10 @@
 """live-workout sets and personal records (D1/D2)
 
-Revision ID: 0002_workout_sets_prs
-Revises: 0001_training_sessions
+Revision ID: 0003_workout_sets_prs
+Revises: 0002_session_elevation
 Create Date: 2026-06-18
 
-Note: branches from 0001 in parallel with 0002_session_elevation (#56). If that
-PR merges first, rebase this revision's down_revision onto it (or `alembic merge`
-the two heads).
+Chained after 0002_session_elevation (#56) so the migration history stays linear.
 """
 
 from collections.abc import Sequence
@@ -15,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0002_workout_sets_prs"
-down_revision: str | None = "0001_training_sessions"
+revision: str = "0003_workout_sets_prs"
+down_revision: str | None = "0002_session_elevation"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
