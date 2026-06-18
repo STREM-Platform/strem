@@ -26,7 +26,9 @@ def upgrade() -> None:
         sa.Column("icon", sa.String(length=24), nullable=False),
         sa.Column("text", sa.String(length=280), nullable=False),
         sa.Column("source", sa.String(length=16), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.Column("archived_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
