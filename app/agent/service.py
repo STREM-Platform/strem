@@ -1,45 +1,41 @@
-"""Run the agent graph for one chat turn (B1).
+"""Run the agent for one chat turn (B1).
 
-Assembles the system prompt from the context (A6), invokes the LangGraph agent
-(which may call tools mid-turn), and returns a guardrail-clean reply + the
-grounding chips. Care-redirects (crisis/medical/supplement) short-circuit before
-the model; any failure degrades to a safe grounded line so chat never hard-fails.
+Care-redirects (crisis/medical/supplement) short-circuit before the model. The
+agent runs with the request's tools + runtime context and a per-user thread id
+(short-term memory). The grounding/guardrail/metrics/action-logging middleware do
+the rest; this just extracts the final reply + grounding chips and degrades to a
+safe line if anything fails.
 """
 
 from __future__ import annotations
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 
-from app.agent.graph import build_agent_graph
+from app.agent.agent import build_agent
 from app.agent.llm import SAFE_FALLBACK
-from app.agent.prompt import build_system_prompt, grounding_chips
-from app.agent.tools import ToolContext, build_tools
-from app.context import GraphSnapshot
+from app.agent.metrics import METRICS
+from app.agent.prompt import grounding_chips
+from app.agent.runtime_context import ForgeContext
+from app.agent.tools import build_tools
 from app.safety import detect_unsafe, guardrails_ok
-from app.schemas import CitedDatum, MemoryItem
+from app.schemas import CitedDatum
 
 
 async def run_chat(
-    model: BaseChatModel,
-    *,
-    ctx: ToolContext,
-    identity: str | None,
-    snapshot: GraphSnapshot,
-    memory: list[MemoryItem],
-    message: str,
+    model: BaseChatModel, ctx: ForgeContext, message: str
 ) -> tuple[str, list[CitedDatum]]:
     redirect = detect_unsafe(message)
     if redirect is not None:
+        METRICS.record_care_redirect()
         return redirect, []
 
-    tools = build_tools(ctx)
-    graph = build_agent_graph(model, tools)
-    system = build_system_prompt(identity, snapshot.signals, memory)
-
+    agent = build_agent(model, build_tools(ctx))
     try:
-        result = await graph.ainvoke(
-            {"messages": [SystemMessage(content=system), HumanMessage(content=message)]}
+        result = await agent.ainvoke(
+            {"messages": [HumanMessage(content=message)]},
+            context=ctx,
+            config={"configurable": {"thread_id": str(ctx.user_id)}},
         )
         final = result["messages"][-1]
         text = final.content if isinstance(final.content, str) else ""
@@ -48,4 +44,4 @@ async def run_chat(
 
     if not text or not guardrails_ok(text):
         text = SAFE_FALLBACK
-    return text, grounding_chips(snapshot.signals, memory)
+    return text, grounding_chips(ctx.signals, ctx.memory)

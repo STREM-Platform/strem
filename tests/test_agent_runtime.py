@@ -145,6 +145,46 @@ def test_auto_action_is_done_ask_action_is_proposed() -> None:
     run(scenario)
 
 
+def test_output_guardrail_middleware_replaces_a_shaming_reply() -> None:
+    """The after_model middleware catches shame/vanity/diagnosis and ships a safe
+    line instead — and the block is counted for production inspection."""
+    model = ScriptedChatModel(
+        responses=[AIMessage(content="You were lazy and you failed this week. No excuses.")]
+    )
+
+    async def scenario(h: Harness) -> None:
+        uid = uuid.uuid4()
+        res = await h.client.post(
+            "/v1/ai/agent/chat", headers=auth_header(uid), json={"message": "how did I do?"}
+        )
+        assert res.status_code == 200
+        text = res.json()["text"].lower()
+        assert "lazy" not in text and "failed" not in text
+
+        metrics = await h.client.get("/v1/ai/agent/metrics", headers=auth_header(uid))
+        assert metrics.json()["guardrail_blocks"] >= 1
+
+    async def _inner() -> None:
+        async with ai_app(model=model) as harness:
+            await scenario(harness)
+
+    asyncio.run(_inner())
+
+
+def test_metrics_count_model_calls() -> None:
+    async def scenario(h: Harness) -> None:
+        uid = uuid.uuid4()
+        await h.client.post(
+            "/v1/ai/agent/chat", headers=auth_header(uid), json={"message": "what should I train?"}
+        )
+        metrics = await h.client.get("/v1/ai/agent/metrics", headers=auth_header(uid))
+        body = metrics.json()
+        assert body["model_calls"] >= 1
+        assert "avg_model_ms" in body
+
+    run(scenario)
+
+
 def test_actions_are_per_user() -> None:
     async def scenario(h: Harness) -> None:
         owner, other = uuid.uuid4(), uuid.uuid4()

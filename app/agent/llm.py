@@ -8,6 +8,7 @@ agent node's ``BaseChatModel`` + ``bind_tools`` contract.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from typing import Any
 
@@ -70,6 +71,17 @@ def build_model(settings: Settings | None = None) -> BaseChatModel:
 
 
 _model: BaseChatModel | None = None
+
+
+def configure_tracing(settings: Settings | None = None) -> None:
+    """Enable LangSmith tracing when an API key is configured, so every agent run
+    (model calls, tool calls, token usage) is inspectable in production. No-op
+    without a key. Call once at startup."""
+    settings = settings or get_settings()
+    if settings.langsmith_api_key:
+        os.environ.setdefault("LANGSMITH_TRACING", "true")
+        os.environ.setdefault("LANGSMITH_API_KEY", settings.langsmith_api_key)
+        os.environ.setdefault("LANGSMITH_PROJECT", settings.langsmith_project)
 
 
 def get_agent_model() -> BaseChatModel:

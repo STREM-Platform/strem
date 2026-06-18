@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.agent.llm import configure_tracing
 from app.config import get_settings
 from app.db import configure
 from app.errors import register_error_handlers
@@ -23,6 +24,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure(settings.database_url)
     configure_publisher(settings.message_broker_url)
+    configure_tracing(settings)
     yield
 
 

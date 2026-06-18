@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-4-8"
 
+    # LangSmith tracing — full per-run agent observability in production. Empty
+    # key → tracing off (local/tests). See app/agent/llm.configure_tracing.
+    langsmith_api_key: str = ""
+    langsmith_project: str = "strem-forge"
+
 
 @lru_cache
 def get_settings() -> Settings:
