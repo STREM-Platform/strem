@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ChaptersView, LeagueView, ProofTimeline } from "@/components/profile/proof-story-league";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedalCard } from "@/components/medals/medal-card";
 import { Celebration, celebrationFromMoment, type CelebrationData } from "@/components/ui/celebration";
@@ -34,10 +35,18 @@ import { Ring } from "@/components/ui/ring";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import type { EarnedMedal, UserProfile, XPSummary } from "@/lib/api/types";
+import { FLAGS } from "@/lib/flags";
 import { formatShortDate } from "@/lib/format";
 import { MEDAL_CATALOGUE } from "@/lib/medals";
 import { detectMoment, type ProgressionSnapshot } from "@/lib/progression";
 import { useAsync } from "@/lib/use-async";
+
+type ProofTab = "proof" | "story" | "league";
+const PROOF_TABS: { id: ProofTab; label: string }[] = [
+  { id: "proof", label: "Proof" },
+  { id: "story", label: "Story" },
+  { id: "league", label: "League" },
+];
 
 const RANKS = ["Initiate", "Builder", "Forged", "Hybrid", "Warrior", "Titan", "Ascended"];
 
@@ -155,6 +164,7 @@ function ProfileBody({
   onCelebrate: (c: CelebrationData) => void;
 }) {
   const router = useRouter();
+  const [proofTab, setProofTab] = useState<ProofTab>("proof");
   const { profile, xp } = data;
   const pct = progressFraction(xp);
   const rankIndex = Math.max(0, RANKS.indexOf(xp.rank)) + 1;
@@ -261,6 +271,27 @@ function ProfileBody({
           })}
         </View>
       </Panel>
+
+      {/* proof timeline / story chapters / tribe league (Forge — one graph) */}
+      {FLAGS.forgeAgentMock ? (
+        <>
+          <View style={styles.proofTabsWrap}>
+            <View style={styles.proofTabs}>
+              {PROOF_TABS.map((t) => {
+                const on = proofTab === t.id;
+                return (
+                  <Text key={t.id} onPress={() => setProofTab(t.id)} style={[styles.proofTab, on ? styles.proofTabOn : styles.proofTabOff]}>
+                    {t.label}
+                  </Text>
+                );
+              })}
+            </View>
+          </View>
+          <View style={styles.proofBody}>
+            {proofTab === "proof" ? <ProofTimeline /> : proofTab === "story" ? <ChaptersView /> : <LeagueView />}
+          </View>
+        </>
+      ) : null}
 
       {/* recap teaser */}
       <SectionHead icon="sparkles" title="SHARE YOUR PROOF" sub="Story-ready recaps" />
@@ -391,6 +422,13 @@ const styles = StyleSheet.create({
   count: { ...mono(11, 700), color: T.green },
   medalGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 20 },
   medalCell: { width: "31%", alignItems: "center" },
+
+  proofTabsWrap: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 14 },
+  proofTabs: { flexDirection: "row", gap: 5, padding: 4, borderRadius: 13, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
+  proofTab: { flex: 1, textAlign: "center", paddingVertical: 9, borderRadius: 10, overflow: "hidden", ...ui(13, 700) },
+  proofTabOn: { backgroundColor: T.green, color: "#06130D" },
+  proofTabOff: { backgroundColor: "transparent", color: T.mut },
+  proofBody: { paddingHorizontal: 16 },
 
   teaser: { flexDirection: "row", alignItems: "center", gap: 13, padding: 16 },
   teaserTile: {
