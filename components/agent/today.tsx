@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
   climbHead: { flexDirection: "row", alignItems: "center", gap: 14 },
   climbEyebrowRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   climbEyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: T.green },
-  climbHeadline: { ...disp(22, 800), color: "#fff", marginTop: 4, lineHeight: 24 },
-  climbReadiness: { ...mono(9, 700), letterSpacing: 1, marginTop: 9 },
+  climbHeadline: { ...disp(22, 800), color: "#fff", marginTop: 5, lineHeight: 26 },
+  climbReadiness: { ...mono(9, 700), letterSpacing: 1, marginTop: 10 },
   climbBody: { ...ui(14, 500), color: "#cdd3d8", lineHeight: 22, marginTop: 14 },
   whyRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 13 },
   whyChip: {

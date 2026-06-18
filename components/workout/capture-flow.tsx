@@ -18,7 +18,18 @@ import type { CaptureData } from "@/lib/agent/types";
 
 type Kind = "workout" | "food" | "voice";
 
-export function CaptureFlow({ data, kind, onClose }: { data: CaptureData; kind: Kind; onClose: () => void }) {
+export function CaptureFlow({
+  data,
+  kind,
+  onClose,
+  onStartLive,
+}: {
+  data: CaptureData;
+  kind: Kind;
+  onClose: () => void;
+  /** Scanned-workout only: take the parsed workout into a guided live session. */
+  onStartLive?: () => void;
+}) {
   const c = data[kind];
   const meta = data.methods.find((m) => m.id === kind)!;
   const [step, setStep] = useState(0);
@@ -137,10 +148,17 @@ export function CaptureFlow({ data, kind, onClose }: { data: CaptureData; kind: 
             <Text style={styles.noteText}>{r.note}</Text>
           </View>
 
-          <View style={styles.resultActions}>
-            <Btn kind="ghost" icon="edit" label="Edit" onPress={onClose} style={styles.editBtn} />
-            <Btn kind="primary" icon="check" label="Log it" onPress={logIt} style={styles.logItBtn} />
-          </View>
+          {kind === "workout" && onStartLive ? (
+            <View style={styles.resultActions}>
+              <Btn kind="ghost" icon="check" label="Just log it" onPress={logIt} style={styles.editBtn} />
+              <Btn kind="primary" icon="play" label="Start live session" onPress={onStartLive} style={styles.logItBtn} />
+            </View>
+          ) : (
+            <View style={styles.resultActions}>
+              <Btn kind="ghost" icon="edit" label="Edit" onPress={onClose} style={styles.editBtn} />
+              <Btn kind="primary" icon="check" label="Log it" onPress={logIt} style={styles.logItBtn} />
+            </View>
+          )}
         </View>
       )}
     </View>

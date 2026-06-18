@@ -180,32 +180,7 @@ function latestMedalDef(medals: EarnedMedal[]): MedalDefinition | undefined {
   return undefined;
 }
 
-function buildConsistency(inputs: RecapInputs): ConsistencyRecap {
-  const monday = startOfWeek(new Date());
-  const trainDays = new Set<string>();
-  for (const s of inputs.sessions) {
-    const t = new Date(s.logged_at);
-    if (t >= monday) trainDays.add(startOfDay(t).toDateString());
-  }
-  const fuelDays = new Set<string>();
-  for (const n of inputs.nutrition) {
-    const t = new Date(`${n.date}T12:00:00`);
-    if (t >= monday) fuelDays.add(t.toDateString());
-  }
-  return {
-    type: "consistency",
-    trainingDays: trainDays.size,
-    nutritionDays: fuelDays.size,
-    streak: inputs.xp.current_streak_days,
-  };
-}
-
-/** All recaps we can back with real data, in display order. */
+/** The recaps we surface — weekly + monthly, both real-data backed. */
 export function buildRecaps(inputs: RecapInputs): Recap[] {
-  const recaps: Recap[] = [buildWeekly(inputs), buildConsistency(inputs), buildMonthly(inputs)];
-  const def = latestMedalDef(inputs.medals);
-  if (def) {
-    recaps.splice(1, 0, { type: "medal", def });
-  }
-  return recaps;
+  return [buildWeekly(inputs), buildMonthly(inputs)];
 }

@@ -30,6 +30,7 @@ export const forge = {
   getCheckin: agentMock.getCheckin,
   getCoachConversation: agentMock.getCoachConversation,
   getLiveWorkout: agentMock.getLiveWorkout,
+  getScannedWorkout: agentMock.getScannedWorkout,
   getCapture: agentMock.getCapture,
   generateAdaptivePlan: agentMock.generateAdaptivePlan,
   getInsights: agentMock.getInsights,

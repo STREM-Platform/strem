@@ -276,15 +276,17 @@ const styles = StyleSheet.create({
 
   // identity hero
   hero: { height: 320, position: "relative", overflow: "hidden", backgroundColor: "#0a0c10" },
-  heroImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
+  // The source is a circular composition; scale up so it fills the frame edge-to-
+  // edge (no dark vignette corners).
+  heroImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%", transform: [{ scale: 1.4 }] },
   heroScrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(8,9,11,0.32)" },
   heroTop: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   heroBrand: { ...disp(13, 700), letterSpacing: 3.4, color: "#fff", textShadowColor: "rgba(0,0,0,0.6)", textShadowRadius: 12, textShadowOffset: { width: 0, height: 2 } },
   heroSettings: { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(13,16,21,0.5)", borderWidth: 1, borderColor: T.line2 },
   heroCaption: { position: "absolute", left: 18, right: 18, bottom: 16 },
   heroRank: { ...mono(10, 700), letterSpacing: 1.8, color: T.green },
-  heroName: { ...disp(36, 800), color: "#fff", letterSpacing: 0.5, marginTop: 3, lineHeight: 36 },
-  heroIdentity: { ...ui(13, 500), color: "#dfe4e3", marginTop: 5 },
+  heroName: { ...disp(36, 800), color: "#fff", letterSpacing: 0.5, marginTop: 5, lineHeight: 40 },
+  heroIdentity: { ...ui(13, 500), color: "#dfe4e3", marginTop: 7 },
   heroProgress: { marginTop: 13 },
   heroProgressRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
   heroProgressLabel: { ...mono(9, 700), letterSpacing: 0.6, color: "#cdd3d8" },

@@ -186,6 +186,40 @@ const LIVE_WORKOUT: LiveWorkout = {
   prDetected: { lift: "Trap-Bar Deadlift", val: "102 kg × 5", note: "Best 5-rep load — at 62% readiness." },
 };
 
+// A scanned/imported workout, ready to run as a live session (D3 → D1). The same
+// photo→sets parse that powers "log with AI" can become a guided live workout.
+const SCANNED_WORKOUT: LiveWorkout = {
+  title: "Push Day · Imported",
+  tag: "SCANNED FROM YOUR PHOTO",
+  note: "Parsed from your screenshot and matched to your last Push day. Push the first sets — I autoregulate load and rest from your RPE.",
+  exercises: [
+    {
+      name: "Bench Press",
+      target: "4 × 6",
+      rest: 150,
+      sets: [
+        { reps: 6, kg: 80, ai: "+2.5kg vs your last Push day. Controlled down, drive up.", done: false, rpe: null },
+        { reps: 6, kg: 80, ai: "Match it — same bar speed. Don't chase it yet.", done: false, rpe: null },
+        { reps: 6, kg: 80, ai: "Third set holds form over ego.", done: false, rpe: null },
+        { reps: 6, kg: 82, ai: "Small bump if the last set moved clean.", done: false, rpe: null },
+      ],
+    },
+    {
+      name: "Incline DB Press",
+      target: "3 × 10",
+      rest: 90,
+      sets: [{ reps: 10, kg: 28, ai: "Matched your last. Full stretch at the bottom.", done: false, rpe: null }],
+    },
+    {
+      name: "Cable Fly",
+      target: "3 × 15",
+      rest: 60,
+      sets: [{ reps: 15, kg: 0, ai: "New to your library — light, feel the chest, no momentum.", done: false, rpe: null }],
+    },
+  ],
+  prDetected: { lift: "Bench Press", val: "82 kg × 6", note: "Best 6-rep bench — clean bar speed." },
+};
+
 const CAPTURE: CaptureData = {
   methods: [
     { id: "workout", icon: "grid", label: "Scan workout", sub: "Screenshot or photo to sets", tone: "green" },
@@ -394,6 +428,9 @@ export const agentMock = {
   },
   async getLiveWorkout(): Promise<LiveWorkout> {
     return LIVE_WORKOUT;
+  },
+  async getScannedWorkout(): Promise<LiveWorkout> {
+    return SCANNED_WORKOUT;
   },
   async getCapture(): Promise<CaptureData> {
     return CAPTURE;

@@ -35,25 +35,33 @@ type CaptureKind = "workout" | "food" | "voice";
 export default function TrainScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("landing");
-  const { data: workout } = useAsync<LiveWorkoutData>(forge.getLiveWorkout);
+  // The workout currently being run live — today's AI plan, or one you scanned/added.
+  const [active, setActive] = useState<LiveWorkoutData | null>(null);
+  const { data: aiWorkout } = useAsync<LiveWorkoutData>(forge.getLiveWorkout);
+  const { data: scanned } = useAsync<LiveWorkoutData>(forge.getScannedWorkout);
+
+  const startLive = (w: LiveWorkoutData) => {
+    setActive(w);
+    setMode("live");
+  };
 
   // Persist the completed session — the always-real proof path.
   const persistSession = async (): Promise<void> => {
-    if (!workout) return;
+    if (!active) return;
     try {
-      await api.logTrainingSession({ session_type: "strength", duration_minutes: 47, notes: `Forge live session: ${workout.title}` });
+      await api.logTrainingSession({ session_type: "strength", duration_minutes: 47, notes: `Forge live session: ${active.title}` });
     } catch {
       // Surfaced on the proof screens; never blocks the debrief.
     }
   };
 
-  if (mode === "live" && workout) {
-    return <LiveWorkout workout={workout} onCancel={() => setMode("landing")} onFinish={() => setMode("debrief")} />;
+  if (mode === "live" && active) {
+    return <LiveWorkout workout={active} onCancel={() => setMode("landing")} onFinish={() => setMode("debrief")} />;
   }
-  if (mode === "debrief" && workout) {
+  if (mode === "debrief" && active) {
     return (
       <Debrief
-        workout={workout}
+        workout={active}
         onDone={async () => {
           await persistSession();
           setMode("landing");
@@ -70,8 +78,9 @@ export default function TrainScreen() {
   }
   return (
     <TrainLanding
-      workout={workout}
-      onStartLive={() => setMode("live")}
+      workout={aiWorkout}
+      onStartAi={() => aiWorkout && startLive(aiWorkout)}
+      onStartScanned={() => scanned && startLive(scanned)}
       onQuickLog={() => setMode("quicklog")}
       onShare={() => router.push("/(app)/recaps")}
     />
@@ -102,12 +111,14 @@ function sessionLabel(s: TrainingSession): string {
 
 function TrainLanding({
   workout,
-  onStartLive,
+  onStartAi,
+  onStartScanned,
   onQuickLog,
   onShare,
 }: {
   workout: LiveWorkoutData | undefined;
-  onStartLive: () => void;
+  onStartAi: () => void;
+  onStartScanned: () => void;
   onQuickLog: () => void;
   onShare: () => void;
 }) {
@@ -119,7 +130,21 @@ function TrainLanding({
 
   return (
     <View style={styles.root}>
-      {capture && captureKind ? <CaptureFlow data={capture} kind={captureKind} onClose={() => setCaptureKind(null)} /> : null}
+      {capture && captureKind ? (
+        <CaptureFlow
+          data={capture}
+          kind={captureKind}
+          onClose={() => setCaptureKind(null)}
+          onStartLive={
+            captureKind === "workout"
+              ? () => {
+                  setCaptureKind(null);
+                  onStartScanned();
+                }
+              : undefined
+          }
+        />
+      ) : null}
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 14 }]}
         showsVerticalScrollIndicator={false}
@@ -152,9 +177,25 @@ function TrainLanding({
               </View>
             </View>
             <View style={styles.sessionCta}>
-              <Btn kind="primary" full icon="play" label="Start live session" onPress={onStartLive} />
+              <Btn kind="primary" full icon="play" label="Start live session" onPress={onStartAi} />
             </View>
           </Panel>
+        ) : null}
+
+        {/* bring your own — scan a workout and start it live (not just log it) */}
+        {FLAGS.forgeAgentMock ? (
+          <View style={[styles.sideMargin, styles.byoWrap]}>
+            <Panel pad={0}>
+              <Pressable onPress={() => setCaptureKind("workout")} style={styles.byoRow}>
+                <IconTile name="grid" size={44} iconSize={21} />
+                <View style={styles.shrink}>
+                  <Text style={styles.byoTitle}>Add a workout & go live</Text>
+                  <Text style={styles.byoSub}>Scan a photo or screenshot → a guided live session</Text>
+                </View>
+                <Icon name="play" size={18} color={T.green} />
+              </Pressable>
+            </Panel>
+          </View>
         ) : null}
 
         {/* real quick log */}
@@ -332,6 +373,11 @@ const styles = StyleSheet.create({
   sessionChip: { paddingVertical: 5, paddingHorizontal: 9, borderRadius: 7, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: T.line },
   sessionChipText: { ...mono(10, 700), color: T.mut },
   sessionCta: { padding: 14, borderTopWidth: 1, borderTopColor: T.line, marginTop: 12 },
+
+  byoWrap: { marginTop: 12 },
+  byoRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 13 },
+  byoTitle: { ...ui(15, 700), color: T.text },
+  byoSub: { ...ui(12, 500), color: T.sub, marginTop: 2, lineHeight: 16 },
 
   quickCta: { marginTop: 14 },
 

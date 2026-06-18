@@ -71,9 +71,6 @@ function StoryShell({ tone = "green", rank, footer, photo, children }: { tone?: 
           <LinearGradient colors={["transparent", "transparent", "#08090b"]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
         </View>
         <View style={styles.photoBody}>{children}</View>
-        <View style={styles.topRowAbs}>
-          <Brand rank={rank} />
-        </View>
         {footer ? <Text style={styles.footerAbs}>{footer}</Text> : null}
       </View>
     );
@@ -195,8 +192,7 @@ const styles = StyleSheet.create({
   banner: { width: "100%", aspectRatio: 16 / 9, position: "relative" },
   bannerImg: { width: "100%", height: "100%" },
   bannerTopShade: { position: "absolute", top: 0, left: 0, right: 0, height: "42%" },
-  photoBody: { flex: 1, paddingHorizontal: 26, paddingTop: 24, justifyContent: "center" },
-  topRowAbs: { position: "absolute", top: 0, left: 0, right: 0, paddingTop: 56, paddingHorizontal: 26 },
+  photoBody: { flex: 1, paddingHorizontal: 26, paddingTop: 28, justifyContent: "flex-start" },
   footerAbs: { position: "absolute", left: 0, right: 0, bottom: 64, paddingHorizontal: 26, ...ui(13, 600), color: "rgba(255,255,255,0.6)", textAlign: "center" },
 
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 26 },
