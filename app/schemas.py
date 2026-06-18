@@ -14,13 +14,27 @@ class SessionType(StrEnum):
 
     STRENGTH = "strength"
     RUNNING = "running"
+    TRAIL_RUNNING = "trail_running"
+    CYCLING = "cycling"
+    SWIMMING = "swimming"
     MOBILITY = "mobility"
+    HYBRID = "hybrid"
+
+
+# Disciplines for which a distance is meaningful.
+DISTANCE_TYPES = {
+    SessionType.RUNNING,
+    SessionType.TRAIL_RUNNING,
+    SessionType.CYCLING,
+    SessionType.SWIMMING,
+}
 
 
 class LogTrainingSessionRequest(BaseModel):
     session_type: SessionType
     duration_minutes: int = Field(ge=1)
     distance_km: float | None = Field(default=None, ge=0)
+    elevation_m: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=500)
     logged_at: datetime | None = None
 
@@ -31,6 +45,7 @@ class TrainingSessionResponse(BaseModel):
     session_type: SessionType
     duration_minutes: int
     distance_km: float | None = None
+    elevation_m: int | None = None
     notes: str | None = None
     logged_at: datetime
     created_at: datetime

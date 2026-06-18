@@ -25,6 +25,7 @@ class TrainingSession(Base):
     session_type: Mapped[str] = mapped_column(String(20), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     distance_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    elevation_m: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

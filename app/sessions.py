@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.errors import AppError
 from app.events import EventPublisher
 from app.models import TrainingSession
-from app.schemas import LogTrainingSessionRequest, SessionType
+from app.schemas import DISTANCE_TYPES, LogTrainingSessionRequest, SessionType
 
 
 async def create_session(
@@ -22,9 +22,11 @@ async def create_session(
     body: LogTrainingSessionRequest,
 ) -> TrainingSession:
     """Persist a training session and publish `training.session_logged`."""
-    if body.distance_km is not None and body.session_type is not SessionType.RUNNING:
+    if body.distance_km is not None and body.session_type not in DISTANCE_TYPES:
         raise AppError(
-            422, "unprocessable_entity", "distance_km is only valid for running sessions."
+            422,
+            "unprocessable_entity",
+            "distance_km is only valid for running, trail running, cycling or swimming.",
         )
 
     logged_at = body.logged_at or datetime.now(UTC)
@@ -33,6 +35,7 @@ async def create_session(
         session_type=body.session_type.value,
         duration_minutes=body.duration_minutes,
         distance_km=body.distance_km,
+        elevation_m=body.elevation_m,
         notes=body.notes,
         logged_at=logged_at,
     )

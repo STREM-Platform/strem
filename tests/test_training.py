@@ -55,6 +55,40 @@ def test_log_running_session_accepts_distance() -> None:
     run(scenario)
 
 
+def test_log_trail_run_with_elevation_persists() -> None:
+    async def scenario(harness: Harness) -> None:
+        response = await harness.client.post(
+            "/v1/training/sessions",
+            headers=auth_header(uuid.uuid4()),
+            json={
+                "session_type": "trail_running",
+                "duration_minutes": 41,
+                "distance_km": 8.2,
+                "elevation_m": 320,
+            },
+        )
+        assert response.status_code == 201
+        body = response.json()
+        assert body["session_type"] == "trail_running"
+        assert body["distance_km"] == 8.2
+        assert body["elevation_m"] == 320
+
+    run(scenario)
+
+
+def test_cycling_and_swimming_accept_distance() -> None:
+    async def scenario(harness: Harness) -> None:
+        for kind in ("cycling", "swimming"):
+            res = await harness.client.post(
+                "/v1/training/sessions",
+                headers=auth_header(uuid.uuid4()),
+                json={"session_type": kind, "duration_minutes": 30, "distance_km": 20.0},
+            )
+            assert res.status_code == 201, kind
+
+    run(scenario)
+
+
 def test_distance_on_non_running_is_unprocessable() -> None:
     async def scenario(harness: Harness) -> None:
         response = await harness.client.post(
