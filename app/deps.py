@@ -9,7 +9,12 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
-from app.context import ContextProvider, get_context_provider
+from app.context import (
+    AthleteContextProvider,
+    ContextProvider,
+    get_athlete_context_provider,
+    get_context_provider,
+)
 from app.db import get_session
 from app.errors import AppError
 from app.events import EventPublisher, get_publisher
@@ -20,6 +25,7 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
 ContextProviderDep = Annotated[ContextProvider, Depends(get_context_provider)]
+AthleteContextProviderDep = Annotated[AthleteContextProvider, Depends(get_athlete_context_provider)]
 TribeSummaryProviderDep = Annotated[TribeSummaryProvider, Depends(get_tribe_summary_provider)]
 
 

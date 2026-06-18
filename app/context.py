@@ -109,3 +109,107 @@ def get_context_provider() -> ContextProvider:
     if _provider is None:
         _provider = HttpContextProvider(get_settings().user_service_base_url)
     return _provider
+
+
+# ── Athlete Context Graph assembly (A6) ──────────────────────────────────────
+# The agent context endpoint reads sources + signals from the owning services and
+# computes derived signals (A4). Memory (A5) is read from this service's own DB by
+# the router and merged in. Still copies no raw logs into the orchestrator DB.
+
+from dataclasses import dataclass as _dataclass  # noqa: E402
+
+from app import signals as _signals  # noqa: E402
+from app.schemas import ContextSignals, ContextSource  # noqa: E402
+
+
+@_dataclass(frozen=True)
+class GraphSnapshot:
+    """The graph minus memory: connected sources + derived signals."""
+
+    sources: list[ContextSource]
+    signals: ContextSignals
+
+
+def _to_context_signals(s: _signals.Signals) -> ContextSignals:
+    return ContextSignals(
+        readiness=s.readiness,
+        readiness_label=s.readiness_label,
+        sleep_hours=s.sleep_hours,
+        sleep_delta=s.sleep_delta,
+        hrv=s.hrv,
+        hrv_delta=s.hrv_delta,
+        resting_hr=s.resting_hr,
+        load7=s.load7,
+        load28=s.load28,
+        acwr=s.acwr,
+        load_label=s.load_label,
+        momentum=s.momentum,
+        streak_risk=s.streak_risk,
+    )
+
+
+class AthleteContextProvider(Protocol):
+    """Assembles sources + signals for a user, or None when context is insufficient."""
+
+    async def for_user(self, user_id: str, bearer_token: str) -> GraphSnapshot | None: ...
+
+
+class HttpAthleteContextProvider:
+    """Reads profile/xp from the user service and sessions from the training
+    service, then derives signals (A4). Wearable sources arrive with A3 — until
+    then only the always-on in-app log source is reported (never fabricated)."""
+
+    def __init__(self, user_base_url: str, training_base_url: str) -> None:
+        self._user = user_base_url.rstrip("/")
+        self._training = training_base_url.rstrip("/")
+
+    async def for_user(self, user_id: str, bearer_token: str) -> GraphSnapshot | None:
+        headers = {"Authorization": f"Bearer {bearer_token}"}
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            profile_res = await client.get(f"{self._user}/users/me", headers=headers)
+            if profile_res.status_code != 200:
+                return None
+            profile = profile_res.json()
+            if not profile.get("onboarding_completed") or not profile.get("identity_statement"):
+                return None
+
+            streak_state: str | None = None
+            sessions: list[dict[str, Any]] = []
+            try:
+                xp_res = await client.get(f"{self._user}/users/me/xp", headers=headers)
+                if xp_res.status_code == 200:
+                    streak_state = xp_res.json().get("streak_state")
+                sess_res = await client.get(
+                    f"{self._training}/training/sessions?limit=50", headers=headers
+                )
+                if sess_res.status_code == 200:
+                    sessions = sess_res.json().get("items", [])
+            except httpx.RequestError:
+                pass
+
+        derived = _signals.compute_signals(sessions, streak_state=streak_state)
+        sources = [
+            ContextSource(
+                id="logs",
+                label="In-app logs",
+                icon="edit",
+                on=True,
+                last="Live",
+                metric="Sets · Meals · RPE",
+            )
+        ]
+        return GraphSnapshot(sources=sources, signals=_to_context_signals(derived))
+
+
+_athlete_provider: AthleteContextProvider | None = None
+
+
+def get_athlete_context_provider() -> AthleteContextProvider:
+    """Return the configured athlete-context provider (FastAPI dependency; tests override)."""
+    global _athlete_provider
+    if _athlete_provider is None:
+        settings = get_settings()
+        _athlete_provider = HttpAthleteContextProvider(
+            settings.user_service_base_url, settings.training_service_base_url
+        )
+    return _athlete_provider

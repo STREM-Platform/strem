@@ -6,9 +6,17 @@ import uuid
 from datetime import date as date_type
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from app.enums import MissionDifficulty, MissionState, MissionType
+
+
+class CamelModel(BaseModel):
+    """Base for the Forge agent schemas — serialised as camelCase to match the
+    frontend contract in ``strem-mobile/lib/agent/types.ts``."""
+
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
 
 class Mission(BaseModel):
@@ -98,3 +106,58 @@ class CoachAdaptation(BaseModel):
     signal: str
     headline: str
     action: str
+
+
+# ── Forge agent: context graph (A6) + signals (A4) + memory (A5) ──────────────
+class ContextSource(CamelModel):
+    """A connected source feeding the graph ("What your coach sees")."""
+
+    id: str
+    label: str
+    icon: str
+    on: bool
+    last: str
+    metric: str
+
+
+class ContextSignals(CamelModel):
+    """Derived signals the coach reasons over (A4). Recovery fields are nullable
+    until a wearable is connected — never fabricated."""
+
+    readiness: int
+    readiness_label: str
+    sleep_hours: str | None = None
+    sleep_delta: str | None = None
+    hrv: int | None = None
+    hrv_delta: str | None = None
+    resting_hr: int | None = None
+    load7: int
+    load28: int
+    acwr: float
+    load_label: str
+    momentum: str
+    streak_risk: bool
+
+
+class MemoryItem(CamelModel):
+    """A long-term memory the coach remembers so it never re-asks (A5)."""
+
+    icon: str
+    text: str
+
+
+class AthleteContext(CamelModel):
+    """The one graph snapshot every Forge surface reads (A6)."""
+
+    sources: list[ContextSource]
+    signals: ContextSignals
+    memory: list[MemoryItem]
+
+
+class MemoryCreate(CamelModel):
+    icon: str
+    text: str
+
+
+class MemoryList(CamelModel):
+    items: list[MemoryItem]

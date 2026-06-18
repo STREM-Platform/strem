@@ -18,10 +18,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.config import Settings, get_settings
-from app.context import ContextBundle, get_context_provider
+from app.context import (
+    ContextBundle,
+    GraphSnapshot,
+    get_athlete_context_provider,
+    get_context_provider,
+)
 from app.db import Base, get_session
 from app.events import InMemoryPublisher, get_publisher
 from app.main import create_app
+from app.schemas import ContextSignals, ContextSource
 
 TEST_SETTINGS = Settings(
     database_url="sqlite+aiosqlite://",
@@ -64,6 +70,38 @@ class FakeContextProvider:
         return self.bundle
 
 
+DEFAULT_SNAPSHOT = GraphSnapshot(
+    sources=[
+        ContextSource(
+            id="logs",
+            label="In-app logs",
+            icon="edit",
+            on=True,
+            last="Live",
+            metric="Sets · Meals · RPE",
+        )
+    ],
+    signals=ContextSignals(
+        readiness=62,
+        readiness_label="Moderate",
+        load7=412,
+        load28=388,
+        acwr=1.06,
+        load_label="Optimal",
+        momentum="Rising",
+        streak_risk=False,
+    ),
+)
+
+
+class FakeAthleteContextProvider:
+    def __init__(self, snapshot: GraphSnapshot | None) -> None:
+        self.snapshot = snapshot
+
+    async def for_user(self, user_id: str, bearer_token: str) -> GraphSnapshot | None:
+        return self.snapshot
+
+
 @dataclass
 class Harness:
     client: httpx.AsyncClient
@@ -72,7 +110,10 @@ class Harness:
 
 
 @asynccontextmanager
-async def ai_app(bundle: ContextBundle | None = DEFAULT_BUNDLE) -> AsyncIterator[Harness]:
+async def ai_app(
+    bundle: ContextBundle | None = DEFAULT_BUNDLE,
+    athlete: GraphSnapshot | None = DEFAULT_SNAPSHOT,
+) -> AsyncIterator[Harness]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -94,6 +135,9 @@ async def ai_app(bundle: ContextBundle | None = DEFAULT_BUNDLE) -> AsyncIterator
     app.dependency_overrides[get_settings] = lambda: TEST_SETTINGS
     app.dependency_overrides[get_publisher] = lambda: publisher
     app.dependency_overrides[get_context_provider] = lambda: provider
+    app.dependency_overrides[get_athlete_context_provider] = lambda: FakeAthleteContextProvider(
+        athlete
+    )
 
     transport = httpx.ASGITransport(app=app)
     try:

@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # own database.
     user_service_base_url: str = "http://localhost:8002/v1"
     community_service_base_url: str = "http://localhost:8005/v1"
+    training_service_base_url: str = "http://localhost:8003/v1"
+    nutrition_service_base_url: str = "http://localhost:8004/v1"
 
 
 @lru_cache

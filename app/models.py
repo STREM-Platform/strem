@@ -76,6 +76,23 @@ class BehavioralTriggerState(Base):
     last_recap_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class AgentMemory(Base):
+    """A long-term memory the agent keeps so it never re-asks (A1/A5) — stated
+    preferences and injuries (e.g. "left knee flares on lunges"). Not a raw log."""
+
+    __tablename__ = "agent_memory"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
+    icon: Mapped[str] = mapped_column(String(24), nullable=False)
+    text: Mapped[str] = mapped_column(String(280), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)  # "user" | "agent"
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AIResponseMetadata(Base):
     """Provenance for a generated artifact (model version, prompt hash, flags)."""
 
