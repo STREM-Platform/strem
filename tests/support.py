@@ -11,13 +11,17 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import httpx
 import jwt
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.agent_chat import DeterministicLLMClient, get_llm_client
+from app.agent.llm import FallbackChatModel, get_agent_model
 from app.config import Settings, get_settings
 from app.context import (
     ContextBundle,
@@ -103,6 +107,32 @@ class FakeAthleteContextProvider:
         return self.snapshot
 
 
+class ScriptedChatModel(BaseChatModel):
+    """Returns preset AIMessages in order — drives the agent's tool-call path in
+    tests. Picks the next reply by counting AI turns already in the conversation."""
+
+    responses: list[Any]
+
+    @property
+    def _llm_type(self) -> str:
+        return "scripted"
+
+    def bind_tools(self, tools: Any, **kwargs: Any) -> "ScriptedChatModel":
+        return self
+
+    def _generate(
+        self, messages: list[BaseMessage], stop: list[str] | None = None, **kwargs: Any
+    ) -> ChatResult:
+        idx = sum(1 for m in messages if isinstance(m, AIMessage))
+        msg = self.responses[min(idx, len(self.responses) - 1)]
+        return ChatResult(generations=[ChatGeneration(message=msg)])
+
+    async def _agenerate(
+        self, messages: list[BaseMessage], stop: list[str] | None = None, **kwargs: Any
+    ) -> ChatResult:
+        return self._generate(messages, stop, **kwargs)
+
+
 @dataclass
 class Harness:
     client: httpx.AsyncClient
@@ -114,6 +144,7 @@ class Harness:
 async def ai_app(
     bundle: ContextBundle | None = DEFAULT_BUNDLE,
     athlete: GraphSnapshot | None = DEFAULT_SNAPSHOT,
+    model: BaseChatModel | None = None,
 ) -> AsyncIterator[Harness]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
@@ -139,7 +170,7 @@ async def ai_app(
     app.dependency_overrides[get_athlete_context_provider] = lambda: FakeAthleteContextProvider(
         athlete
     )
-    app.dependency_overrides[get_llm_client] = lambda: DeterministicLLMClient()
+    app.dependency_overrides[get_agent_model] = lambda: model or FallbackChatModel()
 
     transport = httpx.ASGITransport(app=app)
     try:

@@ -8,3 +8,7 @@ alembic>=1.13
 pyjwt>=2.8
 redis>=5.0
 httpx>=0.27
+# Forge agent — LangGraph state-graph orchestration over Claude (B1).
+langgraph>=1.2,<2
+langchain-core>=1.4,<2
+langchain-anthropic>=1.4,<2

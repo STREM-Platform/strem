@@ -4,12 +4,58 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 
-from tests.support import Harness, ai_app, auth_header
+from langchain_core.messages import AIMessage
+
+from tests.support import Harness, ScriptedChatModel, ai_app, auth_header
 
 
 def run(scenario: Callable[[Harness], Awaitable[None]]) -> None:
     async def _inner() -> None:
         async with ai_app() as harness:
+            await scenario(harness)
+
+    asyncio.run(_inner())
+
+
+def test_agent_calls_a_tool_mid_turn_and_logs_it() -> None:
+    """The LangGraph agent reasons → calls a tool → reasons → answers, and the
+    tool call lands in the Activity feed (writeMemory, AUTO → done)."""
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "remember",
+                        "args": {"text": "Lunges bug the left knee", "icon": "heart"},
+                        "id": "call_1",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content="Noted — I'll keep you off lunges and sub split squats."),
+        ]
+    )
+
+    async def scenario(h: Harness) -> None:
+        uid = uuid.uuid4()
+        res = await h.client.post(
+            "/v1/ai/agent/chat",
+            headers=auth_header(uid),
+            json={"message": "Please note that lunges bug my left knee."},
+        )
+        assert res.status_code == 200
+        assert "lunges" in res.json()["text"].lower()
+
+        mem = await h.client.get("/v1/ai/memory", headers=auth_header(uid))
+        assert any("knee" in m["text"].lower() for m in mem.json()["items"])
+
+        feed = await h.client.get("/v1/ai/agent/activity", headers=auth_header(uid))
+        actions = feed.json()["items"]
+        assert any(a["capability"] == "writeMemory" and a["status"] == "done" for a in actions)
+
+    async def _inner() -> None:
+        async with ai_app(model=model) as harness:
             await scenario(harness)
 
     asyncio.run(_inner())
