@@ -215,7 +215,7 @@ function TrainLanding({
             <Pressable onPress={onShare}>
               <View style={styles.shareImgWrap}>
                 <HeroBackdrop tone="green" glow={false} />
-                <Image source={PHOTOS.heroRun} style={styles.shareImg} resizeMode="cover" />
+                <Image source={PHOTOS.run} style={styles.shareImg} resizeMode="cover" />
                 <View style={styles.shareScrim} />
                 <View style={styles.shareRow}>
                   <View style={styles.shrink}>

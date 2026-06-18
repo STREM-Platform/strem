@@ -159,7 +159,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   // consistency
   const total = recap.trainingDays + recap.nutritionDays;
   return (
-    <StoryShell rank={rank} photo={PHOTOS.identity} footer="Consistency, not perfection.">
+    <StoryShell rank={rank} photo={PHOTOS.hyrox} footer="Consistency, not perfection.">
       <Text style={styles.eyebrow}>CONSISTENCY</Text>
       <View style={styles.consRow}>
         <Ring size={128} stroke={12} pct={Math.min(1, total / 14)}>
