@@ -95,10 +95,35 @@ Candidates:
 - Season trailer generated at launch (text/image — audio version follows in V3)
 - Season examples: Iron October, Winter Ascension, Mountain Arc
 
-**AI Coach Depth**
+**AI Coach Depth → "Forge", the omniscient agent**
+
+The coach-depth items below — and the HRV-aware adaptation and proactive triggers
+listed under Phase 3 — are being consolidated into **one autonomous agent, Forge**,
+rather than separate features. The frontend has shipped ahead of the backend
+against the prototype contract (`strem-mobile` `strem-fe/prototype-sync`, mocked
+behind a flag); backend epics are tracked as `strem-mobile#43–#54`.
+
+The agent thesis (see `architecture/ai-architecture.md`):
+- **One context graph** (A1) + signals (A4) + memory (A5) feeds every surface via a
+  single context assembler (A6); the coach is omniscient because every screen reads
+  and cites the same data.
+- **One agent, many surfaces** — the Today nudge, live-workout autoregulation,
+  mission generation, plan import and chat are all calls into the agent (B1), not
+  separate bots.
+- **Acts, not just answers** — a typed, logged, **reversible** tool registry with
+  user-controlled autonomy per capability (AUTO / ASK / OFF), a proactive trigger
+  engine (B3), and an Agent Activity feed that shows every action's reasoning + the
+  data it used + an Undo.
+- **Grounded + guarded** (A8) — never shames, invents vanity metrics, fakes progress
+  or diagnoses; only uses sources the user left on (A7).
+
+Original Phase-2 coach-depth scope (now delivered through Forge):
 - Improved context memory: coach references multi-week patterns, not just last 7 days
 - Multi-week mission arcs: connected missions that build toward a larger transformation objective
 - Behavioral adaptation engine: coach proactively triggers re-engagement missions, burnout detection, milestone-proximity nudges
+- Live-workout intelligence: per-set autoregulation (RPE→load/rest) + PR detection
+- AI capture: photo→workout, photo→meal, voice→log
+- Plan import: read a coach's plan from a photo → clean markdown → adapt to the week
 
 **Accountability and Notifications**
 - Milestone proximity alerts: "You're 3 sessions away from your next rank"
