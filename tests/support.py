@@ -17,6 +17,7 @@ import jwt
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app.agent_chat import DeterministicLLMClient, get_llm_client
 from app.config import Settings, get_settings
 from app.context import (
     ContextBundle,
@@ -138,6 +139,7 @@ async def ai_app(
     app.dependency_overrides[get_athlete_context_provider] = lambda: FakeAthleteContextProvider(
         athlete
     )
+    app.dependency_overrides[get_llm_client] = lambda: DeterministicLLMClient()
 
     transport = httpx.ASGITransport(app=app)
     try:

@@ -7,10 +7,11 @@ owning services (ai-architecture.md "Context Privacy").
 """
 
 import uuid
+from datetime import UTC, datetime
 from datetime import date as date_type
-from datetime import datetime
+from typing import Any
 
-from sqlalchemy import Date, DateTime, Integer, String, func
+from sqlalchemy import JSON, Date, DateTime, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -91,6 +92,32 @@ class AgentMemory(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentAction(Base):
+    """A typed, logged, reversible action Forge took or proposed (B3). The proof
+    it's an agent: reasoning + the data it cited + an undo, in one feed."""
+
+    __tablename__ = "agent_actions"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
+    capability: Mapped[str] = mapped_column(String(32), nullable=False)
+    type: Mapped[str] = mapped_column(String(48), nullable=False)
+    summary: Mapped[str] = mapped_column(String(200), nullable=False)
+    reasoning: Mapped[str] = mapped_column(String(600), nullable=False)
+    cited_data: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(12), nullable=False)
+    autonomy: Mapped[str] = mapped_column(String(8), nullable=False)
+    undo_payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    # Python-side default gives microsecond precision so the feed orders
+    # deterministically newest-first even for same-second inserts.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class AIResponseMetadata(Base):

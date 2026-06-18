@@ -161,3 +161,51 @@ class MemoryCreate(CamelModel):
 
 class MemoryList(CamelModel):
     items: list[MemoryItem]
+
+
+# ── Forge agent: chat (B1) + action log (B3) ─────────────────────────────────
+class CitedDatum(CamelModel):
+    """A grounding chip — one of the user's own signals the agent cited."""
+
+    icon: str
+    text: str
+
+
+class ChatRequest(CamelModel):
+    message: str
+
+
+class CoachReply(CamelModel):
+    """A cited, grounded coach reply (B1)."""
+
+    text: str
+    cites: list[CitedDatum] = []
+
+
+class ActionCreate(CamelModel):
+    """Request a typed agent action (the FE tool helpers post this)."""
+
+    capability: str
+    type: str
+    summary: str
+    reasoning: str
+    cited_data: list[CitedDatum] = []
+
+
+class AgentActionOut(CamelModel):
+    """A recorded agent action (B3) — reasoning + cited data + status."""
+
+    id: uuid.UUID
+    capability: str
+    type: str
+    summary: str
+    reasoning: str
+    cited_data: list[CitedDatum]
+    status: str
+    autonomy: str
+    created_at: datetime
+
+
+class AgentActionPage(CamelModel):
+    items: list[AgentActionOut]
+    pagination: Pagination
