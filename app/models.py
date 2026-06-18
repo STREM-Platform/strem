@@ -10,7 +10,7 @@ strem-user-service#4.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -72,6 +72,41 @@ class MedalRecord(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
     medal_type: Mapped[str] = mapped_column(String(40), nullable=False)
     earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AgentSourceConsent(Base):
+    """A user's decision to let Forge see one data source (A7 consent).
+
+    Only deviations from the catalog defaults are stored; an absent row means the
+    source keeps its default (see `app.agent_prefs.SOURCE_CATALOG`). One row per
+    user per source.
+    """
+
+    __tablename__ = "agent_source_consent"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    source_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class AgentAutonomy(Base):
+    """A user's per-capability autonomy setting for Forge (A7).
+
+    Only deviations from `app.agent_prefs.DEFAULT_AUTONOMY` are stored; an absent
+    row means the capability keeps its default. One row per user per capability.
+    """
+
+    __tablename__ = "agent_autonomy"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    capability: Mapped[str] = mapped_column(String(40), primary_key=True)
+    level: Mapped[str] = mapped_column(String(10), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
 
 class ProcessedEvent(Base):

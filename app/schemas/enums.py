@@ -53,6 +53,41 @@ class OnboardingStatusValue(StrEnum):
     COMPLETED = "completed"
 
 
+class AgentCapability(StrEnum):
+    """A typed, logged, reversible action Forge can take (mirrors the FE registry).
+
+    Values match `AgentCapability` in strem-mobile/lib/agent/types.ts and the
+    orchestrator's `app.enums.AgentCapability`; they key the per-capability
+    autonomy map returned by `/users/me/agent-autonomy`.
+    """
+
+    UPDATE_READINESS = "updateReadiness"
+    SURFACE_INSIGHT = "surfaceInsight"
+    ADJUST_TARGETS = "adjustTargets"
+    SWAP_EXERCISE = "swapExercise"
+    FLAG_NUTRITION = "flagNutrition"
+    WRITE_MEMORY = "writeMemory"
+    ADJUST_TODAY_PLAN = "adjustTodayPlan"
+    RESCHEDULE_WEEK = "rescheduleWeek"
+    GENERATE_MISSIONS = "generateMissions"
+    IMPORT_PLAN = "importPlan"
+    LOG_CAPTURE = "logCapture"
+    SEND_NUDGE = "sendNudge"
+
+
+class AutonomyLevel(StrEnum):
+    """How much latitude Forge has for a capability (user-controlled).
+
+    auto — Forge does it, tells you, you can undo
+    ask  — Forge proposes, you approve
+    off  — Forge won't
+    """
+
+    AUTO = "auto"
+    ASK = "ask"
+    OFF = "off"
+
+
 class ScreenName(StrEnum):
     """The seven onboarding screens, in order (onboarding-flow.md)."""
 

@@ -1,6 +1,15 @@
 """Pydantic schemas for strem-user-service (profiles, onboarding, game state)."""
 
+from app.schemas.agent_prefs import (
+    AutonomyUpdate,
+    ConsentGroup,
+    ConsentItem,
+    ConsentUpdate,
+    PrivacyData,
+)
 from app.schemas.enums import (
+    AgentCapability,
+    AutonomyLevel,
     Modality,
     NutritionPreference,
     OnboardingStatusValue,
@@ -18,6 +27,12 @@ __all__ = [
     "RANK_XP_FLOOR",
     "XP_FIXED",
     "XP_RANGE",
+    "AgentCapability",
+    "AutonomyLevel",
+    "AutonomyUpdate",
+    "ConsentGroup",
+    "ConsentItem",
+    "ConsentUpdate",
     "EarnedMedal",
     "Medal",
     "MedalType",
@@ -26,6 +41,7 @@ __all__ = [
     "OnboardingRequest",
     "OnboardingStatusResponse",
     "OnboardingStatusValue",
+    "PrivacyData",
     "ScreenName",
     "TrainingLevel",
     "TransformationGoal",
