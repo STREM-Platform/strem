@@ -40,6 +40,7 @@ def test_routes_each_service_to_its_upstream() -> None:
             "/v1/auth/login": "http://localhost:8001/v1/auth/login",
             "/v1/users/me": "http://localhost:8002/v1/users/me",
             "/v1/training/sessions": "http://localhost:8003/v1/training/sessions",
+            "/v1/integrations/sources": "http://localhost:8003/v1/integrations/sources",
             "/v1/nutrition/days": "http://localhost:8004/v1/nutrition/days",
             "/v1/tribes/me": "http://localhost:8005/v1/tribes/me",
             "/v1/ai/missions/active": "http://localhost:8006/v1/ai/missions/active",
