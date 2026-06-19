@@ -240,3 +240,82 @@ class AdaptivePlan(CamelModel):
 
     reason: str
     missions: list[AdaptiveMission]
+
+
+# ── Forge agent: photo & voice capture (D3/D4/D6) ────────────────────────────
+class CaptureWorkoutItem(CamelModel):
+    name: str
+    detail: str
+    note: str
+
+
+class CaptureWorkoutResult(CamelModel):
+    """A parsed-but-unconfirmed workout (matches FE `CaptureWorkoutResult`)."""
+
+    title: str
+    items: list[CaptureWorkoutItem]
+    note: str
+
+
+class CaptureFoodResult(CamelModel):
+    """A parsed-but-unconfirmed meal estimate (matches FE `CaptureFoodResult`).
+
+    Macros are estimates surfaced for review — never written until confirmed.
+    """
+
+    title: str
+    cal: int
+    p: int
+    c: int
+    f: int
+    note: str
+
+
+class CaptureVoiceResult(CamelModel):
+    """A transcribed-and-parsed voice note (matches FE `CaptureVoiceResult`)."""
+
+    title: str
+    detail: str
+    note: str
+
+
+class WorkoutConfirm(CamelModel):
+    """The training-session body to persist when a workout capture is confirmed."""
+
+    session_type: str
+    duration_minutes: int
+    distance_km: float | None = None
+    notes: str | None = None
+
+
+class MealConfirm(CamelModel):
+    """The nutrition-day mark to persist when a meal capture is confirmed.
+
+    The nutrition service tracks day-level `targets_met`; macro detail from the
+    capture is preserved in the agent action's cited data.
+    """
+
+    date: date_type
+    targets_met: bool = True
+    notes: str | None = None
+
+
+class CaptureConfirmRequest(CamelModel):
+    """Confirm a capture ("Log it"): record a `logCapture` action and write it.
+
+    `kind` selects which payload is required: `workout` → `workout`,
+    `meal` → `meal`, `voice` → neither (action-only).
+    """
+
+    kind: str  # "workout" | "meal" | "voice"
+    summary: str
+    cited_data: list[CitedDatum] = []
+    workout: WorkoutConfirm | None = None
+    meal: MealConfirm | None = None
+
+
+class CaptureConfirmResponse(CamelModel):
+    """The recorded action and the id written to the owning service (if any)."""
+
+    action: AgentActionOut | None = None
+    written_id: str | None = None

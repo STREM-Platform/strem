@@ -22,6 +22,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.agent.llm import FallbackChatModel, get_agent_model
+from app.capture import (
+    MealCapture,
+    VoiceCapture,
+    WorkoutCapture,
+    WorkoutItem,
+    get_capture_provider,
+)
+from app.capture_writer import get_capture_writer
 from app.config import Settings, get_settings
 from app.context import (
     ContextBundle,
@@ -141,11 +149,45 @@ class ScriptedChatModel(BaseChatModel):
         return self._generate(messages, stop, run_manager, **kwargs)
 
 
+class StubCaptureProvider:
+    """A capture provider that returns rich parsed results (stands in for vision)."""
+
+    async def parse_workout(self, image: bytes, content_type: str) -> WorkoutCapture:
+        return WorkoutCapture(
+            title="Upper Push",
+            items=[WorkoutItem(name="Bench Press", detail="4 × 6 @ 80kg", note="Matched")],
+            note="Estimate — review before logging.",
+        )
+
+    async def parse_meal(self, image: bytes, content_type: str) -> MealCapture:
+        return MealCapture(title="Chicken & rice", cal=620, p=48, c=72, f=14, note="Estimate.")
+
+    async def parse_voice(self, audio: bytes, content_type: str) -> VoiceCapture:
+        return VoiceCapture(title="Logged run", detail="Easy 5k, felt strong", note="Estimate.")
+
+
+class RecordingCaptureWriter:
+    """Records owning-service writes instead of making network calls."""
+
+    def __init__(self) -> None:
+        self.workouts: list[dict[str, Any]] = []
+        self.meals: list[dict[str, Any]] = []
+
+    async def write_workout(self, **kwargs: Any) -> str | None:
+        self.workouts.append(kwargs)
+        return "written-workout-id"
+
+    async def write_meal(self, **kwargs: Any) -> str | None:
+        self.meals.append(kwargs)
+        return "written-meal-id"
+
+
 @dataclass
 class Harness:
     client: httpx.AsyncClient
     publisher: InMemoryPublisher
     sessionmaker: async_sessionmaker[AsyncSession]
+    capture_writer: RecordingCaptureWriter
 
 
 @asynccontextmanager
@@ -165,6 +207,7 @@ async def ai_app(
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
     publisher = InMemoryPublisher()
     provider = FakeContextProvider(bundle)
+    capture_writer = RecordingCaptureWriter()
 
     async def _session() -> AsyncIterator[AsyncSession]:
         async with sessionmaker() as session:
@@ -179,10 +222,17 @@ async def ai_app(
         athlete
     )
     app.dependency_overrides[get_agent_model] = lambda: model or FallbackChatModel()
+    app.dependency_overrides[get_capture_provider] = lambda: StubCaptureProvider()
+    app.dependency_overrides[get_capture_writer] = lambda: capture_writer
 
     transport = httpx.ASGITransport(app=app)
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            yield Harness(client=client, publisher=publisher, sessionmaker=sessionmaker)
+            yield Harness(
+                client=client,
+                publisher=publisher,
+                sessionmaker=sessionmaker,
+                capture_writer=capture_writer,
+            )
     finally:
         await engine.dispose()
