@@ -120,3 +120,47 @@ class FinishSessionResponse(BaseModel):
     """PRs detected when the live session was finished (may be empty)."""
 
     prs_detected: list[PersonalRecordResponse]
+
+
+# ── Connected-source ingestion (A3) ──────────────────────────────────────────
+class IntegrationSource(BaseModel):
+    """One connectable source and its live connection state (FE `ContextSource`)."""
+
+    id: str
+    label: str
+    icon: str
+    on: bool
+    last: str
+    metric: str
+
+
+class IntegrationSourceList(BaseModel):
+    items: list[IntegrationSource]
+
+
+class ConnectRequest(BaseModel):
+    """The OAuth `code` (and redirect) returned by the provider's consent screen."""
+
+    code: str = Field(min_length=1)
+    redirect_uri: str = ""
+
+
+class SyncResponse(BaseModel):
+    """Counts of new records normalized in from a sync."""
+
+    synced_sessions: int
+    synced_recovery: int
+
+
+class RecoverySampleResponse(BaseModel):
+    id: uuid.UUID
+    source: str
+    date: datetime
+    hrv_ms: float | None = None
+    resting_hr: int | None = None
+    sleep_hours: float | None = None
+    recovery_score: int | None = None
+
+
+class RecoverySampleList(BaseModel):
+    items: list[RecoverySampleResponse]

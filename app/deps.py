@@ -12,11 +12,13 @@ from app.config import Settings, get_settings
 from app.db import get_session
 from app.errors import AppError
 from app.events import EventPublisher, get_publisher
+from app.integrations.providers import Provider, get_provider_registry
 from app.security import decode_access_token
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
+ProviderRegistryDep = Annotated[dict[str, Provider], Depends(get_provider_registry)]
 
 
 @dataclass(frozen=True)

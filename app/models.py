@@ -27,6 +27,10 @@ class TrainingSession(Base):
     distance_km: Mapped[float | None] = mapped_column(Float, nullable=True)
     elevation_m: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Provenance (A3): "manual" for in-app logs, else the connected source.
+    source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
+    # The provider's activity id, so re-syncs are idempotent (null for manual).
+    external_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -78,3 +82,52 @@ class PersonalRecord(Base):
     estimated_1rm: Mapped[float] = mapped_column(Float, nullable=False)
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     achieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ConnectedSource(Base):
+    """A user's connection to an external data source (A3): Whoop, Strava, Health.
+
+    OAuth tokens are stored encrypted at rest (see `app.crypto`). One row per
+    user per provider. Disconnecting deletes the row (and its tokens).
+    """
+
+    __tablename__ = "connected_sources"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(20), primary_key=True)
+    status: Mapped[str] = mapped_column(String(20), default="connected", nullable=False)
+    access_token_enc: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    refresh_token_enc: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    scope: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    connected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RecoverySample(Base):
+    """A daily recovery reading from a connected source (A3), for A4 to read.
+
+    Sleep / HRV / resting HR / recovery score — the raw inputs A4 turns into the
+    readiness signal. One row per user per source per day.
+    """
+
+    __tablename__ = "recovery_samples"
+    __table_args__ = (
+        UniqueConstraint("user_id", "source", "date", name="uq_recovery_user_source_date"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    hrv_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
+    resting_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sleep_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recovery_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

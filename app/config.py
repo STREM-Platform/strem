@@ -19,6 +19,20 @@ class Settings(BaseSettings):
     # Redis Streams broker for publishing training.session_logged.
     message_broker_url: str = "redis://localhost:6379/0"
 
+    # Connected-source ingestion (A3). Provider OAuth tokens are stored encrypted
+    # at rest with this Fernet key (urlsafe base64, 32 bytes). Empty disables
+    # connecting sources — a provider token is never stored in plaintext.
+    integrations_encryption_key: str = ""
+
+    # Whoop / Strava server-OAuth app credentials. Empty → that provider can't be
+    # connected (local dev / tests stub the provider clients).
+    whoop_client_id: str = ""
+    whoop_client_secret: str = ""
+    whoop_redirect_uri: str = ""
+    strava_client_id: str = ""
+    strava_client_secret: str = ""
+    strava_redirect_uri: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
