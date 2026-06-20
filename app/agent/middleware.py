@@ -13,6 +13,7 @@ Cross-cutting concerns live here, not in the tools or the graph:
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -90,17 +91,25 @@ async def model_metrics(request: Any, handler: Any) -> Any:
     return response
 
 
+# The model can emit several tool calls in one turn; LangGraph runs them
+# concurrently (asyncio.gather), but they all share the request's single
+# AsyncSession — which is not safe for concurrent use ("Session is already
+# flushing"). Serialise the whole tool execution + its DB log so a multi-tool
+# turn can't corrupt the session (which previously left tool_use blocks without
+# tool_result → an Anthropic 400 and a dropped turn).
+_TOOL_LOCK = asyncio.Lock()
+
+
 @wrap_tool_call
 async def action_logging(request: Any, handler: Any) -> Any:
     """Run the tool, then log a reversible, autonomy-gated AgentAction for it."""
-    response = await handler(request)
-    spec = _TOOL_SPEC.get(request.tool_call["name"])
-    ctx = request.runtime.context
-    if spec is not None and ctx is not None:
-        capability, label, builder = spec
-        summary, reasoning = builder(request.tool_call.get("args", {}))
-        # Serialise: concurrent tool calls in one turn share this request session.
-        async with ctx.db_lock:
+    async with _TOOL_LOCK:
+        response = await handler(request)
+        spec = _TOOL_SPEC.get(request.tool_call["name"])
+        ctx = request.runtime.context
+        if spec is not None and ctx is not None:
+            capability, label, builder = spec
+            summary, reasoning = builder(request.tool_call.get("args", {}))
             await agent_actions.record_action(
                 ctx.session,
                 ctx.publisher,
@@ -111,7 +120,7 @@ async def action_logging(request: Any, handler: Any) -> Any:
                 reasoning=reasoning,
                 cited_data=[],
             )
-        METRICS.record_tool(capability.value)
+            METRICS.record_tool(capability.value)
     return response
 
 

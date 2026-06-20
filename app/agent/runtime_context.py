@@ -7,7 +7,6 @@ assembled athlete context without it leaking into thread state.
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -27,7 +26,3 @@ class ForgeContext:
     identity: str | None = None
     memory: list[MemoryItem] = field(default_factory=list)
     sessions: list[dict[str, Any]] = field(default_factory=list)
-    # Serialises the per-tool DB writes — the model can call several tools in one
-    # turn and LangGraph runs them concurrently, but one AsyncSession is not safe
-    # for concurrent use.
-    db_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
