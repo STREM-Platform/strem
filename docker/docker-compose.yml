@@ -117,6 +117,16 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
       MESSAGE_BROKER_URL: redis://redis:6379/0
+      # Connected-source ingestion (A3). Empty key → connecting a source is
+      # refused; empty provider creds → that provider can't be connected. The
+      # rest of the service runs regardless.
+      INTEGRATIONS_ENCRYPTION_KEY: ${INTEGRATIONS_ENCRYPTION_KEY:-}
+      WHOOP_CLIENT_ID: ${WHOOP_CLIENT_ID:-}
+      WHOOP_CLIENT_SECRET: ${WHOOP_CLIENT_SECRET:-}
+      WHOOP_REDIRECT_URI: ${WHOOP_REDIRECT_URI:-}
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:-}
+      STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
+      STRAVA_REDIRECT_URI: ${STRAVA_REDIRECT_URI:-}
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -178,8 +188,19 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
       MESSAGE_BROKER_URL: redis://redis:6379/0
+      # Service URLs the orchestrator reads context from / writes captures to.
+      # These must be the in-network hostnames, not localhost, inside Docker.
       USER_SERVICE_BASE_URL: http://user:8000/v1
       COMMUNITY_SERVICE_BASE_URL: http://community:8000/v1
+      TRAINING_SERVICE_BASE_URL: http://training:8000/v1
+      NUTRITION_SERVICE_BASE_URL: http://nutrition:8000/v1
+      # Forge agent (B1). Empty key → deterministic offline fallback (the stack
+      # still boots and coaches, just without live Claude). LangSmith is optional
+      # tracing.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-strem-forge}
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
