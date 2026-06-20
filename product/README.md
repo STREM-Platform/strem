@@ -8,6 +8,8 @@ implemented capabilities as "V2/future"; reconciliation is tracked as a docs iss
 | Doc | What it covers |
 |---|---|
 | [implementation-status.md](implementation-status.md) | **Live status: shipped vs planned per capability.** Read this first. |
+| [next-steps-plan.md](next-steps-plan.md) | **Forward plan (2026-06-19):** MVP-completeness verdict, deeper intake (baseline/supplements/labs), legal/policy, premium-quality + competitive gap analysis, prioritized roadmap |
+| [social-competition-plan.md](social-competition-plan.md) | Design for 1v1 duels, tribe-vs-tribe matches, and challenge proof (photo/video/data-verified) |
 | [prd.md](prd.md) | Product requirements overview |
 | [mvp-scope.md](mvp-scope.md) | What is (and isn't) in the MVP |
 | [feature-map.md](feature-map.md) | MVP vs Phase 2/3/4 feature inventory |
