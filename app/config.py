@@ -22,8 +22,9 @@ class Settings(BaseSettings):
     community_base_url: str = "http://localhost:8005/v1"
     ai_base_url: str = "http://localhost:8006/v1"
 
-    # Per-request upstream timeout (seconds).
-    upstream_timeout_seconds: float = 10.0
+    # Per-request upstream timeout (seconds). Generous because an agent chat turn
+    # legitimately makes several Claude calls (tool loop) and can take ~20-30s.
+    upstream_timeout_seconds: float = 60.0
 
     # Rate limiting. Redis is shared across gateway instances; empty falls back to
     # a per-process in-memory limiter. Limits apply per window, per scope (client
