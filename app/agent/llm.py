@@ -61,11 +61,12 @@ def build_model(settings: Settings | None = None) -> BaseChatModel:
         from langchain_anthropic import ChatAnthropic
         from pydantic import SecretStr
 
+        # NB: no `temperature` — it is deprecated for claude-opus-4-8 (the API
+        # 400s if it is sent), and the model defaults are well-tuned for coaching.
         return ChatAnthropic(  # type: ignore[call-arg]
             model=settings.anthropic_model,
             api_key=SecretStr(settings.anthropic_api_key),
             max_tokens=800,
-            temperature=0.4,
         )
     return FallbackChatModel()
 
