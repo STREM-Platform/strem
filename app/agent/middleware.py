@@ -99,16 +99,18 @@ async def action_logging(request: Any, handler: Any) -> Any:
     if spec is not None and ctx is not None:
         capability, label, builder = spec
         summary, reasoning = builder(request.tool_call.get("args", {}))
-        await agent_actions.record_action(
-            ctx.session,
-            ctx.publisher,
-            user_id=ctx.user_id,
-            capability=capability,
-            type=label,
-            summary=summary,
-            reasoning=reasoning,
-            cited_data=[],
-        )
+        # Serialise: concurrent tool calls in one turn share this request session.
+        async with ctx.db_lock:
+            await agent_actions.record_action(
+                ctx.session,
+                ctx.publisher,
+                user_id=ctx.user_id,
+                capability=capability,
+                type=label,
+                summary=summary,
+                reasoning=reasoning,
+                cited_data=[],
+            )
         METRICS.record_tool(capability.value)
     return response
 
