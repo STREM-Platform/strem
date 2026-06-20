@@ -20,7 +20,7 @@ import { Icon, MountainMark, type IconName } from "@/components/ui/icon";
 import { Bar, Btn, Chip, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { ApiError, SessionExpiredError, api } from "@/lib/api/client";
-import type { Challenge, ChallengeTargetType, CheckIn, CompletedAction, Tribe } from "@/lib/api/types";
+import type { Challenge, ChallengeTargetType, CheckIn, CompletedAction, Membership, Tribe } from "@/lib/api/types";
 import { useAuth } from "@/lib/session/auth-context";
 
 type Status = "loading" | "no_tribe" | "pending" | "in_tribe" | "error";
@@ -63,17 +63,20 @@ export default function TribeScreen() {
   const [tribe, setTribe] = useState<Tribe | null>(null);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [members, setMembers] = useState<Membership[]>([]);
 
   const load = useCallback(async (): Promise<void> => {
     try {
       const current = await api.getMyTribe();
-      const [activity, challengePage] = await Promise.all([
+      const [activity, challengePage, memberList] = await Promise.all([
         api.listCheckins(current.id),
         api.listChallenges(current.id),
+        api.listTribeMembers(current.id),
       ]);
       setTribe(current);
       setCheckins(activity.items);
       setChallenges(challengePage.items);
+      setMembers(memberList.items);
       setStatus("in_tribe");
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) setStatus("no_tribe");
@@ -135,6 +138,7 @@ export default function TribeScreen() {
             tribe={tribe}
             checkins={checkins}
             challenge={activeChallenge}
+            members={members}
             currentUserId={user?.user_id}
             onChanged={() => void load()}
           />
@@ -149,12 +153,14 @@ function InTribe({
   tribe,
   checkins,
   challenge,
+  members,
   currentUserId,
   onChanged,
 }: {
   tribe: Tribe;
   checkins: CheckIn[];
   challenge: Challenge | undefined;
+  members: Membership[];
   currentUserId: string | undefined;
   onChanged: () => void;
 }) {
@@ -209,6 +215,33 @@ function InTribe({
           ))}
         </View>
       </Panel>
+
+      {/* members — the whole room */}
+      <SectionHead icon="users" title="MEMBERS" sub={`Everyone in ${tribe.name}`} />
+      <View style={styles.sideMargin}>
+        <Panel pad={0}>
+          {members.map((m, i) => {
+            const mine = currentUserId != null && m.user_id === currentUserId;
+            return (
+              <View key={m.user_id} style={[styles.memberRow, i > 0 && styles.memberDivider]}>
+                <View style={[styles.feedDot, mine ? styles.feedDotMine : styles.feedDotOther]}>
+                  <Icon name="users" size={16} color={mine ? T.green : T.mut} />
+                </View>
+                <Text style={[styles.memberName, { color: mine ? T.green : T.text }]}>
+                  {mine ? "You" : `Teammate · ${m.user_id.slice(0, 4)}`}
+                </Text>
+                <Chip
+                  label={m.role === "admin" ? "Founder" : "Member"}
+                  color={m.role === "admin" ? T.green : T.mut}
+                  bg={m.role === "admin" ? T.greenSoft : T.surf2}
+                  border={m.role === "admin" ? T.greenLine : T.line2}
+                  iconFill={false}
+                />
+              </View>
+            );
+          })}
+        </Panel>
+      </View>
 
       {/* collective challenge */}
       {challenge ? (
@@ -342,6 +375,10 @@ const styles = StyleSheet.create({
   actionOn: { backgroundColor: T.greenSoft, borderColor: T.greenLine },
   actionOff: { backgroundColor: T.surf, borderColor: T.line },
   actionLabel: { ...ui(12, 700) },
+
+  memberRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 14 },
+  memberDivider: { borderTopWidth: 1, borderTopColor: T.line },
+  memberName: { flex: 1, ...ui(14, 700) },
 
   timeline: { position: "relative" },
   timelineSpine: { position: "absolute", left: 34, top: 8, bottom: 8, width: 2, backgroundColor: "rgba(255,255,255,0.07)" },

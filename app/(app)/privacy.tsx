@@ -79,6 +79,16 @@ export default function PrivacyScreen() {
           ))}
         </View>
 
+        {/* connect external sources (A3) — Strava / Whoop / Health */}
+        <Pressable style={[styles.sideMargin, styles.activityLink]} onPress={() => router.push("/(app)/integrations")}>
+          <IconTile name="route" size={40} iconSize={19} />
+          <View style={styles.shrink}>
+            <Text style={styles.activityTitle}>Connected sources</Text>
+            <Text style={styles.activitySub}>Link Strava, Whoop & more — what your coach can pull in.</Text>
+          </View>
+          <Icon name="chevron" size={18} color={T.sub} />
+        </Pressable>
+
         {/* autonomy — how much Forge can do on its own (per capability) */}
         <SectionHead icon="bot" title="WHAT FORGE CAN DO" sub="Per-ability autonomy" />
         <View style={styles.sideMargin}>

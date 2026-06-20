@@ -7,15 +7,16 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { CiteChips } from "@/components/agent/shared";
-import { Icon } from "@/components/ui/icon";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { Btn, Chip, IconTile, Panel } from "@/components/ui/primitives";
 import { Ring } from "@/components/ui/ring";
 import { T, disp, mono, ui } from "@/constants/theme";
+import { agentApi, type PlanExercise, type TrainingPlan } from "@/lib/api/agent";
 import { forge } from "@/lib/agent";
-import type { AdaptivePlan, CoachConversation, CoachMessage, Insight, PlanImport } from "@/lib/agent/types";
+import type { CoachConversation, CoachMessage, Insight, PlanImport } from "@/lib/agent/types";
 import { useAsync } from "@/lib/use-async";
 
 // ── Mode 1: Chat ─────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ export function ChatView() {
   const [thread, setThread] = useState<CoachMessage[]>([]);
   const [typing, setTyping] = useState(false);
   const [asked, setAsked] = useState<string[]>([]);
+  const [input, setInput] = useState("");
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -77,15 +79,26 @@ export function ChatView() {
   if (!C) return null;
   const remaining = C.prompts.filter((p) => !asked.includes(p.q));
 
-  const ask = (q: string, a: string, cites: CoachMessage["cites"]) => {
-    if (typing) return;
+  // Every message — typed or a tapped suggestion — goes to the real Forge agent
+  // (LangChain create_agent), which grounds its reply in the user's own data.
+  const send = async (text: string): Promise<void> => {
+    const q = text.trim();
+    if (!q || typing) return;
     setAsked((s) => [...s, q]);
     setThread((t) => [...t, { role: "you", text: q }]);
+    setInput("");
     setTyping(true);
-    setTimeout(() => {
+    try {
+      const reply = await agentApi.chat(q);
+      setThread((t) => [...t, { role: "coach", text: reply.text, cites: reply.cites }]);
+    } catch {
+      setThread((t) => [
+        ...t,
+        { role: "coach", text: "I couldn't reach the coach just now — check the connection and try again." },
+      ]);
+    } finally {
       setTyping(false);
-      setThread((t) => [...t, { role: "coach", text: a, cites }]);
-    }, 1100);
+    }
   };
 
   return (
@@ -98,17 +111,28 @@ export function ChatView() {
         {remaining.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptRow}>
             {remaining.map((p) => (
-              <Pressable key={p.q} onPress={() => ask(p.q, p.a, p.cites)} style={styles.prompt}>
+              <Pressable key={p.q} onPress={() => void send(p.q)} style={styles.prompt}>
                 <Text style={styles.promptText}>{p.q}</Text>
               </Pressable>
             ))}
           </ScrollView>
         ) : null}
         <View style={styles.inputBar}>
-          <Text style={styles.inputPlaceholder}>{remaining.length ? "Ask Forge anything…" : "Forge has the full picture."}</Text>
-          <View style={styles.send}>
+          <TextInput
+            value={input}
+            onChangeText={setInput}
+            placeholder="Ask Forge anything…"
+            placeholderTextColor={T.sub}
+            style={styles.input}
+            multiline
+            onSubmitEditing={() => void send(input)}
+            blurOnSubmit
+            editable={!typing}
+            returnKeyType="send"
+          />
+          <Pressable onPress={() => void send(input)} disabled={typing || !input.trim()} style={[styles.send, (typing || !input.trim()) && styles.sendDisabled]}>
             <Icon name="send" size={18} color="#06130D" />
-          </View>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -303,21 +327,18 @@ function PlanImportView({ onBack }: { onBack: () => void }) {
 export function PlanView() {
   const [view, setView] = useState<"menu" | "import">("menu");
   const [state, setState] = useState<"idle" | "loading" | "done">("idle");
-  const [plan, setPlan] = useState<AdaptivePlan | null>(null);
-  const [accepted, setAccepted] = useState<number[]>([]);
+  const [plan, setPlan] = useState<TrainingPlan | null>(null);
 
   if (view === "import") return <PlanImportView onBack={() => setView("menu")} />;
 
   const gen = async () => {
     setState("loading");
-    const p = await forge.generateAdaptivePlan();
-    setPlan(p);
-    setState("done");
-  };
-
-  const accept = (i: number, title: string, why: string) => {
-    setAccepted((a) => [...a, i]);
-    forge.generateMissions(`Added mission: ${title}`, why, [{ icon: "target", text: "Goal: Hybrid" }]);
+    try {
+      setPlan(await agentApi.getTrainingPlan());
+      setState("done");
+    } catch {
+      setState("idle");
+    }
   };
 
   return (
@@ -356,7 +377,7 @@ export function PlanView() {
           <Ring size={92} stroke={9} pct={0.7} color={T.green}>
             <Icon name="sparkles" size={30} color={T.green} />
           </Ring>
-          {["Reading 4 weeks of training…", "Weighing readiness & goal…", "Writing your missions…"].map((s, i) => (
+          {["Reading your training…", "Weighing readiness & goal…", "Building your week…"].map((s, i) => (
             <Text key={i} style={[styles.loadingText, { color: i === 2 ? T.text : T.sub }]}>
               {s}
             </Text>
@@ -364,51 +385,74 @@ export function PlanView() {
         </View>
       ) : null}
 
-      {state === "done" && plan ? (
-        <View style={styles.doneCol}>
-          <Panel accent={T.greenLine} pad={12} style={styles.reason}>
-            <Text style={styles.reasonText}>
-              <Text style={styles.forgeName}>Forge: </Text>
-              {plan.reason}
-            </Text>
-          </Panel>
-          {plan.missions.map((m, i) => {
-            const tone = m.tone === "red" ? T.red : m.tone === "amber" ? T.amber : T.green;
-            const soft = m.tone === "amber" ? T.amberSoft : m.tone === "red" ? T.redSoft : T.greenSoft;
-            const line = m.tone === "amber" ? T.amberLine : m.tone === "red" ? T.redLine : T.greenLine;
-            const on = accepted.includes(i);
-            return (
-              <Panel key={i} pad={14} accent={on ? line : T.line} style={styles.mission}>
-                <View style={styles.missionHead}>
-                  <IconTile name={m.icon} size={42} iconSize={20} color={tone} bg={soft} border={line} />
-                  <View style={styles.shrink}>
-                    <Text style={styles.missionTitle}>{m.title}</Text>
-                    <Text style={styles.missionMeta}>
-                      {m.days} DAYS · +{m.xp} XP
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.missionWhy}>
-                  <Text style={[styles.missionWhyLabel, { color: tone }]}>WHY · </Text>
-                  {m.why}
-                </Text>
-                {on ? (
-                  <View style={styles.onBoard}>
-                    <Icon name="check" size={15} color={T.green} sw={3} />
-                    <Text style={styles.onBoardText}>On your board</Text>
-                  </View>
-                ) : (
-                  <View style={styles.missionActions}>
-                    <Btn kind="ghost" icon="refresh" label="Swap" style={styles.flexOne} />
-                    <Btn kind="primary" icon="check" label="Accept" onPress={() => accept(i, m.title, m.why)} style={styles.flexTwo} />
-                  </View>
-                )}
-              </Panel>
-            );
-          })}
-        </View>
-      ) : null}
+      {state === "done" && plan ? <TrainingPlanView plan={plan} /> : null}
     </ScrollView>
+  );
+}
+
+// The generated week — every exercise is swappable from its movement group.
+function TrainingPlanView({ plan }: { plan: TrainingPlan }) {
+  const [days, setDays] = useState(plan.days);
+  const [swapping, setSwapping] = useState<string | null>(null);
+
+  const swap = async (di: number, ei: number, ex: PlanExercise) => {
+    const key = `${di}-${ei}`;
+    setSwapping(key);
+    try {
+      const { exercise } = await agentApi.swapExercise(ex.group, ex.name);
+      setDays((ds) =>
+        ds.map((d, i) =>
+          i !== di ? d : { ...d, exercises: d.exercises.map((e, j) => (j !== ei ? e : exercise)) },
+        ),
+      );
+    } catch {
+      // leave the exercise as-is on failure
+    } finally {
+      setSwapping(null);
+    }
+  };
+
+  return (
+    <View style={styles.doneCol}>
+      <Panel accent={T.greenLine} pad={12} style={styles.reason}>
+        <Text style={styles.reasonText}>
+          <Text style={styles.forgeName}>{plan.title} · </Text>
+          {plan.summary}
+        </Text>
+      </Panel>
+      {days.map((day, di) => (
+        <Panel key={di} pad={14} accent={T.line} style={styles.mission}>
+          <View style={styles.missionHead}>
+            <IconTile name={day.icon as IconName} size={42} iconSize={20} />
+            <View style={styles.shrink}>
+              <Text style={styles.missionTitle}>{day.focus}</Text>
+              <Text style={styles.missionMeta}>
+                {day.label.toUpperCase()} · {day.exercises.length} EXERCISES
+              </Text>
+            </View>
+          </View>
+          {day.exercises.map((ex, ei) => (
+            <View key={ei} style={[styles.exRow, ei > 0 && styles.exDivider]}>
+              <View style={styles.shrink}>
+                <Text style={styles.exName}>{ex.name}</Text>
+                <Text style={styles.exTarget}>
+                  {ex.target}
+                  {ex.note ? ` · ${ex.note}` : ""}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => void swap(di, ei, ex)}
+                disabled={swapping === `${di}-${ei}`}
+                hitSlop={8}
+                style={styles.swapBtn}
+              >
+                <Icon name="refresh" size={15} color={T.green} />
+              </Pressable>
+            </View>
+          ))}
+        </Panel>
+      ))}
+    </View>
   );
 }
 
@@ -463,9 +507,10 @@ const styles = StyleSheet.create({
   promptRow: { gap: 7, paddingBottom: 10 },
   prompt: { backgroundColor: T.surf2, borderWidth: 1, borderColor: T.line2, borderRadius: 11, paddingVertical: 8, paddingHorizontal: 13 },
   promptText: { ...ui(12.5, 600), color: T.text },
-  inputBar: { flexDirection: "row", alignItems: "center", gap: 9, paddingLeft: 15, padding: 5, borderRadius: 15, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line2 },
-  inputPlaceholder: { flex: 1, ...ui(13.5, 500), color: T.sub },
+  inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 9, paddingLeft: 15, padding: 5, borderRadius: 15, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line2 },
+  input: { flex: 1, ...ui(14, 500), color: T.text, paddingVertical: 8, paddingRight: 4, maxHeight: 110 },
   send: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: T.green },
+  sendDisabled: { opacity: 0.4 },
 
   // markdown
   mdBold: { ...ui(13.5, 700), color: T.text },
@@ -531,6 +576,11 @@ const styles = StyleSheet.create({
   missionHead: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 10 },
   missionTitle: { ...ui(15.5, 700), color: T.text },
   missionMeta: { ...mono(9, 700), letterSpacing: 0.6, color: T.sub, marginTop: 2 },
+  exRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  exDivider: { borderTopWidth: 1, borderTopColor: T.line },
+  exName: { ...ui(14, 700), color: T.text },
+  exTarget: { ...ui(12, 500), color: T.sub, marginTop: 2, lineHeight: 16 },
+  swapBtn: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
   missionWhy: { ...ui(13, 500), color: T.mut, lineHeight: 19, marginBottom: 12 },
   missionWhyLabel: { ...mono(9, 700), letterSpacing: 0.6 },
   onBoard: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 11, borderRadius: 11, backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },

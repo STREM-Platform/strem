@@ -18,6 +18,7 @@ import { FormError, PrimaryButton, TextField } from "@/components/form";
 import { OptionSelect, type Option } from "@/components/select";
 import { CaptureFlow } from "@/components/workout/capture-flow";
 import { Debrief, LiveWorkout } from "@/components/workout/live-session";
+import { WorkoutBuilder } from "@/components/workout/workout-builder";
 import { Icon } from "@/components/ui/icon";
 import { Btn, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
@@ -29,7 +30,7 @@ import { FLAGS } from "@/lib/flags";
 import { PHOTOS } from "@/lib/photos";
 import { useAsync } from "@/lib/use-async";
 
-type Mode = "landing" | "live" | "debrief" | "quicklog";
+type Mode = "landing" | "live" | "debrief" | "quicklog" | "build";
 type CaptureKind = "workout" | "food" | "voice";
 
 export default function TrainScreen() {
@@ -76,11 +77,15 @@ export default function TrainScreen() {
   if (mode === "quicklog") {
     return <QuickLog onBack={() => setMode("landing")} />;
   }
+  if (mode === "build") {
+    return <WorkoutBuilder onStart={(w) => startLive(w)} onBack={() => setMode("landing")} />;
+  }
   return (
     <TrainLanding
       workout={aiWorkout}
       onStartAi={() => aiWorkout && startLive(aiWorkout)}
       onStartScanned={() => scanned && startLive(scanned)}
+      onBuild={() => setMode("build")}
       onQuickLog={() => setMode("quicklog")}
       onShare={() => router.push("/(app)/recaps")}
     />
@@ -113,12 +118,14 @@ function TrainLanding({
   workout,
   onStartAi,
   onStartScanned,
+  onBuild,
   onQuickLog,
   onShare,
 }: {
   workout: LiveWorkoutData | undefined;
   onStartAi: () => void;
   onStartScanned: () => void;
+  onBuild: () => void;
   onQuickLog: () => void;
   onShare: () => void;
 }) {
@@ -197,6 +204,20 @@ function TrainLanding({
             </Panel>
           </View>
         ) : null}
+
+        {/* build your own — many exercises, sets & defined rest, then go live */}
+        <View style={[styles.sideMargin, styles.byoWrap]}>
+          <Panel pad={0}>
+            <Pressable onPress={onBuild} style={styles.byoRow}>
+              <IconTile name="dumbbell" size={44} iconSize={21} />
+              <View style={styles.shrink}>
+                <Text style={styles.byoTitle}>Build your own session</Text>
+                <Text style={styles.byoSub}>Add exercises, sets & rest — then run it live, autoregulated</Text>
+              </View>
+              <Icon name="play" size={18} color={T.green} />
+            </Pressable>
+          </Panel>
+        </View>
 
         {/* real quick log */}
         <View style={[styles.sideMargin, styles.quickCta]}>

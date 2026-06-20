@@ -65,7 +65,7 @@ export class SessionExpiredError extends Error {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   auth?: boolean;
 }
@@ -111,7 +111,7 @@ async function send(path: string, options: RequestOptions, accessToken?: string)
   });
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   let accessToken: string | undefined;
   if (options.auth) {
     accessToken = (await getStoredTokens())?.accessToken;
@@ -204,6 +204,9 @@ export const api = {
   },
   listCheckins(tribeId: string, limit = 20): Promise<CheckInPage> {
     return request<CheckInPage>(`/tribes/${tribeId}/checkins?limit=${limit}`, { auth: true });
+  },
+  listTribeMembers(tribeId: string): Promise<{ items: Membership[] }> {
+    return request<{ items: Membership[] }>(`/tribes/${tribeId}/members`, { auth: true });
   },
   listChallenges(tribeId: string, limit = 20): Promise<ChallengePage> {
     return request<ChallengePage>(`/tribes/${tribeId}/challenges?limit=${limit}`, { auth: true });

@@ -14,33 +14,40 @@
 import { assembleContext } from "@/lib/agent/context";
 import { guard } from "@/lib/agent/guardrails";
 import { forgeRuntime } from "@/lib/agent/runtime";
+import { FLAGS } from "@/lib/flags";
+import { agentLive } from "@/lib/services/agent.live";
 import { agentMock } from "@/lib/services/agent.mock";
 import type { AgentAction, CitedDatum } from "@/lib/agent/types";
+
+// One graph, two backings: the mock until `forgeAgentMock` is flipped off, then
+// the live service (real endpoints where they map 1:1, mock for the rest). Swap
+// here and every screen follows.
+const data = FLAGS.forgeAgentMock ? agentMock : agentLive;
 
 export const forge = {
   name: "Forge",
 
   // ── context (A6) ──────────────────────────────────────────────────────────
   assembleContext,
-  getContext: agentMock.getContext,
+  getContext: data.getContext,
 
   // ── reads — every surface pulls from the one graph ────────────────────────
-  getTodayBrief: agentMock.getTodayBrief,
-  getNudge: agentMock.getNudge,
-  getCheckin: agentMock.getCheckin,
-  getCoachConversation: agentMock.getCoachConversation,
-  getLiveWorkout: agentMock.getLiveWorkout,
-  getScannedWorkout: agentMock.getScannedWorkout,
-  getCapture: agentMock.getCapture,
-  generateAdaptivePlan: agentMock.generateAdaptivePlan,
-  getInsights: agentMock.getInsights,
-  getPlanImport: agentMock.getPlanImport,
-  getProof: agentMock.getProof,
-  getSeason: agentMock.getSeason,
-  getLeague: agentMock.getLeague,
-  getChapters: agentMock.getChapters,
-  getPrivacy: agentMock.getPrivacy,
-  getAtlas: agentMock.getAtlas,
+  getTodayBrief: data.getTodayBrief,
+  getNudge: data.getNudge,
+  getCheckin: data.getCheckin,
+  getCoachConversation: data.getCoachConversation,
+  getLiveWorkout: data.getLiveWorkout,
+  getScannedWorkout: data.getScannedWorkout,
+  getCapture: data.getCapture,
+  generateAdaptivePlan: data.generateAdaptivePlan,
+  getInsights: data.getInsights,
+  getPlanImport: data.getPlanImport,
+  getProof: data.getProof,
+  getSeason: data.getSeason,
+  getLeague: data.getLeague,
+  getChapters: data.getChapters,
+  getPrivacy: data.getPrivacy,
+  getAtlas: data.getAtlas,
 
   /** Run agent copy through the guardrail before it reaches the UI (A8). */
   guard,
