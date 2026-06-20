@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,3 +25,4 @@ class ForgeContext:
     signals: ContextSignals
     identity: str | None = None
     memory: list[MemoryItem] = field(default_factory=list)
+    sessions: list[dict[str, Any]] = field(default_factory=list)

@@ -63,7 +63,7 @@ _TOOL_SPEC: dict[str, tuple[AgentCapability, str, Any]] = {
 @dynamic_prompt
 def grounding(request: Any) -> str:
     ctx = request.runtime.context
-    return build_system_prompt(ctx.identity, ctx.signals, ctx.memory)
+    return build_system_prompt(ctx.identity, ctx.signals, ctx.memory, ctx.sessions)
 
 
 @after_model

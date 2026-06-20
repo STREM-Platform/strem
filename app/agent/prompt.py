@@ -7,6 +7,8 @@ the user's own signals/memory so the UI can show what the agent cited.
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.context import GraphSnapshot
 from app.schemas import CitedDatum, ContextSignals, MemoryItem
 
@@ -20,8 +22,27 @@ SYSTEM_RULES = (
 )
 
 
+def _format_session(s: dict[str, Any]) -> str:
+    """One recent session as a compact line the model can cite."""
+    when = str(s.get("logged_at") or s.get("created_at") or "")[:10]
+    bits = [str(s.get("session_type", "session"))]
+    if s.get("distance_km"):
+        bits.append(f"{s['distance_km']}km")
+    if s.get("elevation_m"):
+        bits.append(f"+{s['elevation_m']}m")
+    if s.get("duration_minutes"):
+        bits.append(f"{s['duration_minutes']}min")
+    src = s.get("source")
+    if src and src != "manual":
+        bits.append(f"({src})")
+    return f"{when} {' '.join(bits)}".strip()
+
+
 def build_system_prompt(
-    identity: str | None, signals: ContextSignals, memory: list[MemoryItem]
+    identity: str | None,
+    signals: ContextSignals,
+    memory: list[MemoryItem],
+    sessions: list[dict[str, Any]] | None = None,
 ) -> str:
     lines = [SYSTEM_RULES]
     if identity:
@@ -33,6 +54,9 @@ def build_system_prompt(
         + (f" Sleep {signals.sleep_hours}." if signals.sleep_hours else "")
         + (f" HRV {signals.hrv}ms {signals.hrv_delta or ''}." if signals.hrv is not None else "")
     )
+    if sessions:
+        recent = "; ".join(_format_session(s) for s in sessions[:12])
+        lines.append(f"Recent sessions (newest first, incl. connected sources): {recent}")
     if memory:
         lines.append("Memory: " + "; ".join(m.text for m in memory[:6]))
     return "\n".join(lines)

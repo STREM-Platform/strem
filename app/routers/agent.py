@@ -39,7 +39,11 @@ from app.schemas import (
     MemoryItem,
     MemoryList,
     Pagination,
+    SwapRequest,
+    SwapResult,
+    TrainingPlan,
 )
+from app.training_plan import build_training_plan, swap_exercise
 
 router = APIRouter(prefix="/v1", tags=["agent"])
 
@@ -114,6 +118,7 @@ async def chat(
         signals=snapshot.signals,
         identity=bundle.identity_statement if bundle else None,
         memory=items,
+        sessions=snapshot.sessions,
     )
     text, cites = await run_chat(model, ctx, body.message)
     await session.commit()  # persist any tool actions the agent took mid-turn
@@ -229,3 +234,28 @@ async def adaptive_plan(
         weekly_target=bundle.weekly_target_days if bundle else None,
         memory=items,
     )
+
+
+@router.get("/ai/agent/training-plan", response_model=TrainingPlan)
+async def training_plan(
+    current: CurrentUserDep,
+    provider: AthleteContextProviderDep,
+    bundle_provider: ContextProviderDep,
+    token: BearerTokenDep,
+) -> TrainingPlan:
+    """A full structured weekly plan, shaped by goal + weekly volume + readiness."""
+    snapshot = await provider.for_user(str(current.user_id), token)
+    if snapshot is None:
+        raise AppError(409, "insufficient_context", "Not enough context yet to plan.")
+    bundle = await bundle_provider.for_user(str(current.user_id), token)
+    return build_training_plan(
+        goal=bundle.transformation_goal if bundle else None,
+        weekly_target_days=bundle.weekly_target_days if bundle else None,
+        signals=snapshot.signals,
+    )
+
+
+@router.post("/ai/agent/training-plan/swap", response_model=SwapResult)
+async def training_plan_swap(body: SwapRequest, current: CurrentUserDep) -> SwapResult:
+    """Swap one exercise for another in the same movement group."""
+    return SwapResult(exercise=swap_exercise(body.group, body.exclude))

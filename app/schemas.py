@@ -242,6 +242,40 @@ class AdaptivePlan(CamelModel):
     missions: list[AdaptiveMission]
 
 
+# ── Full training plan (B4+) — a real week the athlete can run & swap ─────────
+class PlanExercise(CamelModel):
+    name: str
+    target: str  # e.g. "4 × 6 @ RPE 8" or "40 min Zone 2"
+    note: str
+    group: str  # movement group, used to find swaps (e.g. "horizontal_press")
+
+
+class PlanDay(CamelModel):
+    label: str  # "Day 1", "Day 2", …
+    focus: str  # "Upper · Push", "Easy Run", "Recovery"
+    icon: str
+    exercises: list[PlanExercise]
+
+
+class TrainingPlan(CamelModel):
+    """A structured weekly plan, scaled to the athlete's goal + readiness."""
+
+    title: str
+    summary: str
+    days: list[PlanDay]
+
+
+class SwapRequest(CamelModel):
+    """Ask for an alternative to one exercise (same movement group)."""
+
+    group: str
+    exclude: str  # the current exercise name, so we return something different
+
+
+class SwapResult(CamelModel):
+    exercise: PlanExercise
+
+
 # ── Forge agent: photo & voice capture (D3/D4/D6) ────────────────────────────
 class CaptureWorkoutItem(CamelModel):
     name: str
