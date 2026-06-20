@@ -103,9 +103,11 @@ class AgentAction(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
     capability: Mapped[str] = mapped_column(String(32), nullable=False)
-    type: Mapped[str] = mapped_column(String(48), nullable=False)
-    summary: Mapped[str] = mapped_column(String(200), nullable=False)
-    reasoning: Mapped[str] = mapped_column(String(600), nullable=False)
+    type: Mapped[str] = mapped_column(String(80), nullable=False)
+    # Generous: the agent writes these from the LLM, so they vary in length.
+    # record_action also clips defensively so an over-long value can never crash.
+    summary: Mapped[str] = mapped_column(String(500), nullable=False)
+    reasoning: Mapped[str] = mapped_column(String(1000), nullable=False)
     cited_data: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(12), nullable=False)
     autonomy: Mapped[str] = mapped_column(String(8), nullable=False)

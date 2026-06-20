@@ -22,6 +22,12 @@ from app.schemas import AgentActionOut, CitedDatum
 STREAM = "ai.agent_action"
 
 
+def _clip(value: str, limit: int) -> str:
+    """Keep agent-written text within its column so an over-long LLM value can
+    never crash the insert (and the whole chat turn)."""
+    return value if len(value) <= limit else value[: limit - 1].rstrip() + "…"
+
+
 def autonomy_for(capability: AgentCapability) -> AutonomyLevel:
     """The effective autonomy for a capability. TODO(A7 #54): read user overrides
     from strem-user-service; until then the roadmap defaults apply."""
@@ -66,9 +72,9 @@ async def record_action(
     row = AgentAction(
         user_id=user_id,
         capability=capability.value,
-        type=type,
-        summary=summary,
-        reasoning=reasoning,
+        type=_clip(type, 80),
+        summary=_clip(summary, 500),
+        reasoning=_clip(reasoning, 1000),
         cited_data=cited_data or [],
         status=status.value,
         autonomy=level.value,
