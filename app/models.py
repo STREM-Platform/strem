@@ -10,7 +10,7 @@ strem-user-service#4.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -128,6 +128,39 @@ class LegalAcceptance(Base):
     version: Mapped[str] = mapped_column(String(20), nullable=False)
     accepted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AthleteProfile(Base):
+    """A user's progressive "Athlete Baseline" (next-steps-plan.md §3.1).
+
+    Optional, resumable coaching inputs kept SEPARATE from the deliberately-minimal
+    identity onboarding: body metrics, training history, PRs, injuries, equipment,
+    and dietary constraints. Everything is nullable/empty until the user fills it
+    in (or Forge writes it via memory). Keyed by the auth `user_id`. JSON columns
+    hold the structured lists; the Pydantic schemas validate them at the boundary.
+    Framed as coaching inputs, never a "look" metric (A8: no vanity).
+    """
+
+    __tablename__ = "athlete_profiles"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    height_cm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    age_band: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    biological_sex: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    years_training: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    equipment_access: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    personal_records: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    injuries: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list, nullable=False)
+    dietary_constraints: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
 
