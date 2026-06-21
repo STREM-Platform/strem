@@ -38,9 +38,12 @@ per `docs/premium-gamified-frontend-gap-analysis.md`.
   Challenge shown read-only; admin create/contribute/complete deferred.
 - **Coach** (`app/(app)/coach.tsx`): premium re-skin — narrative + quote, weekly
   proof bars, mission outcomes, generate — over live recap/history API.
-- **Recaps web crash**: `react-native-view-shot`/`expo-media-library` crash route
-  loading on web; capture/share moved behind a platform-split
-  `lib/recap-export(.web).ts` so web never imports them.
+- **Recaps export**: `expo-media-library`/`expo-sharing` crash route loading on
+  web, so capture/share live behind a platform-split `lib/recap-export(.web).ts`.
+  Native captures via `react-native-view-shot` → media-library save / share sheet.
+  Web captures the card DOM (view-shot's html2canvas path) to a PNG and triggers a
+  browser download (Download) or the Web Share API with a download fallback
+  (Share). Failures are reported via `captureError`, never silently swallowed.
 
 ## Step 1 — Tokens & type (foundation)
 
@@ -183,7 +186,7 @@ week-ridge share arrow → `/(app)/recaps`. New deps: `react-native-view-shot`,
 | Monthly (sessions, km, hours, top medal) | `/training/sessions` (this month) + `/users/me/medals` | **Live** |
 | Latest-medal | most recent `/users/me/medals` + static display metadata | **Live** (only shown if a medal is earned) |
 | PR / lift-volume recaps | — | **Dropped** — no PR or structured-volume history in the contract; not faked |
-| PNG export → Download / Share | `captureRef` → `expo-media-library` / `expo-sharing` | **Live on device**; web/unsupported shows a clear notice |
+| PNG export → Download / Share | native: `captureRef` → `expo-media-library` / `expo-sharing`; web: `captureRef` (html2canvas) → browser download / Web Share API | **Live** on device and web |
 
 Guardrails: every recap is built from real account data (or omitted); the
 prototype's fabricated PR/volume stories are dropped; no vanity/follower metrics.

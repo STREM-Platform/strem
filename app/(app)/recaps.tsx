@@ -8,7 +8,7 @@
 
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StoryCard } from "@/components/recaps/story-card";
@@ -55,8 +55,9 @@ export default function RecapsScreen() {
     try {
       const result = await shareRecap(cardRef);
       if (result === "shared") setShared(true);
-      else if (result === "unavailable") Alert.alert("Sharing unavailable", "Recap sharing runs on a device build. It isn’t available in this environment.");
-      else Alert.alert("Couldn’t share", "Something went wrong creating the image.");
+      // "unavailable" = the share sheet was dismissed (web cancel) or sharing
+      // isn't offered here — nothing was shared, so stay quiet rather than nag.
+      else if (result === "error") Alert.alert("Couldn’t share", "Something went wrong creating the image. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -66,10 +67,10 @@ export default function RecapsScreen() {
     setBusy(true);
     try {
       const result = await downloadRecap(cardRef);
-      if (result === "saved") Alert.alert("Saved", "Your recap is in your photo library.");
+      if (result === "saved") Alert.alert("Saved", Platform.OS === "web" ? "Your recap was downloaded as a PNG." : "Your recap is in your photo library.");
       else if (result === "denied") Alert.alert("Permission needed", "Allow photo access to save your recap.");
-      else if (result === "unavailable") Alert.alert("Saving unavailable", "Recap export runs on a device build.");
-      else Alert.alert("Couldn’t save", "Something went wrong saving the image.");
+      else if (result === "unavailable") Alert.alert("Saving unavailable", "Recap export isn’t available in this environment.");
+      else Alert.alert("Couldn’t save", "Something went wrong saving the image. Please try again.");
     } finally {
       setBusy(false);
     }
