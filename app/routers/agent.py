@@ -64,8 +64,13 @@ async def get_context(
             "insufficient_context",
             "Not enough context yet. Finish onboarding and log an action first.",
         )
+    # Athlete Baseline facts (#61) lead, then the agent's own A5 notes.
     items = await memory.list_items(session, current.user_id)
-    return AthleteContext(sources=snapshot.sources, signals=snapshot.signals, memory=items)
+    return AthleteContext(
+        sources=snapshot.sources,
+        signals=snapshot.signals,
+        memory=snapshot.memory + items,
+    )
 
 
 @router.get("/ai/memory", response_model=MemoryList)

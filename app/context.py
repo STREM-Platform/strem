@@ -121,7 +121,7 @@ from dataclasses import field as _field  # noqa: E402
 
 from app import recovery as _recovery  # noqa: E402
 from app import signals as _signals  # noqa: E402
-from app.schemas import ContextSignals, ContextSource  # noqa: E402
+from app.schemas import ContextSignals, ContextSource, MemoryItem  # noqa: E402
 
 
 @_dataclass(frozen=True)
@@ -133,6 +133,9 @@ class GraphSnapshot:
     signals: ContextSignals
     sessions: list[dict[str, Any]] = _field(default_factory=list)
     nutrition: list[dict[str, Any]] = _field(default_factory=list)
+    # Memory derived from the Athlete Baseline profile (#61), merged into the
+    # /ai/context memory list so Forge knows the whole person — only SET fields.
+    memory: list[MemoryItem] = _field(default_factory=list)
 
 
 def _to_context_signals(s: _signals.Signals) -> ContextSignals:
@@ -151,6 +154,49 @@ def _to_context_signals(s: _signals.Signals) -> ContextSignals:
         momentum=s.momentum,
         streak_risk=s.streak_risk,
     )
+
+
+def _fmt_weight(value: Any) -> str:
+    """Drop a trailing .0 so 140.0 reads as 140kg."""
+    if isinstance(value, int | float):
+        return str(int(value)) if float(value).is_integer() else str(value)
+    return str(value)
+
+
+def _profile_memory(profile: dict[str, Any]) -> list[MemoryItem]:
+    """Turn the SET fields of the Athlete Baseline profile (#61) into memory facts
+    Forge can cite. Only present fields are surfaced — never fabricated (A8)."""
+    items: list[MemoryItem] = []
+    years = profile.get("years_training")
+    if isinstance(years, int):
+        plural = "s" if years != 1 else ""
+        items.append(MemoryItem(icon="clock", text=f"{years} year{plural} training"))
+    for pr in (profile.get("personal_records") or [])[:5]:
+        exercise = str(pr.get("exercise", "")).strip()
+        if not exercise:
+            continue
+        if pr.get("weight_kg") is not None:
+            reps = pr.get("reps")
+            detail = f"{_fmt_weight(pr['weight_kg'])}kg" + (f" × {reps}" if reps else "")
+            items.append(MemoryItem(icon="bolt", text=f"PR: {exercise} {detail}"))
+        elif pr.get("time"):
+            items.append(MemoryItem(icon="timer", text=f"PR: {exercise} {pr['time']}"))
+        else:
+            items.append(MemoryItem(icon="bolt", text=f"PR: {exercise}"))
+    for injury in (profile.get("injuries") or [])[:5]:
+        area = str(injury.get("area", "")).strip()
+        if area:
+            note = injury.get("note")
+            items.append(
+                MemoryItem(icon="shield", text=f"Injury: {area}" + (f" — {note}" if note else ""))
+            )
+    equipment = profile.get("equipment_access")
+    if isinstance(equipment, str) and equipment:
+        items.append(MemoryItem(icon="grid", text=f"Equipment: {equipment.replace('_', ' ')}"))
+    diet = profile.get("dietary_constraints") or []
+    if diet:
+        items.append(MemoryItem(icon="leaf", text="Diet: " + ", ".join(str(d) for d in diet[:5])))
+    return items
 
 
 class AthleteContextProvider(Protocol):
@@ -189,10 +235,17 @@ class HttpAthleteContextProvider:
             nutrition: list[dict[str, Any]] = []
             integration_sources: list[dict[str, Any]] = []
             recovery_samples: list[dict[str, Any]] = []
+            athlete_profile: dict[str, Any] = {}
             try:
                 xp_res = await client.get(f"{self._user}/users/me/xp", headers=headers)
                 if xp_res.status_code == 200:
                     streak_state = xp_res.json().get("streak_state")
+                # Athlete Baseline (#61) → memory facts Forge can cite.
+                ath_res = await client.get(
+                    f"{self._user}/users/me/athlete-profile", headers=headers
+                )
+                if ath_res.status_code == 200:
+                    athlete_profile = ath_res.json()
                 sess_res = await client.get(
                     f"{self._training}/training/sessions?limit=50", headers=headers
                 )
@@ -259,6 +312,7 @@ class HttpAthleteContextProvider:
             signals=_to_context_signals(derived),
             sessions=sessions,
             nutrition=nutrition,
+            memory=_profile_memory(athlete_profile),
         )
 
 
