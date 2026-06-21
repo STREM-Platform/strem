@@ -10,6 +10,8 @@ Streams consumed:
 - `ai.mission_completed` → `mission_complete` XP (the event's `xp_reward`, 75-150).
 - `tribe.challenge_completed` → `challenge_complete` XP, the tribe collective
   pool distributed across the participating members.
+- `duel.completed` → `challenge_complete` effort XP to BOTH participants (the
+  winner gets a modest bonus). No loss-shaming (A8): showing up always earns XP.
 
 After any award, 7-day and 30-day consistency streak bonuses are detected and
 awarded once per user. Idempotency: the broker message id is recorded in
@@ -37,12 +39,14 @@ NUTRITION_STREAM = "nutrition.day_logged"
 TRIBE_STREAM = "tribe.checkin_completed"
 MISSION_COMPLETED_STREAM = "ai.mission_completed"
 CHALLENGE_COMPLETED_STREAM = "tribe.challenge_completed"
+DUEL_COMPLETED_STREAM = "duel.completed"
 CONSUMED_STREAMS = (
     TRAINING_STREAM,
     NUTRITION_STREAM,
     TRIBE_STREAM,
     MISSION_COMPLETED_STREAM,
     CHALLENGE_COMPLETED_STREAM,
+    DUEL_COMPLETED_STREAM,
 )
 
 # training.session_logged `session_type` -> XP source.
@@ -56,6 +60,14 @@ _TRAINING_SOURCE: dict[str, XPSource] = {
 _MISSION_XP_MIN, _MISSION_XP_MAX = 75, 150
 # Tribe collective challenge pool (150-500), distributed across participants.
 _TRIBE_CHALLENGE_POOL = 300
+# 1v1 duel effort XP (social-competition-plan.md §1, A8 brand guardrail).
+# BOTH participants earn effort XP for showing up — there is no loss penalty —
+# and the winner earns a modest bonus on top. Reuses the existing
+# `challenge_complete` source (a duel is a head-to-head challenge), so no new XP
+# source, contract change, or migration is needed. Within the contract's
+# challenge_complete range (100-500).
+_DUEL_EFFORT_XP = 100
+_DUEL_WIN_BONUS_XP = 50
 
 
 class MalformedEventError(Exception):
@@ -215,6 +227,8 @@ async def handle_event(
         )
     elif stream == CHALLENGE_COMPLETED_STREAM:
         await _handle_challenge(session, publisher, message_id=message_id, payload=payload)
+    elif stream == DUEL_COMPLETED_STREAM:
+        await _handle_duel(session, publisher, message_id=message_id, payload=payload)
     else:
         raise MalformedEventError(f"unhandled stream {stream!r}")
 
@@ -260,4 +274,42 @@ async def _handle_challenge(
             source=XPSource.CHALLENGE_COMPLETE,
             amount=share,
             source_reference=f"{CHALLENGE_COMPLETED_STREAM}:{message_id}:{participant}",
+        )
+
+
+async def _handle_duel(
+    session: AsyncSession,
+    publisher: EventPublisher,
+    *,
+    message_id: str,
+    payload: dict[str, Any],
+) -> None:
+    """Award effort XP to BOTH duel participants; the winner earns a modest bonus.
+
+    Brand guardrail (A8): no loss-shaming — showing up earns XP regardless of the
+    result, so a beginner is rewarded for competing. `winner_id` may be null (a
+    tie); in that case both sides simply get effort XP. A medal is intentionally
+    NOT awarded here: the duel-win medal would need win-count state this service
+    does not own (and a schema change), which is out of scope for this slice.
+    """
+    challenger = _require_uuid(DUEL_COMPLETED_STREAM, payload, "challenger_id")
+    opponent = _require_uuid(DUEL_COMPLETED_STREAM, payload, "opponent_id")
+
+    raw_winner = payload.get("winner_id")
+    winner: uuid.UUID | None = None
+    if raw_winner is not None:
+        try:
+            winner = uuid.UUID(str(raw_winner))
+        except ValueError as exc:
+            raise MalformedEventError(f"{DUEL_COMPLETED_STREAM}: invalid winner_id") from exc
+
+    for participant in (challenger, opponent):
+        amount = _DUEL_EFFORT_XP + (_DUEL_WIN_BONUS_XP if participant == winner else 0)
+        await _award(
+            session,
+            publisher,
+            user_id=participant,
+            source=XPSource.CHALLENGE_COMPLETE,
+            amount=amount,
+            source_reference=f"{DUEL_COMPLETED_STREAM}:{message_id}:{participant}",
         )
