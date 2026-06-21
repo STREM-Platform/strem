@@ -18,6 +18,8 @@ import { useSyncExternalStore } from "react";
 import { CAPABILITY_BY_KEY, defaultAutonomy } from "@/lib/agent/capabilities";
 import { guard } from "@/lib/agent/guardrails";
 import type { AgentAction, AgentCapability, AutonomyLevel, CitedDatum } from "@/lib/agent/types";
+import { agentApi } from "@/lib/api/agent";
+import { FLAGS } from "@/lib/flags";
 
 let counter = 0;
 const id = () => `act_${Date.now().toString(36)}_${(counter++).toString(36)}`;
@@ -33,16 +35,44 @@ interface ActRequest {
 
 type Listener = () => void;
 
-class ForgeRuntime {
+export class ForgeRuntime {
   private autonomy: Record<AgentCapability, AutonomyLevel> = defaultAutonomy();
   private actions: AgentAction[] = [];
   private listeners = new Set<Listener>();
   // Stable snapshots so useSyncExternalStore doesn't loop.
   private actionsSnapshot: AgentAction[] = [];
   private autonomySnapshot: Record<AgentCapability, AutonomyLevel> = { ...this.autonomy };
+  /** Live = server-backed (the real action log + autonomy persist). Mock = the
+   *  local seeded demo graph. Keyed off the Forge data flag so the cutover is
+   *  one switch. */
+  private readonly live: boolean;
 
-  constructor() {
-    this.seed();
+  constructor(live: boolean = !FLAGS.forgeAgentMock) {
+    this.live = live;
+    if (live) {
+      void this.hydrate();
+    } else {
+      this.seed();
+    }
+  }
+
+  /**
+   * Live mode: load the persisted action log (B3) + autonomy settings (A7) from
+   * the backend. On any failure we keep an empty feed + the local defaults —
+   * honest (never seeded fake data when live), and the UI still renders.
+   */
+  private async hydrate(): Promise<void> {
+    try {
+      const [activity, autonomy] = await Promise.all([
+        agentApi.getActivity(50),
+        agentApi.getAutonomy(),
+      ]);
+      this.actions = activity.items;
+      this.autonomy = { ...this.autonomy, ...autonomy };
+      this.emit();
+    } catch (error) {
+      console.warn("[forge] runtime hydrate failed; starting from an empty feed", error);
+    }
   }
 
   // ── subscription (drives the hooks) ───────────────────────────────────────
@@ -62,8 +92,22 @@ class ForgeRuntime {
 
   // ── autonomy controls (edited from the Privacy screen) ────────────────────
   setAutonomy(capability: AgentCapability, level: AutonomyLevel) {
-    this.autonomy[capability] = level;
+    const previous = this.autonomy[capability];
+    this.autonomy[capability] = level; // optimistic
     this.emit();
+    if (this.live) {
+      agentApi
+        .setAutonomy(capability, level)
+        .then((map) => {
+          this.autonomy = { ...this.autonomy, ...map };
+          this.emit();
+        })
+        .catch((error) => {
+          console.warn("[forge] setAutonomy failed; reverting", error);
+          this.autonomy[capability] = previous;
+          this.emit();
+        });
+    }
   }
 
   /**
@@ -72,6 +116,11 @@ class ForgeRuntime {
    *   OFF  → nothing (returns null)
    *   ASK  → records a `proposed` action awaiting approval
    *   AUTO → records a `done` action (already taken, undoable)
+   *
+   * In live mode this is an optimistic LOCAL record: proactive actions are
+   * authored by the backend trigger engine (B3) and arrive via `hydrate()`;
+   * there is no FE create endpoint yet, so a locally-`act()`-ed entry is not
+   * persisted (a documented follow-up — needs `POST /ai/agent/actions`).
    */
   act(req: ActRequest): AgentAction | null {
     const level = this.autonomy[req.capability];
@@ -94,14 +143,38 @@ class ForgeRuntime {
 
   /** Approve a proposed (ASK) action. */
   approve(actionId: string) {
-    this.actions = this.actions.map((a) => (a.id === actionId ? { ...a, status: "done" } : a));
-    this.emit();
+    this.applyStatus(actionId, "done", (id) => agentApi.approveAction(id));
   }
 
   /** Undo any action — the reversibility guarantee. */
   undo(actionId: string) {
-    this.actions = this.actions.map((a) => (a.id === actionId ? { ...a, status: "undone" } : a));
+    this.applyStatus(actionId, "undone", (id) => agentApi.undoAction(id));
+  }
+
+  /**
+   * Optimistically set an action's status (so the feed reacts instantly),
+   * persisting it server-side in live mode and rolling back if the write fails.
+   */
+  private applyStatus(
+    actionId: string,
+    status: AgentAction["status"],
+    persist: (id: string) => Promise<AgentAction>,
+  ) {
+    const previous = this.actions;
+    this.actions = this.actions.map((a) => (a.id === actionId ? { ...a, status } : a));
     this.emit();
+    if (this.live) {
+      persist(actionId)
+        .then((updated) => {
+          this.actions = this.actions.map((a) => (a.id === actionId ? updated : a));
+          this.emit();
+        })
+        .catch((error) => {
+          console.warn(`[forge] action ${status} failed; reverting`, error);
+          this.actions = previous;
+          this.emit();
+        });
+    }
   }
 
   /**

@@ -3,20 +3,21 @@
  *
  * Selected by `lib/agent/index.ts` when `FLAGS.forgeAgentMock` is off. Only the
  * getters whose backend response maps 1:1 to the FE type are wired to real
- * endpoints today — insights (B8), adaptive plan (B4), and privacy/consent (A7).
- * Everything else delegates to `agentMock` until its endpoint (or a shape
- * adapter) lands, so the app stays whole. Each real call falls back to the mock
- * if the endpoint errors, so a partially-up stack still renders.
+ * endpoints today — context (A6, now incl. real wearable signals via #59),
+ * insights (B8), adaptive plan (B4), and privacy/consent (A7). Everything else
+ * delegates to `agentMock` until its endpoint (or a shape adapter) lands, so the
+ * app stays whole. Each real call falls back to the mock if the endpoint errors,
+ * so a partially-up stack still renders.
  *
- * Not yet real (shape gap / no endpoint): getContext (signals lack the wearable
- * fields until A3 recovery feeds A4), getProof (PRs → story timeline adapter),
- * and the narrative getters (today brief, nudge, check-in, coach conversation,
- * live workout, capture bundle, plan import, season, league, chapters, atlas).
+ * Not yet real (shape gap / no endpoint): getProof (needs an xp/load history +
+ * rarity source, not just `/training/prs`), and the narrative getters (today
+ * brief, nudge, check-in, coach conversation, live workout, capture bundle, plan
+ * import, season, league, chapters, atlas).
  */
 
 import { agentApi } from "@/lib/api/agent";
 import { agentMock } from "@/lib/services/agent.mock";
-import type { AdaptivePlan, Insight, PrivacyData } from "@/lib/agent/types";
+import type { AdaptivePlan, AthleteContext, Insight, PrivacyData } from "@/lib/agent/types";
 
 async function realOr<T>(real: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
   try {
@@ -30,6 +31,9 @@ async function realOr<T>(real: () => Promise<T>, fallback: () => Promise<T>): Pr
 export const agentLive: typeof agentMock = {
   ...agentMock,
 
+  getContext(): Promise<AthleteContext> {
+    return realOr(() => agentApi.getContext(), agentMock.getContext);
+  },
   getInsights(): Promise<Insight[]> {
     return realOr(async () => (await agentApi.getInsights()).items, agentMock.getInsights);
   },
