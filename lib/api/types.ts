@@ -52,6 +52,26 @@ export interface OnboardingStatus {
   completed_at?: string | null;
 }
 
+/** Legal & policy acceptance (mirrors strem-shared-contracts user/openapi.yml). */
+export type LegalDocumentType = "terms" | "privacy" | "medical";
+
+export interface LegalAcceptanceInput {
+  document_type: LegalDocumentType;
+  version: string;
+}
+
+export interface LegalDocumentStatus {
+  document_type: LegalDocumentType;
+  required_version: string;
+  accepted_version?: string | null;
+  needs_acceptance: boolean;
+}
+
+export interface LegalStatus {
+  documents: LegalDocumentStatus[];
+  needs_acceptance: boolean;
+}
+
 export type TransformationGoal =
   | "build_strength"
   | "build_endurance"

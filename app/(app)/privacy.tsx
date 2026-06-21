@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AutonomyControls } from "@/components/agent/activity";
 import { Icon } from "@/components/ui/icon";
 import { Btn, Chip, IconTile, Panel, SectionHead } from "@/components/ui/primitives";
+import { LEGAL_POLICIES } from "@/constants/legal";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { forge } from "@/lib/agent";
 import type { PrivacyData } from "@/lib/agent/types";
@@ -109,6 +110,24 @@ export default function PrivacyScreen() {
           <Btn kind="ghost" icon="download" label="Export" onPress={() => Alert.alert("Export", "Your full data export will be emailed to you.")} style={styles.flexOne} />
           <Btn kind="danger" label="Delete my data" onPress={() => Alert.alert("Delete my data", "This permanently deletes everything. Are you sure?")} style={styles.flexOne} />
         </View>
+
+        {/* legal & policies (#58) — the terms you accepted, viewable any time */}
+        <SectionHead icon="shield" title="LEGAL & POLICIES" sub="Terms, privacy & medical disclaimer" />
+        <View style={[styles.sideMargin, styles.legalList]}>
+          {LEGAL_POLICIES.map((p) => (
+            <Pressable
+              key={p.type}
+              style={styles.legalRow}
+              onPress={() => router.push(`/(legal)/${p.type}`)}
+              accessibilityRole="link"
+              accessibilityLabel={`Read ${p.title}`}
+            >
+              <Text style={styles.legalTitle}>{p.title}</Text>
+              <Icon name="chevron" size={16} color={T.sub} />
+            </Pressable>
+          ))}
+        </View>
+
         <Text style={styles.footer}>{P.footer}</Text>
       </ScrollView>
     </View>
@@ -144,5 +163,8 @@ const styles = StyleSheet.create({
   activitySub: { ...ui(12, 500), color: T.sub, marginTop: 1 },
 
   dataActions: { flexDirection: "row", gap: 10, marginTop: 18 },
+  legalList: { gap: 8, marginTop: 4 },
+  legalRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 13, paddingHorizontal: 14, borderRadius: 12, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
+  legalTitle: { ...ui(14, 600), color: T.text },
   footer: { ...ui(12, 500), color: T.sub, textAlign: "center", lineHeight: 18, marginTop: 12, marginHorizontal: 24 },
 });

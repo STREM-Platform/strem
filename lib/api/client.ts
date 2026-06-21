@@ -21,6 +21,8 @@ import type {
   CreateChallengeRequest,
   CreateCheckinRequest,
   LoginRequest,
+  LegalAcceptanceInput,
+  LegalStatus,
   LogNutritionDayRequest,
   LogTrainingSessionRequest,
   MedalListResponse,
@@ -162,6 +164,16 @@ export const api = {
   },
   getUserProfile(): Promise<UserProfile> {
     return request<UserProfile>("/users/me", { auth: true });
+  },
+  getLegalStatus(): Promise<LegalStatus> {
+    return request<LegalStatus>("/users/me/legal", { auth: true });
+  },
+  acceptLegal(acceptances: LegalAcceptanceInput[]): Promise<LegalStatus> {
+    return request<LegalStatus>("/users/me/legal/accept", {
+      method: "POST",
+      body: { acceptances },
+      auth: true,
+    });
   },
   getXpSummary(): Promise<XPSummary> {
     return request<XPSummary>("/users/me/xp", { auth: true });

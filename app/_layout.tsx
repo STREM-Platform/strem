@@ -13,15 +13,18 @@ installGlobalErrorHandler();
 /**
  * Route guard: keeps the user on the screen group that matches their session.
  *
- * - signed out            → `(auth)`
- * - signed in, onboarding incomplete → `(onboarding)`
- * - signed in, onboarding complete   → `(app)`
+ * - signed out                          → `(auth)`
+ * - signed in, legal not accepted        → `(legal)` (accept gate, before all else)
+ * - signed in, onboarding incomplete     → `(onboarding)`
+ * - signed in, onboarding complete       → `(app)`
  *
- * While loading (restoring the session, or fetching onboarding status) the
- * current route — the splash — is shown and no redirect happens.
+ * While loading (restoring the session, or fetching onboarding/legal status) the
+ * current route — the splash — is shown and no redirect happens. The `(legal)`
+ * group is always allowed for signed-in users so the policy viewers can be
+ * opened from anywhere without being bounced.
  */
 function RouteGuard({ children }: { children: ReactNode }) {
-  const { phase, onboardingCompleted } = useAuth();
+  const { phase, onboardingCompleted, legalAccepted } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -38,18 +41,27 @@ function RouteGuard({ children }: { children: ReactNode }) {
       return;
     }
 
-    // signedIn — wait until onboarding status is known.
-    if (onboardingCompleted === null) {
+    // signedIn — wait until both statuses are known.
+    if (onboardingCompleted === null || legalAccepted === null) {
       return;
     }
+
+    // Legal acceptance gates everything else (and re-gates on a version bump).
+    if (!legalAccepted) {
+      if (group !== "(legal)") {
+        router.replace("/(legal)/accept");
+      }
+      return;
+    }
+
     if (!onboardingCompleted) {
-      if (group !== "(onboarding)") {
+      if (group !== "(onboarding)" && group !== "(legal)") {
         router.replace("/(onboarding)");
       }
-    } else if (group !== "(app)") {
+    } else if (group !== "(app)" && group !== "(legal)") {
       router.replace("/(app)/home");
     }
-  }, [phase, onboardingCompleted, segments, router]);
+  }, [phase, onboardingCompleted, legalAccepted, segments, router]);
 
   return <>{children}</>;
 }

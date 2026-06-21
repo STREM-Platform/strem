@@ -29,10 +29,13 @@ interface AuthContextValue {
   user: AuthIdentity | null;
   /** null while unknown (still loading status), else whether onboarding is complete. */
   onboardingCompleted: boolean | null;
+  /** null while unknown, else whether all required legal docs are accepted. */
+  legalAccepted: boolean | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshOnboardingStatus: () => Promise<void>;
+  refreshLegalStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -41,10 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [user, setUser] = useState<AuthIdentity | null>(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const [legalAccepted, setLegalAccepted] = useState<boolean | null>(null);
 
   const loadOnboarding = useCallback(async (): Promise<void> => {
     const status = await api.getOnboardingStatus();
     setOnboardingCompleted(status.completed);
+  }, []);
+
+  const loadLegal = useCallback(async (): Promise<void> => {
+    const status = await api.getLegalStatus();
+    setLegalAccepted(!status.needs_acceptance);
   }, []);
 
   const signOut = useCallback(async (): Promise<void> => {
@@ -59,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearTokens();
     setUser(null);
     setOnboardingCompleted(null);
+    setLegalAccepted(null);
     setPhase("signedOut");
   }, []);
 
@@ -73,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       try {
         const identity = await api.getMe();
-        await loadOnboarding();
+        await Promise.all([loadOnboarding(), loadLegal()]);
         if (active) {
           setUser(identity);
           setPhase("signedIn");
@@ -86,17 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [loadOnboarding]);
+  }, [loadOnboarding, loadLegal]);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<void> => {
       const session = await api.login({ email, password });
       await storeTokens(session.tokens);
       setUser(session.user);
-      await loadOnboarding();
+      await Promise.all([loadOnboarding(), loadLegal()]);
       setPhase("signedIn");
     },
-    [loadOnboarding],
+    [loadOnboarding, loadLegal],
   );
 
   const signUp = useCallback(
@@ -105,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await storeTokens(session.tokens);
       setUser(session.user);
       setOnboardingCompleted(false); // a fresh account has not onboarded
+      setLegalAccepted(false); // ...nor accepted the policies yet
       setPhase("signedIn");
     },
     [],
@@ -122,17 +133,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadOnboarding, signOut]);
 
+  const refreshLegalStatus = useCallback(async (): Promise<void> => {
+    try {
+      await loadLegal();
+    } catch (error) {
+      if (error instanceof SessionExpiredError) {
+        await signOut();
+      } else {
+        throw error;
+      }
+    }
+  }, [loadLegal, signOut]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       phase,
       user,
       onboardingCompleted,
+      legalAccepted,
       signIn,
       signUp,
       signOut,
       refreshOnboardingStatus,
+      refreshLegalStatus,
     }),
-    [phase, user, onboardingCompleted, signIn, signUp, signOut, refreshOnboardingStatus],
+    [
+      phase,
+      user,
+      onboardingCompleted,
+      legalAccepted,
+      signIn,
+      signUp,
+      signOut,
+      refreshOnboardingStatus,
+      refreshLegalStatus,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
