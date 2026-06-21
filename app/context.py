@@ -119,6 +119,7 @@ def get_context_provider() -> ContextProvider:
 from dataclasses import dataclass as _dataclass  # noqa: E402
 from dataclasses import field as _field  # noqa: E402
 
+from app import recovery as _recovery  # noqa: E402
 from app import signals as _signals  # noqa: E402
 from app.schemas import ContextSignals, ContextSource  # noqa: E402
 
@@ -159,9 +160,14 @@ class AthleteContextProvider(Protocol):
 
 
 class HttpAthleteContextProvider:
-    """Reads profile/xp from the user service and sessions from the training
-    service, then derives signals (A4). Wearable sources arrive with A3 — until
-    then only the always-on in-app log source is reported (never fabricated)."""
+    """Reads profile/xp from the user service and sessions + connected sources +
+    recovery from the training service, then derives signals (A4).
+
+    The in-app log source is always on. Wearable recovery (sleep/HRV/RHR/score)
+    is folded into readiness + the ``/ai/context`` signals only when the owning
+    source is connected *and* left on (A7 consent); otherwise the recovery fields
+    stay ``None`` and readiness falls back to the load-only estimate (A8 — never
+    fabricated)."""
 
     def __init__(self, user_base_url: str, training_base_url: str, nutrition_base_url: str) -> None:
         self._user = user_base_url.rstrip("/")
@@ -181,6 +187,8 @@ class HttpAthleteContextProvider:
             streak_state: str | None = None
             sessions: list[dict[str, Any]] = []
             nutrition: list[dict[str, Any]] = []
+            integration_sources: list[dict[str, Any]] = []
+            recovery_samples: list[dict[str, Any]] = []
             try:
                 xp_res = await client.get(f"{self._user}/users/me/xp", headers=headers)
                 if xp_res.status_code == 200:
@@ -195,10 +203,33 @@ class HttpAthleteContextProvider:
                 )
                 if nut_res.status_code == 200:
                     nutrition = nut_res.json().get("items", [])
+                # A3: connected-source registry (consent state) + recovery samples,
+                # read from the training service. Degrades to load-only if absent.
+                src_res = await client.get(
+                    f"{self._training}/integrations/sources", headers=headers
+                )
+                if src_res.status_code == 200:
+                    integration_sources = src_res.json().get("items", [])
+                rec_res = await client.get(
+                    f"{self._training}/integrations/recovery", headers=headers
+                )
+                if rec_res.status_code == 200:
+                    recovery_samples = rec_res.json().get("items", [])
             except httpx.RequestError:
                 pass
 
-        derived = _signals.compute_signals(sessions, streak_state=streak_state)
+        # A7 consent: only fold in recovery from sources the user left ON. If the
+        # recovery-bearing source is off/disconnected, treat recovery as absent.
+        recovery = _recovery.fold_recovery(integration_sources, recovery_samples)
+        derived = _signals.compute_signals(
+            sessions,
+            streak_state=streak_state,
+            sleep_hours=recovery.sleep_hours,
+            sleep_delta=recovery.sleep_delta,
+            hrv=recovery.hrv,
+            hrv_delta_pct=recovery.hrv_delta_pct,
+            resting_hr=recovery.resting_hr,
+        )
         sources = [
             ContextSource(
                 id="logs",
@@ -209,6 +240,20 @@ class HttpAthleteContextProvider:
                 metric="Sets · Meals · RPE",
             )
         ]
+        # Surface the sources the user left ON in "what your coach sees" — an off
+        # or disconnected source is not advertised (and feeds no signals).
+        sources.extend(
+            ContextSource(
+                id=str(s["id"]),
+                label=str(s.get("label", s["id"])),
+                icon=str(s.get("icon", "activity")),
+                on=bool(s.get("on", False)),
+                last=str(s.get("last", "Never")),
+                metric=str(s.get("metric", "")),
+            )
+            for s in integration_sources
+            if s.get("on")
+        )
         return GraphSnapshot(
             sources=sources,
             signals=_to_context_signals(derived),
