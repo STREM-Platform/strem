@@ -2,16 +2,27 @@
 
 import asyncio
 import uuid
+from typing import cast
+
+from langchain_core.language_models import BaseChatModel
 
 from app.capture import (
+    NO_VISION_NOTE,
+    AnthropicCaptureProvider,
+    FallbackCaptureProvider,
     MealCapture,
     VoiceCapture,
     WorkoutCapture,
     WorkoutItem,
+    _VisionMeal,
+    _VisionWorkout,
+    _VisionWorkoutItem,
+    build_capture_provider,
     sanitize_meal,
     sanitize_voice,
     sanitize_workout,
 )
+from app.config import Settings
 from tests.support import ai_app, auth_header
 
 IMG = ("scan.jpg", b"\xff\xd8\xff\xe0fakejpeg", "image/jpeg")
@@ -187,3 +198,70 @@ def test_sanitize_meal_floors_negative_macros() -> None:
 def test_sanitize_voice_keeps_clean_note() -> None:
     clean = sanitize_voice(VoiceCapture(title="Run", detail="5k", note="Nice work"))
     assert clean.note == "Nice work"
+
+
+# ── Anthropic vision provider (#67) ──────────────────────────────────────────
+
+
+class _StubStructured:
+    def __init__(self, value: object, fail: bool) -> None:
+        self.value = value
+        self.fail = fail
+
+    async def ainvoke(self, messages: object) -> object:
+        if self.fail:
+            raise RuntimeError("vision boom")
+        return self.value
+
+
+class _StubVisionModel:
+    def __init__(self, value: object = None, *, fail: bool = False) -> None:
+        self.value = value
+        self.fail = fail
+
+    def with_structured_output(self, schema: object) -> _StubStructured:
+        return _StubStructured(self.value, self.fail)
+
+
+def _provider(value: object = None, *, fail: bool = False) -> AnthropicCaptureProvider:
+    return AnthropicCaptureProvider(cast(BaseChatModel, _StubVisionModel(value, fail=fail)))
+
+
+def test_vision_parses_workout() -> None:
+    vision = _VisionWorkout(
+        title="Upper Push", items=[_VisionWorkoutItem(name="Bench", detail="4x8 @ 80kg")]
+    )
+    result = asyncio.run(_provider(vision).parse_workout(b"img", "image/jpeg"))
+    assert result.title == "Upper Push"
+    assert result.items[0].name == "Bench"
+
+
+def test_vision_parses_meal() -> None:
+    vision = _VisionMeal(title="Chicken & rice", cal=620, protein_g=48, carbs_g=72, fat_g=14)
+    result = asyncio.run(_provider(vision).parse_meal(b"img", "image/jpeg"))
+    assert result.cal == 620 and result.p == 48 and result.c == 72 and result.f == 14
+
+
+def test_vision_failure_falls_back_honestly() -> None:
+    workout = asyncio.run(_provider(fail=True).parse_workout(b"img", "image/jpeg"))
+    assert workout.items == [] and workout.note == NO_VISION_NOTE
+    meal = asyncio.run(_provider(fail=True).parse_meal(b"img", "image/jpeg"))
+    assert meal.cal == 0 and meal.note == NO_VISION_NOTE
+
+
+def test_vision_empty_workout_falls_back() -> None:
+    provider = _provider(_VisionWorkout(title="x", items=[]))
+    workout = asyncio.run(provider.parse_workout(b"i", "image/jpeg"))
+    assert workout.note == NO_VISION_NOTE
+
+
+def test_vision_voice_stays_honest_fallback() -> None:
+    voice = asyncio.run(_provider().parse_voice(b"audio", "audio/m4a"))
+    assert voice.detail == "" and voice.note == NO_VISION_NOTE
+
+
+def test_build_capture_provider_keyless_vs_keyed() -> None:
+    keyless = build_capture_provider(Settings(anthropic_api_key=""))
+    assert isinstance(keyless, FallbackCaptureProvider)
+    keyed = build_capture_provider(Settings(anthropic_api_key="sk-test"))
+    assert isinstance(keyed, AnthropicCaptureProvider)
