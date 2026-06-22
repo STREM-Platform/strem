@@ -100,6 +100,16 @@ export default function PrivacyScreen() {
           <Icon name="chevron" size={18} color={T.sub} />
         </Pressable>
 
+        {/* biomarkers (#63) — gated lab results; trends only, never a diagnosis */}
+        <Pressable style={[styles.sideMargin, styles.activityLink]} onPress={() => router.push("/(app)/biomarkers")}>
+          <IconTile name="heart" size={40} iconSize={19} />
+          <View style={styles.shrink}>
+            <Text style={styles.activityTitle}>Lab results</Text>
+            <Text style={styles.activitySub}>Enter biomarkers — Forge surfaces trends to discuss with your clinician.</Text>
+          </View>
+          <Icon name="chevron" size={18} color={T.sub} />
+        </Pressable>
+
         {/* autonomy — how much Forge can do on its own (per capability) */}
         <SectionHead icon="bot" title="WHAT FORGE CAN DO" sub="Per-ability autonomy" />
         <View style={styles.sideMargin}>

@@ -16,6 +16,9 @@ import type {
   AthleteProfileUpdate,
   AuthIdentity,
   AuthSession,
+  Biomarker,
+  BiomarkerCreate,
+  BiomarkerList,
   Challenge,
   ChallengePage,
   CheckIn,
@@ -270,6 +273,22 @@ export const api = {
   },
   listMatches(limit = 20): Promise<MatchPage> {
     return request<MatchPage>(`/matches?limit=${limit}`, { auth: true });
+  },
+  listBiomarkers(): Promise<BiomarkerList> {
+    return request<BiomarkerList>("/users/me/biomarkers", { auth: true });
+  },
+  createBiomarker(payload: BiomarkerCreate): Promise<Biomarker> {
+    return request<Biomarker>("/users/me/biomarkers", { method: "POST", body: payload, auth: true });
+  },
+  deleteBiomarker(id: string): Promise<void> {
+    return request<void>(`/users/me/biomarkers/${id}`, { method: "DELETE", auth: true });
+  },
+  setAgentConsent(sourceId: string, enabled: boolean): Promise<unknown> {
+    return request<unknown>("/users/me/agent-consent", {
+      method: "PUT",
+      body: { source_id: sourceId, enabled },
+      auth: true,
+    });
   },
   acceptMatch(matchId: string): Promise<TribeMatch> {
     return request<TribeMatch>(`/matches/${matchId}/accept`, { method: "POST", auth: true });

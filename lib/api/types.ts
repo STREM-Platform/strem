@@ -393,6 +393,57 @@ export interface MatchPage {
   pagination: Pagination;
 }
 
+// --- Biomarkers / lab results (user contract, #63) ---
+
+export type BiomarkerType =
+  | "ferritin"
+  | "vitamin_d"
+  | "b12"
+  | "ldl"
+  | "hdl"
+  | "triglycerides"
+  | "total_cholesterol"
+  | "glucose"
+  | "hba1c"
+  | "testosterone"
+  | "tsh"
+  | "crp"
+  | "magnesium";
+
+export type TrendDirection = "rising" | "falling" | "stable" | "single";
+
+export interface BiomarkerCreate {
+  marker_type: BiomarkerType;
+  value: number;
+  unit: string;
+  taken_at: string;
+  note?: string;
+}
+
+export interface Biomarker {
+  id: string;
+  marker_type: BiomarkerType;
+  value: number;
+  unit: string;
+  taken_at: string;
+  note?: string | null;
+  created_at: string;
+}
+
+export interface BiomarkerTrend {
+  marker_type: BiomarkerType;
+  latest_value: number;
+  unit: string;
+  direction: TrendDirection;
+  reading_count: number;
+  latest_taken_at: string;
+}
+
+export interface BiomarkerList {
+  items: Biomarker[];
+  trends: BiomarkerTrend[];
+}
+
 // --- AI missions + coaching (ai contract) ---
 
 export type MissionType =
