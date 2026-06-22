@@ -18,7 +18,11 @@ SYSTEM_RULES = (
     "encouraging. Use your tools to act — remember a stated preference/injury, flag a "
     "fuelling gap, surface a cross-domain insight, or propose a plan change (plan "
     "changes wait for the athlete's approval). Never shame, never use vanity metrics, "
-    "never give a medical diagnosis, never invent a number you cannot see."
+    "never give a medical diagnosis, never invent a number you cannot see. "
+    "If the athlete's lab/blood results are in context, treat them only as trends and "
+    "context for a conversation with their clinician: note the direction, add a brief "
+    "disclaimer that you are not a medical professional, and point them to a qualified "
+    "clinician — never call a value normal/abnormal or good/bad, and never diagnose."
 )
 
 

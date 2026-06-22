@@ -215,6 +215,35 @@ def _supplement_memory(supplements: list[dict[str, Any]]) -> list[MemoryItem]:
     return items
 
 
+_BIOMARKER_TREND_LABEL = {
+    "rising": "rising",
+    "falling": "falling",
+    "stable": "stable",
+    "single": "first reading",
+}
+
+
+def _biomarker_memory(trends: list[dict[str, Any]]) -> list[MemoryItem]:
+    """Surface lab/blood-result *trends* (#63) as memory facts — direction and the
+    latest value only, never an interpretation. The system prompt requires Forge to
+    add a disclaimer and redirect to a clinician; here we only state the trend (A8).
+    Only present when the user accepted the Medical Disclaimer and left the
+    'biomarkers' source on, since the user service gates the data behind both."""
+    items: list[MemoryItem] = []
+    for trend in trends[:8]:
+        marker = str(trend.get("marker_type", "")).strip()
+        if not marker:
+            continue
+        label = marker.replace("_", " ")
+        value = trend.get("latest_value")
+        unit = str(trend.get("unit", "")).strip()
+        direction = _BIOMARKER_TREND_LABEL.get(str(trend.get("direction")), "")
+        amount = f"{value}{(' ' + unit) if unit else ''}".strip()
+        suffix = f" ({direction})" if direction else ""
+        items.append(MemoryItem(icon="heart", text=f"Lab: {label} {amount}{suffix}"))
+    return items
+
+
 class AthleteContextProvider(Protocol):
     """Assembles sources + signals for a user, or None when context is insufficient."""
 
@@ -253,6 +282,7 @@ class HttpAthleteContextProvider:
             recovery_samples: list[dict[str, Any]] = []
             athlete_profile: dict[str, Any] = {}
             supplements: list[dict[str, Any]] = []
+            biomarker_trends: list[dict[str, Any]] = []
             try:
                 xp_res = await client.get(f"{self._user}/users/me/xp", headers=headers)
                 if xp_res.status_code == 200:
@@ -269,6 +299,14 @@ class HttpAthleteContextProvider:
                 )
                 if sup_res.status_code == 200:
                     supplements = sup_res.json().get("items", [])
+                # Biomarker trends (#63) → memory facts. The user service returns 403
+                # unless the Medical Disclaimer is accepted AND the source is on, so a
+                # non-200 simply means "no consented lab data" — never an error here.
+                bio_res = await client.get(
+                    f"{self._user}/users/me/biomarkers", headers=headers
+                )
+                if bio_res.status_code == 200:
+                    biomarker_trends = bio_res.json().get("trends", [])
                 sess_res = await client.get(
                     f"{self._training}/training/sessions?limit=50", headers=headers
                 )
@@ -335,7 +373,11 @@ class HttpAthleteContextProvider:
             signals=_to_context_signals(derived),
             sessions=sessions,
             nutrition=nutrition,
-            memory=_profile_memory(athlete_profile) + _supplement_memory(supplements),
+            memory=(
+                _profile_memory(athlete_profile)
+                + _supplement_memory(supplements)
+                + _biomarker_memory(biomarker_trends)
+            ),
         )
 
 
