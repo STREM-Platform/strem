@@ -323,28 +323,76 @@ function PlanImportView({ onBack }: { onBack: () => void }) {
   );
 }
 
-// ── Mode 2: Plan — adaptive mission generation ───────────────────────────────
+// ── Mode 2: Plan — goal-based weekly plan (stays on the page once built) ──────
+type PlanGoal =
+  | "hybrid_athlete"
+  | "build_strength"
+  | "build_endurance"
+  | "lean_and_strong"
+  | "build_discipline"
+  | "general_health";
+
+const PLAN_GOALS: { value: PlanGoal; label: string }[] = [
+  { value: "hybrid_athlete", label: "Hybrid athlete" },
+  { value: "build_strength", label: "Build strength" },
+  { value: "build_endurance", label: "Build endurance" },
+  { value: "lean_and_strong", label: "Lean & strong" },
+  { value: "build_discipline", label: "Discipline" },
+  { value: "general_health", label: "General health" },
+];
+
+// A manually-generated plan stays on the Plan page across navigation (in-session;
+// "New plan" replaces it). Module-scoped so it survives the screen unmounting.
+let planStore: { goal: PlanGoal | null; plan: TrainingPlan } | null = null;
+
 export function PlanView() {
   const [view, setView] = useState<"menu" | "import">("menu");
-  const [state, setState] = useState<"idle" | "loading" | "done">("idle");
-  const [plan, setPlan] = useState<TrainingPlan | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "done">(planStore ? "done" : "idle");
+  const [plan, setPlan] = useState<TrainingPlan | null>(planStore?.plan ?? null);
+  const [goal, setGoal] = useState<PlanGoal | null>(planStore?.goal ?? null);
 
   if (view === "import") return <PlanImportView onBack={() => setView("menu")} />;
 
   const gen = async () => {
     setState("loading");
     try {
-      setPlan(await agentApi.getTrainingPlan());
+      const built = await agentApi.getTrainingPlan(goal ?? undefined);
+      setPlan(built);
+      planStore = { goal, plan: built };
       setState("done");
     } catch {
-      setState("idle");
+      setState(plan ? "done" : "idle");
     }
+  };
+
+  const reset = () => {
+    planStore = null;
+    setPlan(null);
+    setState("idle");
   };
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.planScroll} showsVerticalScrollIndicator={false}>
       {state === "idle" ? (
         <View style={styles.menuCol}>
+          <View style={styles.goalBlock}>
+            <Text style={styles.goalEyebrow}>WHAT ARE YOU TRAINING FOR?</Text>
+            <View style={styles.goalChips}>
+              {PLAN_GOALS.map((g) => {
+                const on = goal === g.value;
+                return (
+                  <Text
+                    key={g.value}
+                    onPress={() => setGoal(g.value)}
+                    style={[styles.goalChip, on ? styles.goalChipOn : styles.goalChipOff]}
+                  >
+                    {g.label}
+                  </Text>
+                );
+              })}
+            </View>
+          </View>
+
           <Panel raised accent={T.greenLine} pad={0} style={styles.menuCard}>
             <Pressable onPress={() => setView("import")} style={styles.menuInner}>
               <View style={styles.menuRow}>
@@ -365,7 +413,11 @@ export function PlanView() {
               <View style={styles.shrink}>
                 <Text style={[styles.menuEyebrow, { color: T.sub }]}>GENERATE FRESH</Text>
                 <Text style={[styles.menuTitle, { color: T.text }]}>BUILD ME A WEEK</Text>
-                <Text style={styles.menuBody2}>No plan yet? Forge writes one from your last 4 weeks, your Hybrid goal and your calendar.</Text>
+                <Text style={styles.menuBody2}>
+                  {goal
+                    ? `Forge writes a ${PLAN_GOALS.find((g) => g.value === goal)?.label.toLowerCase()} week from your last 4 weeks, readiness and calendar.`
+                    : "Pick a goal above, then Forge writes a week from your last 4 weeks, readiness and calendar."}
+                </Text>
               </View>
             </Pressable>
           </Panel>
@@ -385,7 +437,15 @@ export function PlanView() {
         </View>
       ) : null}
 
-      {state === "done" && plan ? <TrainingPlanView plan={plan} /> : null}
+      {state === "done" && plan ? (
+        <View style={styles.doneWrap}>
+          <Pressable onPress={reset} style={styles.newPlanBtn} accessibilityLabel="Build a new plan">
+            <Icon name="refresh" size={14} color={T.green} />
+            <Text style={styles.newPlanText}>New plan</Text>
+          </Pressable>
+          <TrainingPlanView plan={plan} />
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -559,6 +619,15 @@ const styles = StyleSheet.create({
   // plan menu
   planScroll: { padding: 16, paddingBottom: 28 },
   menuCol: { gap: 12, paddingTop: 4 },
+  goalBlock: { gap: 10, marginBottom: 2 },
+  goalEyebrow: { ...mono(10, 700), letterSpacing: 1.4, color: T.sub },
+  goalChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  goalChip: { ...ui(13, 700), paddingVertical: 8, paddingHorizontal: 13, borderRadius: 11, overflow: "hidden", borderWidth: 1 },
+  goalChipOn: { backgroundColor: T.green, color: "#06130D", borderColor: T.green },
+  goalChipOff: { backgroundColor: T.surf, color: T.mut, borderColor: T.line },
+  doneWrap: { gap: 12 },
+  newPlanBtn: { flexDirection: "row", alignSelf: "flex-end", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
+  newPlanText: { ...ui(12, 700), color: T.green },
   menuCard: { overflow: "hidden" },
   menuInner: { padding: 16 },
   menuRow: { flexDirection: "row", alignItems: "center", gap: 12 },

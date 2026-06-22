@@ -6,6 +6,7 @@
  * media library. Web/unsupported platforms fall back to a clear notice.
  */
 
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -16,7 +17,7 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Btn } from "@/components/ui/primitives";
 import { T, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
-import { downloadRecap, shareRecap } from "@/lib/recap-export";
+import { downloadRecapTransparent, shareRecap } from "@/lib/recap-export";
 import { buildRecaps, type Recap, type RecapType } from "@/lib/recaps";
 import { useAsync } from "@/lib/use-async";
 
@@ -45,6 +46,7 @@ export default function RecapsScreen() {
   const [busy, setBusy] = useState(false);
   const [shared, setShared] = useState(false);
   const cardRef = useRef<View>(null);
+  const transparentRef = useRef<View>(null);
 
   const recaps: Recap[] = data?.recaps ?? [];
   const recap = recaps[Math.min(idx, recaps.length - 1)];
@@ -66,8 +68,9 @@ export default function RecapsScreen() {
   const onDownload = async () => {
     setBusy(true);
     try {
-      const result = await downloadRecap(cardRef);
-      if (result === "saved") Alert.alert("Saved", Platform.OS === "web" ? "Your recap was downloaded as a PNG." : "Your recap is in your photo library.");
+      // Download = just the stats on a transparent background (drops onto a Story).
+      const result = await downloadRecapTransparent(transparentRef);
+      if (result === "saved") Alert.alert("Saved", Platform.OS === "web" ? "Downloaded a transparent PNG — drop it onto your Story." : "Saved a transparent PNG to your photo library.");
       else if (result === "denied") Alert.alert("Permission needed", "Allow photo access to save your recap.");
       else if (result === "unavailable") Alert.alert("Saving unavailable", "Recap export isn’t available in this environment.");
       else Alert.alert("Couldn’t save", "Something went wrong saving the image. Please try again.");
@@ -78,6 +81,10 @@ export default function RecapsScreen() {
 
   return (
     <View style={styles.root}>
+      {/* hidden transparent capture source — what Download saves (no background) */}
+      <View ref={transparentRef} collapsable={false} style={styles.transparentShot} pointerEvents="none">
+        {recap ? <StoryCard recap={recap} rank={rank} transparent /> : null}
+      </View>
       <View ref={cardRef} collapsable={false} style={styles.shot}>
         {recap ? (
           <StoryCard recap={recap} rank={rank} />
@@ -97,6 +104,12 @@ export default function RecapsScreen() {
 
       {/* controls */}
       <View style={[styles.controls, { paddingBottom: insets.bottom + 18 }]}>
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.92)"]}
+          locations={[0, 0.45, 1]}
+          style={styles.controlsScrim}
+          pointerEvents="none"
+        />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
           {recaps.map((r, i) => {
             const tab = RECAP_TABS[r.type];
@@ -128,6 +141,7 @@ export default function RecapsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000" },
   shot: { flex: 1, backgroundColor: "#08090b" },
+  transparentShot: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   loading: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
   empty: { ...ui(14, 600), color: T.mut, textAlign: "center" },
   close: { position: "absolute", right: 16, zIndex: 5 },
@@ -137,6 +151,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "45deg" }],
   },
   controls: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 14 },
+  controlsScrim: { position: "absolute", left: 0, right: 0, top: -56, bottom: 0 },
   tabs: { gap: 7, paddingVertical: 12 },
   tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1 },
   tabOn: { backgroundColor: T.greenSoft, borderColor: T.greenLine },

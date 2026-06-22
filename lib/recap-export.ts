@@ -56,3 +56,12 @@ export async function downloadRecap(ref: RefObject<View | null>): Promise<SaveRe
     return "error";
   }
 }
+
+/**
+ * Save the transparent (no-background) variant. The passed ref must be the
+ * transparent card view — react-native-view-shot keeps the alpha, so the saved
+ * PNG drops cleanly onto a Story background.
+ */
+export async function downloadRecapTransparent(ref: RefObject<View | null>): Promise<SaveResult> {
+  return downloadRecap(ref);
+}

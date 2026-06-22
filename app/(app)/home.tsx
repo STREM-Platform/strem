@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CoachChatTeaser, CoachSees, ProactiveCheckin, TodaysClimb } from "@/components/agent/today";
+import { CoachChatTeaser, ProactiveCheckin, TodaysClimb } from "@/components/agent/today";
 import { AthleteProfileCard } from "@/components/athlete/athlete-profile-card";
 import { BottomNav } from "@/components/bottom-nav";
 import { BrandLogo } from "@/components/brand-logo";
@@ -76,7 +76,6 @@ export default function HomeScreen() {
                 <>
                   <ProactiveCheckin />
                   <TodaysClimb onStart={() => router.push("/(app)/log")} />
-                  <CoachSees onManage={() => router.push("/(app)/privacy")} />
                   <CoachChatTeaser onPress={() => router.push("/(app)/coach")} />
                 </>
               ) : null}

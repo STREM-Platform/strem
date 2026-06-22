@@ -12,6 +12,7 @@
  * error.
  */
 
+import html2canvas from "html2canvas";
 import type { RefObject } from "react";
 import type { View } from "react-native";
 import { captureRef } from "react-native-view-shot";
@@ -53,11 +54,11 @@ function dataUriToBlob(dataUri: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
-function triggerDownload(blob: Blob): void {
+function triggerDownload(blob: Blob, name: string = FILE_NAME): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = FILE_NAME;
+  a.download = name;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -102,6 +103,29 @@ export async function downloadRecap(ref: RefObject<View | null>): Promise<SaveRe
     return "saved";
   } catch (err) {
     captureError(err, { context: "recap-export.web.download" });
+    return "error";
+  }
+}
+
+/**
+ * Download just the stats on a transparent background (no photo / dark fill), so
+ * it drops cleanly onto an Instagram/Story background. Uses html2canvas directly
+ * with `backgroundColor: null` for a real alpha channel.
+ */
+export async function downloadRecapTransparent(ref: RefObject<View | null>): Promise<SaveResult> {
+  const node = domNode(ref);
+  if (!node) {
+    captureError(new Error("recap card DOM node unavailable"), {
+      context: "recap-export.web.transparent",
+    });
+    return "error";
+  }
+  try {
+    const canvas = await html2canvas(node, { backgroundColor: null, scale: 2, logging: false });
+    triggerDownload(dataUriToBlob(canvas.toDataURL("image/png")), "strem-recap-transparent.png");
+    return "saved";
+  } catch (err) {
+    captureError(err, { context: "recap-export.web.transparent" });
     return "error";
   }
 }

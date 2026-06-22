@@ -57,8 +57,22 @@ function Brand({ rank }: { rank: string }) {
   );
 }
 
-function StoryShell({ tone = "green", rank, footer, photo, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; children: ReactNode }) {
+function StoryShell({ tone = "green", rank, footer, photo, transparent = false, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; transparent?: boolean; children: ReactNode }) {
   const accent = tone === "red" ? T.red : tone === "legendary" ? "#F4C45A" : T.green;
+
+  // Transparent export: just the brand + stats on alpha — no photo, backdrop, or
+  // dark fill — so it drops cleanly onto a Story background (#69 / founder ask).
+  if (transparent) {
+    return (
+      <View style={[styles.shell, styles.shellTransparent]}>
+        <View style={styles.content}>
+          <Brand rank={rank} />
+          <View style={styles.body}>{children}</View>
+          {footer ? <Text style={styles.footer}>{footer}</Text> : null}
+        </View>
+      </View>
+    );
+  }
 
   // Photo recaps: the image sits as a natural 16:9 top banner (not stretched
   // full-bleed → no zoom), with the stats on a clean dark panel below.
@@ -103,10 +117,10 @@ function BigStat({ value, unit, label, color = "#fff", size = 72 }: { value: str
   );
 }
 
-export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
+export function StoryCard({ recap, rank, transparent = false }: { recap: Recap; rank: string; transparent?: boolean }) {
   if (recap.type === "weekly") {
     return (
-      <StoryShell rank={rank} photo={PHOTOS.tribe} footer={`Hold the line. — ${recap.weekLabel}`}>
+      <StoryShell transparent={transparent} rank={rank} photo={PHOTOS.tribe} footer={`Hold the line. — ${recap.weekLabel}`}>
         <Text style={styles.eyebrow}>WEEKLY RECAP</Text>
         <View style={styles.weekHead}>
           <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={72} />
@@ -124,7 +138,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
   if (recap.type === "monthly") {
     return (
-      <StoryShell rank={rank} photo={PHOTOS.strength} footer="The base you built.">
+      <StoryShell transparent={transparent} rank={rank} photo={PHOTOS.strength} footer="The base you built.">
         <Text style={styles.eyebrow}>MONTHLY RECAP</Text>
         <Text style={styles.monthName}>{recap.monthLabel}</Text>
         <View style={styles.monthTotals}>
@@ -148,7 +162,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   if (recap.type === "medal") {
     const tone = recap.def.rarity === "legendary" ? "legendary" : recap.def.rarity === "common" ? "green" : "green";
     return (
-      <StoryShell rank={rank} tone={tone} footer="Earned the hard way.">
+      <StoryShell transparent={transparent} rank={rank} tone={tone} footer="Earned the hard way.">
         <View style={styles.medalCenter}>
           <Text style={[styles.eyebrow, { color: recap.def.rarity === "legendary" ? "#F4C45A" : T.green, textAlign: "center" }]}>
             {RARITY[recap.def.rarity].label.toUpperCase()} MEDAL EARNED
@@ -166,7 +180,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
   // consistency
   const total = recap.trainingDays + recap.nutritionDays;
   return (
-    <StoryShell rank={rank} photo={PHOTOS.hyrox} footer="Consistency, not perfection.">
+    <StoryShell transparent={transparent} rank={rank} photo={PHOTOS.hyrox} footer="Consistency, not perfection.">
       <Text style={styles.eyebrow}>CONSISTENCY</Text>
       <View style={styles.consRow}>
         <Ring size={128} stroke={12} pct={Math.min(1, total / 14)}>
@@ -185,6 +199,7 @@ export function StoryCard({ recap, rank }: { recap: Recap; rank: string }) {
 
 const styles = StyleSheet.create({
   shell: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden", backgroundColor: "#08090b" },
+  shellTransparent: { backgroundColor: "transparent" },
   topGlow: { position: "absolute", top: 0, left: 0, right: 0, height: "55%" },
   content: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, paddingTop: 64, paddingBottom: 70, flexDirection: "column" },
 

@@ -50,9 +50,14 @@ export default function CoachScreen() {
               <Text style={styles.identityRole}>AI COACH</Text>
             </View>
           </View>
-          <Pressable onPress={() => router.push("/(app)/privacy")} style={styles.settings}>
-            <Icon name="settings" size={19} color={T.sub} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable onPress={() => router.push("/(app)/recaps")} style={styles.actionBtn} accessibilityLabel="Weekly recaps">
+              <Icon name="star" size={18} color={T.sub} />
+            </Pressable>
+            <Pressable onPress={() => router.push("/(app)/privacy")} style={styles.actionBtn} accessibilityLabel="What your coach sees">
+              <Icon name="lock" size={18} color={T.sub} />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.statusRow}>
@@ -100,7 +105,8 @@ const styles = StyleSheet.create({
   identity: { flexDirection: "row", alignItems: "center", gap: 8 },
   identityName: { ...disp(16, 800), color: T.text, letterSpacing: 0.6, lineHeight: 16 },
   identityRole: { ...mono(8, 700), letterSpacing: 0.8, color: T.green },
-  settings: { width: 64, alignItems: "flex-end" },
+  headerActions: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4, minWidth: 64 },
+  actionBtn: { padding: 5 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center", marginVertical: 12 },
   statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green, boxShadow: "0px 0px 8px #34E2A0" },
   statusText: { ...mono(9, 600), letterSpacing: 0.4, color: T.sub },

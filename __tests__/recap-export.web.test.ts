@@ -15,6 +15,7 @@ const mockCaptureError = jest.fn<(...a: unknown[]) => void>();
 
 jest.mock("react-native-view-shot", () => ({ captureRef: (...a: unknown[]) => mockCaptureRef(...a) }));
 jest.mock("@/lib/monitoring", () => ({ captureError: (...a: unknown[]) => mockCaptureError(...a) }));
+jest.mock("html2canvas", () => jest.fn());
 
 // 1x1 transparent PNG data-uri.
 const PNG_DATA_URI =
