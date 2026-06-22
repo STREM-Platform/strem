@@ -20,7 +20,7 @@ import { Icon, MountainMark, type IconName } from "@/components/ui/icon";
 import { Bar, Btn, Chip, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
 import { T, disp, mono, ui } from "@/constants/theme";
 import { ApiError, SessionExpiredError, api } from "@/lib/api/client";
-import type { Challenge, ChallengeTargetType, CheckIn, CompletedAction, Membership, Tribe } from "@/lib/api/types";
+import type { Challenge, ChallengeTargetType, CheckIn, CompletedAction, MemberRole, Membership, Tribe, TribeMatch } from "@/lib/api/types";
 import { useAuth } from "@/lib/session/auth-context";
 
 type Status = "loading" | "no_tribe" | "pending" | "in_tribe" | "error";
@@ -56,6 +56,30 @@ function daysLeft(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
 }
 
+const MATCH_METRIC_LABEL: Record<TribeMatch["metric"], string> = {
+  training_days: "Training days",
+  sessions: "Sessions",
+  consistency: "Consistency",
+  total_xp: "XP",
+};
+
+// Which match to surface on the screen: a live one first, else the latest result.
+const MATCH_PRIORITY: Record<string, number> = { active: 0, accepted: 1, proposed: 2, complete: 3 };
+function pickLiveMatch(items: TribeMatch[]): TribeMatch | null {
+  const relevant = items.filter((m) => m.state in MATCH_PRIORITY);
+  relevant.sort(
+    (a, b) =>
+      (MATCH_PRIORITY[a.state] ?? 9) - (MATCH_PRIORITY[b.state] ?? 9) ||
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  return relevant[0] ?? null;
+}
+
+/** Per-member averages can be fractional — show one decimal only when needed. */
+function fmtScore(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
 export default function TribeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -64,6 +88,7 @@ export default function TribeScreen() {
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [members, setMembers] = useState<Membership[]>([]);
+  const [match, setMatch] = useState<TribeMatch | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -77,6 +102,13 @@ export default function TribeScreen() {
       setCheckins(activity.items);
       setChallenges(challengePage.items);
       setMembers(memberList.items);
+      // Live tribe-vs-tribe match (best-effort): show the most relevant one.
+      try {
+        const page = await api.listMatches();
+        setMatch(pickLiveMatch(page.items));
+      } catch {
+        setMatch(null);
+      }
       setStatus("in_tribe");
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) setStatus("no_tribe");
@@ -139,6 +171,7 @@ export default function TribeScreen() {
             checkins={checkins}
             challenge={activeChallenge}
             members={members}
+            match={match}
             currentUserId={user?.user_id}
             onChanged={() => void load()}
           />
@@ -154,6 +187,7 @@ function InTribe({
   checkins,
   challenge,
   members,
+  match,
   currentUserId,
   onChanged,
 }: {
@@ -161,6 +195,7 @@ function InTribe({
   checkins: CheckIn[];
   challenge: Challenge | undefined;
   members: Membership[];
+  match: TribeMatch | null;
   currentUserId: string | undefined;
   onChanged: () => void;
 }) {
@@ -215,6 +250,9 @@ function InTribe({
           ))}
         </View>
       </Panel>
+
+      {/* live tribe-vs-tribe match */}
+      {match ? <MatchBanner match={match} myTribeId={tribe.id} myRole={tribe.my_role} onChanged={onChanged} /> : null}
 
       {/* members — the whole room */}
       <SectionHead icon="users" title="MEMBERS" sub={`Everyone in ${tribe.name}`} />
@@ -336,6 +374,97 @@ function InTribe({
   );
 }
 
+function MatchBanner({
+  match,
+  myTribeId,
+  myRole,
+  onChanged,
+}: {
+  match: TribeMatch;
+  myTribeId: string;
+  myRole: MemberRole;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const iAmChallenger = match.challenger_tribe_id === myTribeId;
+  const myScore = iAmChallenger ? match.challenger_score : match.opponent_score;
+  const theirScore = iAmChallenger ? match.opponent_score : match.challenger_score;
+  const myCount = iAmChallenger ? match.challenger_member_count : match.opponent_member_count;
+  const theirCount = iAmChallenger ? match.opponent_member_count : match.challenger_member_count;
+  const leadingMe = myScore > theirScore;
+  const leadingThem = theirScore > myScore;
+
+  // I can accept only if my tribe was challenged and I lead it.
+  const canRespond =
+    match.state === "proposed" && myRole === "admin" && match.opponent_tribe_id === myTribeId;
+  const awaitingThem = match.state === "proposed" && !canRespond;
+
+  let banner: { overline: string; tone: string } = { overline: "LIVE MATCH", tone: T.green };
+  if (match.state === "proposed") banner = { overline: "MATCH PROPOSED", tone: T.amber };
+  else if (match.state === "accepted") banner = { overline: "MATCH ACCEPTED", tone: T.green };
+  else if (match.state === "complete") {
+    const won = match.winner_tribe_id === myTribeId;
+    const tie = match.winner_tribe_id == null;
+    banner = { overline: tie ? "MATCH TIED" : won ? "MATCH WON" : "MATCH DONE", tone: won ? T.green : T.mut };
+  }
+
+  const respond = async (accept: boolean) => {
+    setBusy(true);
+    try {
+      if (accept) await api.acceptMatch(match.id);
+      else await api.declineMatch(match.id);
+      onChanged();
+    } catch {
+      // surfaced via reload
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <SectionHead icon="trophy" title="TRIBE MATCH" sub={`${MATCH_METRIC_LABEL[match.metric]} · per-member average`} />
+      <Panel raised style={styles.sideMargin} accent={banner.tone} pad={16}>
+        <View style={styles.matchTopRow}>
+          <Chip label={banner.overline} color={banner.tone} bg={T.surf2} border={T.line2} iconFill={false} />
+          {match.state === "active" || match.state === "accepted" ? (
+            <Text style={styles.matchWhen}>{daysLeft(match.window_end)}d left</Text>
+          ) : null}
+        </View>
+        <View style={styles.matchScores}>
+          <View style={styles.matchSide}>
+            <Text style={[styles.matchSideLabel, { color: leadingMe ? T.green : T.mut }]}>YOUR TRIBE</Text>
+            <Text style={[styles.matchScore, { color: leadingMe ? T.green : T.text }]}>{fmtScore(myScore)}</Text>
+            <Text style={styles.matchCount}>{myCount} {myCount === 1 ? "member" : "members"}</Text>
+          </View>
+          <Text style={styles.matchVs}>vs</Text>
+          <View style={styles.matchSide}>
+            <Text style={[styles.matchSideLabel, { color: leadingThem ? T.red : T.mut }]}>RIVAL TRIBE</Text>
+            <Text style={[styles.matchScore, { color: leadingThem ? T.red : T.text }]}>{fmtScore(theirScore)}</Text>
+            <Text style={styles.matchCount}>{theirCount} {theirCount === 1 ? "member" : "members"}</Text>
+          </View>
+        </View>
+        {canRespond ? (
+          <View style={styles.matchActions}>
+            <Btn kind="ghost" label="Decline" onPress={() => void respond(false)} style={styles.shrink} />
+            <Btn kind="primary" icon="check" label={busy ? "…" : "Accept"} onPress={() => void respond(true)} style={styles.shrink} />
+          </View>
+        ) : null}
+        {awaitingThem ? <Text style={styles.matchNote}>Waiting for the other tribe’s leader to accept.</Text> : null}
+        {match.state === "complete" ? (
+          <Text style={styles.matchNote}>
+            {match.winner_tribe_id == null
+              ? "A dead heat — both tribes held the line."
+              : match.winner_tribe_id === myTribeId
+                ? "Your tribe took it. Tribe Power earned."
+                : "Rival edged it this time. Run it back."}
+          </Text>
+        ) : null}
+      </Panel>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: T.bg },
   scroll: { paddingBottom: 124 },
@@ -361,6 +490,18 @@ const styles = StyleSheet.create({
   capSeg: { flex: 1, height: 8, borderRadius: 3 },
   capSegOn: { backgroundColor: T.green, boxShadow: "0px 0px 6px rgba(52,226,160,0.4)" },
   capSegOff: { backgroundColor: "rgba(255,255,255,0.08)" },
+
+  // tribe-vs-tribe match banner
+  matchTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  matchWhen: { ...mono(11, 600), color: T.sub },
+  matchScores: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14 },
+  matchSide: { flex: 1, alignItems: "center" },
+  matchSideLabel: { ...mono(10, 700), letterSpacing: 1 },
+  matchScore: { ...disp(40, 800), marginTop: 4 },
+  matchCount: { ...ui(11, 500), color: T.sub, marginTop: 2 },
+  matchVs: { ...mono(12, 700), color: T.mut, paddingHorizontal: 10 },
+  matchActions: { flexDirection: "row", gap: 10, marginTop: 14 },
+  matchNote: { ...ui(12, 500), color: T.sub, marginTop: 12, textAlign: "center" },
 
   chalHead: { flexDirection: "row", alignItems: "center", gap: 12 },
   chalTitle: { ...ui(16, 700), color: T.text },

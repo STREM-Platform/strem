@@ -355,6 +355,44 @@ export interface ContributionRequest {
   amount: number;
 }
 
+// --- Tribe-vs-tribe matches (community contract, #65) ---
+
+export type DuelMetric = "training_days" | "sessions" | "consistency" | "total_xp";
+export type MatchState =
+  | "proposed"
+  | "accepted"
+  | "active"
+  | "complete"
+  | "declined"
+  | "expired"
+  | "cancelled";
+
+export interface TribeMatch {
+  id: string;
+  challenger_tribe_id: string;
+  opponent_tribe_id: string;
+  proposed_by: string;
+  metric: DuelMetric;
+  target_value?: number | null;
+  window_start: string;
+  window_end: string;
+  state: MatchState;
+  winner_tribe_id?: string | null;
+  /** Per-member-average scores, live on read. */
+  challenger_score: number;
+  opponent_score: number;
+  challenger_member_count: number;
+  opponent_member_count: number;
+  created_at: string;
+  accepted_at?: string | null;
+  completed_at?: string | null;
+}
+
+export interface MatchPage {
+  items: TribeMatch[];
+  pagination: Pagination;
+}
+
 // --- AI missions + coaching (ai contract) ---
 
 export type MissionType =

@@ -27,6 +27,7 @@ import type {
   LegalStatus,
   LogNutritionDayRequest,
   LogTrainingSessionRequest,
+  MatchPage,
   MedalListResponse,
   Membership,
   Mission,
@@ -44,6 +45,7 @@ import type {
   TrainingSession,
   TrainingSessionPage,
   Tribe,
+  TribeMatch,
   UserProfile,
   WeeklyRecap,
   XPSummary,
@@ -265,6 +267,15 @@ export const api = {
       method: "POST",
       auth: true,
     });
+  },
+  listMatches(limit = 20): Promise<MatchPage> {
+    return request<MatchPage>(`/matches?limit=${limit}`, { auth: true });
+  },
+  acceptMatch(matchId: string): Promise<TribeMatch> {
+    return request<TribeMatch>(`/matches/${matchId}/accept`, { method: "POST", auth: true });
+  },
+  declineMatch(matchId: string): Promise<TribeMatch> {
+    return request<TribeMatch>(`/matches/${matchId}/decline`, { method: "POST", auth: true });
   },
   getActiveMissions(): Promise<MissionList> {
     return request<MissionList>("/ai/missions/active", { auth: true });
