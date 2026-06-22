@@ -69,6 +69,7 @@ def upstream_for(settings: Settings, first_segment: str) -> str | None:
         "integrations": settings.training_base_url,  # A3 — lives in training-service
         "nutrition": settings.nutrition_base_url,
         "tribes": settings.community_base_url,
+        "duels": settings.community_base_url,  # 1v1 duels (#64) live in community-service
         "ai": settings.ai_base_url,
     }
     return routes.get(first_segment)
