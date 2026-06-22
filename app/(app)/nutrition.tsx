@@ -15,6 +15,7 @@ import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
+import { SupplementsSection } from "@/components/fuel/supplements-section";
 import { Icon, MountainMark, type IconName } from "@/components/ui/icon";
 import { Bar, Chip, IconTile, Panel, ScreenHead, SectionHead } from "@/components/ui/primitives";
 import { Ring } from "@/components/ui/ring";
@@ -99,6 +100,9 @@ export default function FuelScreen() {
             </View>
           </View>
         </View>
+
+        {/* supplements — real & persisted (#62), shown regardless of the preview flag */}
+        <SupplementsSection />
 
         {/* preview, matching the prototype order: macros → log → hydration → meals */}
         {FLAGS.nutritionMacrosPreview ? (

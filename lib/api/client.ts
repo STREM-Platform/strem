@@ -38,6 +38,8 @@ import type {
   OnboardingStatus,
   OnboardingSubmission,
   RegisterRequest,
+  Supplement,
+  SupplementCreate,
   TokenPair,
   TrainingSession,
   TrainingSessionPage,
@@ -208,6 +210,15 @@ export const api = {
   },
   listNutritionDays(limit = 14): Promise<NutritionDayPage> {
     return request<NutritionDayPage>(`/nutrition/days?limit=${limit}`, { auth: true });
+  },
+  listSupplements(): Promise<{ items: Supplement[] }> {
+    return request<{ items: Supplement[] }>("/nutrition/supplements", { auth: true });
+  },
+  createSupplement(body: SupplementCreate): Promise<Supplement> {
+    return request<Supplement>("/nutrition/supplements", { method: "POST", body, auth: true });
+  },
+  deleteSupplement(id: string): Promise<void> {
+    return request<void>(`/nutrition/supplements/${id}`, { method: "DELETE", auth: true });
   },
   getMyTribe(): Promise<Tribe> {
     return request<Tribe>("/tribes/me", { auth: true });

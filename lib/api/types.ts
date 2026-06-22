@@ -249,6 +249,23 @@ export interface NutritionDayPage {
   pagination: Pagination;
 }
 
+// --- Supplements (issue #62) ---
+
+export interface Supplement {
+  id: string;
+  name: string;
+  dose?: string | null;
+  timing?: string | null;
+  purpose?: string | null;
+}
+
+export interface SupplementCreate {
+  name: string;
+  dose?: string | null;
+  timing?: string | null;
+  purpose?: string | null;
+}
+
 // --- Community / tribes (community contract) ---
 
 export type MemberRole = "admin" | "member";
