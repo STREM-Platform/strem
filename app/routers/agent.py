@@ -247,14 +247,20 @@ async def training_plan(
     provider: AthleteContextProviderDep,
     bundle_provider: ContextProviderDep,
     token: BearerTokenDep,
+    goal: Annotated[str | None, Query()] = None,
 ) -> TrainingPlan:
-    """A full structured weekly plan, shaped by goal + weekly volume + readiness."""
+    """A full structured weekly plan, shaped by goal + weekly volume + readiness.
+
+    `goal` overrides the onboarding goal so the athlete can build a plan for what
+    they're preparing for right now (an unknown value falls back to the default
+    week — never an error).
+    """
     snapshot = await provider.for_user(str(current.user_id), token)
     if snapshot is None:
         raise AppError(409, "insufficient_context", "Not enough context yet to plan.")
     bundle = await bundle_provider.for_user(str(current.user_id), token)
     return build_training_plan(
-        goal=bundle.transformation_goal if bundle else None,
+        goal=goal or (bundle.transformation_goal if bundle else None),
         weekly_target_days=bundle.weekly_target_days if bundle else None,
         signals=snapshot.signals,
     )

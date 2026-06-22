@@ -69,6 +69,24 @@ def test_training_plan_endpoint() -> None:
     asyncio.run(scenario())
 
 
+def test_training_plan_goal_override_changes_the_week() -> None:
+    async def scenario() -> None:
+        async with ai_app() as h:
+            hdr = auth_header(uuid.uuid4())
+            strength = (
+                await h.client.get("/v1/ai/agent/training-plan?goal=build_strength", headers=hdr)
+            ).json()
+            endurance = (
+                await h.client.get("/v1/ai/agent/training-plan?goal=build_endurance", headers=hdr)
+            ).json()
+            # The chosen goal shapes the week — title and/or focuses differ.
+            assert strength["title"] != endurance["title"] or (
+                [d["focus"] for d in strength["days"]] != [d["focus"] for d in endurance["days"]]
+            )
+
+    asyncio.run(scenario())
+
+
 def test_swap_endpoint() -> None:
     async def scenario() -> None:
         async with ai_app() as h:
