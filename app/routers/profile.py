@@ -1,14 +1,47 @@
 """Profile endpoints implementing contracts/user/openapi.yml (`/v1/users/me`)."""
 
-from fastapi import APIRouter
+import uuid
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 
 from app.deps import CurrentUserDep, SessionDep
 from app.errors import AppError
-from app.profiles import build_profile_response, get_or_create_profile
+from app.profiles import build_profile_response, get_display_names, get_or_create_profile
 from app.progression import active_medals, total_xp
-from app.schemas.profile import UpdateProfileRequest, UserProfileResponse
+from app.schemas.profile import (
+    UpdateProfileRequest,
+    UserProfileResponse,
+    UserSummary,
+    UserSummaryList,
+)
 
 router = APIRouter(prefix="/v1", tags=["profile"])
+
+
+@router.get("/users/batch", response_model=UserSummaryList)
+async def get_users_batch(
+    current: CurrentUserDep,
+    session: SessionDep,
+    ids: Annotated[str, Query(description="Comma-separated user ids (max 50).")] = "",
+) -> UserSummaryList:
+    """Display names for a batch of user ids (#72) — name only, auth-required.
+
+    Used to enrich a tribe roster with real names; returns no email or other PII.
+    """
+    parsed: list[uuid.UUID] = []
+    for value in ids.split(","):
+        value = value.strip()
+        if not value:
+            continue
+        try:
+            parsed.append(uuid.UUID(value))
+        except ValueError:
+            continue
+    names = await get_display_names(session, parsed[:50])
+    return UserSummaryList(
+        items=[UserSummary(user_id=uid, display_name=name) for uid, name in names.items()]
+    )
 
 
 def _fallback_display_name(email: str) -> str:

@@ -11,6 +11,17 @@ from app.schemas.enums import TrainingLevel, TransformationGoal
 from app.schemas.game import MedalType, UserRank
 
 
+class UserSummary(BaseModel):
+    """Minimal public-within-app identity for batch lookup (#72) — name only."""
+
+    user_id: uuid.UUID
+    display_name: str
+
+
+class UserSummaryList(BaseModel):
+    items: list[UserSummary]
+
+
 class EarnedMedal(BaseModel):
     """A medal earned by the user, as returned on the profile."""
 

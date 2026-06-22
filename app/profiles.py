@@ -7,8 +7,10 @@ derived from which fields are present (onboarding-flow.md).
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import UserProfile
@@ -35,6 +37,20 @@ async def get_or_create_profile(session: AsyncSession, user_id: object) -> UserP
         session.add(profile)
         await session.flush()
     return profile
+
+
+async def get_display_names(
+    session: AsyncSession, ids: list[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """Display names for a batch of user ids (#72). Missing/unnamed -> 'Athlete'.
+
+    Returns only id -> display_name — no email or other PII — so a tribemate
+    roster can be enriched without exposing anything sensitive.
+    """
+    if not ids:
+        return {}
+    rows = await session.scalars(select(UserProfile).where(UserProfile.id.in_(ids)))
+    return {profile.id: (profile.display_name or "Athlete") for profile in rows}
 
 
 def _required_complete(profile: UserProfile) -> bool:
