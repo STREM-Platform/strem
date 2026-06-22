@@ -17,6 +17,26 @@ import { RARITY, T, disp, mono, ui } from "@/constants/theme";
 import { PHOTOS } from "@/lib/photos";
 import type { Recap, SessionBreakdown } from "@/lib/recaps";
 
+/** User-selectable accent for the shared card (#69 style picker). */
+export type StoryAccent = "green" | "red" | "gold";
+
+export const STORY_ACCENTS: Record<StoryAccent, string> = {
+  green: T.green,
+  red: T.red,
+  gold: "#F4C45A",
+};
+
+/** The user's export-style choices, applied to the preview and the PNG. */
+export interface StoryStyle {
+  accent: StoryAccent;
+  /** Include the photo banner (minimal = brand backdrop instead). */
+  photo: boolean;
+  /** Export with a real alpha channel (no background) for Stories. */
+  transparent: boolean;
+}
+
+export const DEFAULT_STORY_STYLE: StoryStyle = { accent: "green", photo: true, transparent: false };
+
 /** "74" → "1h14m"; "48" → "48m"; "120" → "2h". */
 function fmtDur(min: number): string {
   const h = Math.floor(min / 60);
@@ -57,8 +77,8 @@ function Brand({ rank }: { rank: string }) {
   );
 }
 
-function StoryShell({ tone = "green", rank, footer, photo, transparent = false, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; transparent?: boolean; children: ReactNode }) {
-  const accent = tone === "red" ? T.red : tone === "legendary" ? "#F4C45A" : T.green;
+function StoryShell({ tone = "green", rank, footer, photo, transparent = false, accentColor, children }: { tone?: "green" | "red" | "legendary"; rank: string; footer?: string; photo?: ImageSourcePropType; transparent?: boolean; accentColor?: string; children: ReactNode }) {
+  const accent = accentColor ?? (tone === "red" ? T.red : tone === "legendary" ? "#F4C45A" : T.green);
 
   // Transparent export: just the brand + stats on alpha — no photo, backdrop, or
   // dark fill — so it drops cleanly onto a Story background (#69 / founder ask).
@@ -117,19 +137,24 @@ function BigStat({ value, unit, label, color = "#fff", size = 72 }: { value: str
   );
 }
 
-export function StoryCard({ recap, rank, transparent = false }: { recap: Recap; rank: string; transparent?: boolean }) {
+export function StoryCard({ recap, rank, style = DEFAULT_STORY_STYLE }: { recap: Recap; rank: string; style?: StoryStyle }) {
+  const { accent, photo: withPhoto, transparent } = style;
+  const accentColor = STORY_ACCENTS[accent];
+  // "minimal" = no photo banner → fall back to the brand-backdrop layout.
+  const pick = (img: ImageSourcePropType): ImageSourcePropType | undefined => (withPhoto ? img : undefined);
+
   if (recap.type === "weekly") {
     return (
-      <StoryShell transparent={transparent} rank={rank} photo={PHOTOS.tribe} footer={`Hold the line. — ${recap.weekLabel}`}>
-        <Text style={styles.eyebrow}>WEEKLY RECAP</Text>
+      <StoryShell transparent={transparent} accentColor={accentColor} rank={rank} photo={pick(PHOTOS.tribe)} footer={`Hold the line. — ${recap.weekLabel}`}>
+        <Text style={[styles.eyebrow, { color: accentColor }]}>WEEKLY RECAP</Text>
         <View style={styles.weekHead}>
           <BigStat value={String(recap.sessions)} unit={recap.sessions === 1 ? "session" : "sessions"} label="LOGGED THIS WEEK" size={72} />
-          {recap.minutes > 0 ? <BigStat value={fmtDur(recap.minutes)} label="TOTAL TIME" color={T.green} size={36} /> : null}
+          {recap.minutes > 0 ? <BigStat value={fmtDur(recap.minutes)} label="TOTAL TIME" color={accentColor} size={36} /> : null}
         </View>
         <Breakdown items={recap.byType} />
         <View style={styles.statRow}>
           <BigStat value={recap.distanceKm > 0 ? String(recap.distanceKm) : "0"} unit="km" label="DISTANCE" size={36} />
-          <BigStat value={recap.totalXp.toLocaleString()} unit="XP" label="TOTAL" color={T.green} size={36} />
+          <BigStat value={recap.totalXp.toLocaleString()} unit="XP" label="TOTAL" color={accentColor} size={36} />
           <BigStat value={String(recap.streak)} unit={recap.streak === 1 ? "day" : "days"} label="STREAK" size={36} />
         </View>
       </StoryShell>
@@ -138,19 +163,19 @@ export function StoryCard({ recap, rank, transparent = false }: { recap: Recap; 
 
   if (recap.type === "monthly") {
     return (
-      <StoryShell transparent={transparent} rank={rank} photo={PHOTOS.strength} footer="The base you built.">
-        <Text style={styles.eyebrow}>MONTHLY RECAP</Text>
+      <StoryShell transparent={transparent} accentColor={accentColor} rank={rank} photo={pick(PHOTOS.strength)} footer="The base you built.">
+        <Text style={[styles.eyebrow, { color: accentColor }]}>MONTHLY RECAP</Text>
         <Text style={styles.monthName}>{recap.monthLabel}</Text>
         <View style={styles.monthTotals}>
           <BigStat value={String(recap.sessions)} unit="sessions" label="TRAINED" size={40} />
-          <BigStat value={String(recap.hours)} unit="h" label="MOVING" color={T.green} size={40} />
+          <BigStat value={String(recap.hours)} unit="h" label="MOVING" color={accentColor} size={40} />
         </View>
         <Breakdown items={recap.byType} />
         {recap.topMedal ? (
           <View style={styles.topMedalRow}>
             <Medal rarity={recap.topMedal.rarity} emblem={recap.topMedal.emblem} size={56} />
             <View>
-              <Text style={styles.topMedalLabel}>TOP MEDAL</Text>
+              <Text style={[styles.topMedalLabel, { color: accentColor }]}>TOP MEDAL</Text>
               <Text style={styles.topMedalName}>{recap.topMedal.title}</Text>
             </View>
           </View>
@@ -160,11 +185,12 @@ export function StoryCard({ recap, rank, transparent = false }: { recap: Recap; 
   }
 
   if (recap.type === "medal") {
-    const tone = recap.def.rarity === "legendary" ? "legendary" : recap.def.rarity === "common" ? "green" : "green";
+    // A legendary medal keeps its gold identity; otherwise honor the chosen accent.
+    const eyebrowColor = recap.def.rarity === "legendary" ? "#F4C45A" : accentColor;
     return (
-      <StoryShell transparent={transparent} rank={rank} tone={tone} footer="Earned the hard way.">
+      <StoryShell transparent={transparent} accentColor={accentColor} rank={rank} tone={recap.def.rarity === "legendary" ? "legendary" : "green"} footer="Earned the hard way.">
         <View style={styles.medalCenter}>
-          <Text style={[styles.eyebrow, { color: recap.def.rarity === "legendary" ? "#F4C45A" : T.green, textAlign: "center" }]}>
+          <Text style={[styles.eyebrow, { color: eyebrowColor, textAlign: "center" }]}>
             {RARITY[recap.def.rarity].label.toUpperCase()} MEDAL EARNED
           </Text>
           <View style={styles.medalArt}>
@@ -180,12 +206,12 @@ export function StoryCard({ recap, rank, transparent = false }: { recap: Recap; 
   // consistency
   const total = recap.trainingDays + recap.nutritionDays;
   return (
-    <StoryShell transparent={transparent} rank={rank} photo={PHOTOS.hyrox} footer="Consistency, not perfection.">
-      <Text style={styles.eyebrow}>CONSISTENCY</Text>
+    <StoryShell transparent={transparent} accentColor={accentColor} rank={rank} photo={pick(PHOTOS.hyrox)} footer="Consistency, not perfection.">
+      <Text style={[styles.eyebrow, { color: accentColor }]}>CONSISTENCY</Text>
       <View style={styles.consRow}>
         <Ring size={128} stroke={12} pct={Math.min(1, total / 14)}>
           <Text style={styles.consRingNum}>{recap.streak}</Text>
-          <Text style={styles.consRingLabel}>DAY STREAK</Text>
+          <Text style={[styles.consRingLabel, { color: accentColor }]}>DAY STREAK</Text>
         </Ring>
         <View style={styles.shrink}>
           <BigStat value={String(recap.trainingDays)} unit="days" label="TRAINED THIS WEEK" size={40} />

@@ -12,14 +12,16 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { StoryCard } from "@/components/recaps/story-card";
+import { DEFAULT_STORY_STYLE, STORY_ACCENTS, StoryCard, type StoryAccent, type StoryStyle } from "@/components/recaps/story-card";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Btn } from "@/components/ui/primitives";
 import { T, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
-import { downloadRecapTransparent, shareRecap } from "@/lib/recap-export";
+import { downloadRecap, downloadRecapTransparent, shareRecap } from "@/lib/recap-export";
 import { buildRecaps, type Recap, type RecapType } from "@/lib/recaps";
 import { useAsync } from "@/lib/use-async";
+
+const ACCENT_ORDER: StoryAccent[] = ["green", "red", "gold"];
 
 const RECAP_TABS: Record<RecapType, { label: string; icon: IconName }> = {
   weekly: { label: "Weekly", icon: "chart" },
@@ -45,8 +47,12 @@ export default function RecapsScreen() {
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [shared, setShared] = useState(false);
+  const [style, setStyle] = useState<StoryStyle>(DEFAULT_STORY_STYLE);
   const cardRef = useRef<View>(null);
   const transparentRef = useRef<View>(null);
+
+  const solidStyle: StoryStyle = { ...style, transparent: false };
+  const transparentStyle: StoryStyle = { ...style, transparent: true };
 
   const recaps: Recap[] = data?.recaps ?? [];
   const recap = recaps[Math.min(idx, recaps.length - 1)];
@@ -68,9 +74,13 @@ export default function RecapsScreen() {
   const onDownload = async () => {
     setBusy(true);
     try {
-      // Download = just the stats on a transparent background (drops onto a Story).
-      const result = await downloadRecapTransparent(transparentRef);
-      if (result === "saved") Alert.alert("Saved", Platform.OS === "web" ? "Downloaded a transparent PNG — drop it onto your Story." : "Saved a transparent PNG to your photo library.");
+      // Honor the picker: "No background" → transparent PNG (alpha, drops onto a
+      // Story); otherwise the full styled card with its background.
+      const result = style.transparent
+        ? await downloadRecapTransparent(transparentRef)
+        : await downloadRecap(cardRef);
+      const where = Platform.OS === "web" ? "Downloaded" : "Saved to your photo library";
+      if (result === "saved") Alert.alert("Saved", style.transparent ? `${where} — a transparent PNG, drop it onto your Story.` : `${where}.`);
       else if (result === "denied") Alert.alert("Permission needed", "Allow photo access to save your recap.");
       else if (result === "unavailable") Alert.alert("Saving unavailable", "Recap export isn’t available in this environment.");
       else Alert.alert("Couldn’t save", "Something went wrong saving the image. Please try again.");
@@ -81,13 +91,13 @@ export default function RecapsScreen() {
 
   return (
     <View style={styles.root}>
-      {/* hidden transparent capture source — what Download saves (no background) */}
+      {/* hidden transparent capture source — what Download saves when "No background" is on */}
       <View ref={transparentRef} collapsable={false} style={styles.transparentShot} pointerEvents="none">
-        {recap ? <StoryCard recap={recap} rank={rank} transparent /> : null}
+        {recap ? <StoryCard recap={recap} rank={rank} style={transparentStyle} /> : null}
       </View>
       <View ref={cardRef} collapsable={false} style={styles.shot}>
         {recap ? (
-          <StoryCard recap={recap} rank={rank} />
+          <StoryCard recap={recap} rank={rank} style={solidStyle} />
         ) : (
           <View style={styles.loading}>
             {loading ? <ActivityIndicator color={T.green} /> : <Text style={styles.empty}>No recaps yet — log some proof first.</Text>}
@@ -129,6 +139,38 @@ export default function RecapsScreen() {
             );
           })}
         </ScrollView>
+        {/* style picker — accent, photo vs minimal, transparent download */}
+        <View style={styles.picker}>
+          <View style={styles.swatches}>
+            {ACCENT_ORDER.map((a) => {
+              const on = style.accent === a;
+              return (
+                <Pressable
+                  key={a}
+                  onPress={() => setStyle((s) => ({ ...s, accent: a }))}
+                  accessibilityLabel={`${a} accent`}
+                  style={[styles.swatch, { borderColor: on ? "#fff" : "rgba(255,255,255,0.25)" }]}
+                >
+                  <View style={[styles.swatchDot, { backgroundColor: STORY_ACCENTS[a] }]} />
+                </Pressable>
+              );
+            })}
+          </View>
+          <Pressable
+            onPress={() => setStyle((s) => ({ ...s, photo: !s.photo }))}
+            style={[styles.toggle, style.photo ? styles.toggleOn : styles.toggleOff]}
+          >
+            <Icon name="mountain" size={13} color={style.photo ? T.green : "rgba(255,255,255,0.6)"} />
+            <Text style={[styles.toggleLabel, { color: style.photo ? "#fff" : "rgba(255,255,255,0.6)" }]}>Photo</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setStyle((s) => ({ ...s, transparent: !s.transparent }))}
+            style={[styles.toggle, style.transparent ? styles.toggleOn : styles.toggleOff]}
+          >
+            <Icon name="grid" size={13} color={style.transparent ? T.green : "rgba(255,255,255,0.6)"} />
+            <Text style={[styles.toggleLabel, { color: style.transparent ? "#fff" : "rgba(255,255,255,0.6)" }]}>No background</Text>
+          </Pressable>
+        </View>
         <View style={styles.actions}>
           <Btn kind="ghost" icon="download" label={busy ? "Working…" : "Download"} onPress={onDownload} style={styles.actionGhost} />
           <Btn kind={shared ? "soft" : "primary"} icon={shared ? "check" : "share"} label={shared ? "Shared" : "Share to story"} onPress={onShare} style={styles.actionShare} />
@@ -157,6 +199,14 @@ const styles = StyleSheet.create({
   tabOn: { backgroundColor: T.greenSoft, borderColor: T.greenLine },
   tabOff: { backgroundColor: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.1)" },
   tabLabel: { ...ui(12, 700) },
+  picker: { flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 12, flexWrap: "wrap" },
+  swatches: { flexDirection: "row", gap: 6, alignItems: "center" },
+  swatch: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  swatchDot: { width: 14, height: 14, borderRadius: 7 },
+  toggle: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 11, borderRadius: 10, borderWidth: 1 },
+  toggleOn: { backgroundColor: T.greenSoft, borderColor: T.greenLine },
+  toggleOff: { backgroundColor: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.1)" },
+  toggleLabel: { ...ui(12, 700) },
   actions: { flexDirection: "row", gap: 10 },
   actionGhost: { flex: 1 },
   actionShare: { flex: 1.4 },
