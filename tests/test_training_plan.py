@@ -2,9 +2,18 @@
 
 import asyncio
 import uuid
+from typing import Any, cast
 
-from app.schemas import ContextSignals
-from app.training_plan import LIBRARY, build_training_plan, swap_exercise
+from langchain_core.language_models import BaseChatModel
+
+from app.agent.llm import FallbackChatModel
+from app.schemas import ContextSignals, MemoryItem, PlanDay, PlanExercise, TrainingPlan
+from app.training_plan import (
+    LIBRARY,
+    build_training_plan,
+    build_training_plan_llm,
+    swap_exercise,
+)
 from tests.support import ai_app, auth_header
 
 
@@ -108,3 +117,69 @@ def test_training_plan_requires_auth() -> None:
             assert (await h.client.get("/v1/ai/agent/training-plan")).status_code == 401
 
     asyncio.run(scenario())
+
+
+# ── LLM-written variant (#70) ────────────────────────────────────────────────
+
+
+class _StubStructured:
+    def __init__(self, plan: TrainingPlan | None) -> None:
+        self.plan = plan
+
+    async def ainvoke(self, prompt: Any) -> TrainingPlan | None:
+        return self.plan
+
+
+class _StubModel:
+    """A non-fallback model whose structured output returns a fixed plan (or raises)."""
+
+    def __init__(self, plan: TrainingPlan | None = None, *, fail: bool = False) -> None:
+        self.plan = plan
+        self.fail = fail
+
+    def with_structured_output(self, schema: Any) -> _StubStructured:
+        if self.fail:
+            raise RuntimeError("boom")
+        return _StubStructured(self.plan)
+
+
+def _llm(model: object) -> TrainingPlan | None:
+    return asyncio.run(
+        build_training_plan_llm(
+            cast(BaseChatModel, model),
+            goal="build_strength",
+            weekly_target_days=4,
+            signals=_signals(60),
+            sessions=[{"session_type": "strength"}],
+            memory=[MemoryItem(icon="bolt", text="PR: Back Squat 140kg")],
+        )
+    )
+
+
+def test_llm_plan_keyless_falls_back_to_rule_based() -> None:
+    # The keyless FallbackChatModel can't write structured output -> None (caller
+    # uses the rule-based week).
+    assert _llm(FallbackChatModel()) is None
+
+
+def test_llm_plan_uses_a_keyed_model() -> None:
+    built = TrainingPlan(
+        title="LLM Week",
+        summary="Grounded in your real training.",
+        days=[
+            PlanDay(
+                label="Day 1",
+                focus="Lower · Strength",
+                icon="dumbbell",
+                exercises=[
+                    PlanExercise(name="Back Squat", target="5x5 @ RPE 8", note="", group="squat")
+                ],
+            )
+        ],
+    )
+    plan = _llm(_StubModel(built))
+    assert plan is not None and plan.title == "LLM Week"
+
+
+def test_llm_plan_parse_failure_falls_back() -> None:
+    assert _llm(_StubModel(fail=True)) is None

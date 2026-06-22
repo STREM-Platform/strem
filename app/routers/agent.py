@@ -43,7 +43,7 @@ from app.schemas import (
     SwapResult,
     TrainingPlan,
 )
-from app.training_plan import build_training_plan, swap_exercise
+from app.training_plan import build_training_plan, build_training_plan_llm, swap_exercise
 
 router = APIRouter(prefix="/v1", tags=["agent"])
 
@@ -246,6 +246,7 @@ async def training_plan(
     current: CurrentUserDep,
     provider: AthleteContextProviderDep,
     bundle_provider: ContextProviderDep,
+    model: AgentModelDep,
     token: BearerTokenDep,
     goal: Annotated[str | None, Query()] = None,
 ) -> TrainingPlan:
@@ -253,17 +254,29 @@ async def training_plan(
 
     `goal` overrides the onboarding goal so the athlete can build a plan for what
     they're preparing for right now (an unknown value falls back to the default
-    week — never an error).
+    week — never an error). LLM-written and grounded in the athlete's real
+    sessions/PRs/memory (#70) when a model is available; the deterministic
+    rule-based week is the keyless / parse-failure fallback — never fabricated.
     """
     snapshot = await provider.for_user(str(current.user_id), token)
     if snapshot is None:
         raise AppError(409, "insufficient_context", "Not enough context yet to plan.")
     bundle = await bundle_provider.for_user(str(current.user_id), token)
-    return build_training_plan(
-        goal=goal or (bundle.transformation_goal if bundle else None),
-        weekly_target_days=bundle.weekly_target_days if bundle else None,
+    chosen_goal = goal or (bundle.transformation_goal if bundle else None)
+    weekly_target = bundle.weekly_target_days if bundle else None
+    plan = await build_training_plan_llm(
+        model,
+        goal=chosen_goal,
+        weekly_target_days=weekly_target,
         signals=snapshot.signals,
+        sessions=snapshot.sessions,
+        memory=snapshot.memory,
     )
+    if plan is None:
+        plan = build_training_plan(
+            goal=chosen_goal, weekly_target_days=weekly_target, signals=snapshot.signals
+        )
+    return plan
 
 
 @router.post("/ai/agent/training-plan/swap", response_model=SwapResult)

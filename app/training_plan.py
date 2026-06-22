@@ -9,7 +9,16 @@ so it's predictable, testable, and instantly swappable from a movement library
 
 from __future__ import annotations
 
-from app.schemas import ContextSignals, PlanDay, PlanExercise, TrainingPlan
+import logging
+from collections import Counter
+from typing import Any
+
+from langchain_core.language_models import BaseChatModel
+
+from app.agent.llm import FallbackChatModel
+from app.schemas import ContextSignals, MemoryItem, PlanDay, PlanExercise, TrainingPlan
+
+logger = logging.getLogger("strem-ai-orchestrator")
 
 # Alternatives per movement group — the first is the default, the rest are swaps.
 LIBRARY: dict[str, list[tuple[str, str]]] = {
@@ -192,3 +201,67 @@ def build_training_plan(
         summary=_summary(signals, n, goal_title),
         days=days,
     )
+
+
+# ── LLM-written variant (#70) — grounded in the athlete's real data ───────────
+
+
+def _sessions_summary(sessions: list[dict[str, Any]]) -> str:
+    if not sessions:
+        return "no sessions logged yet"
+    by_type = Counter(str(s.get("session_type", "other")) for s in sessions[:30])
+    parts = [f"{count}x {kind}" for kind, count in by_type.items()]
+    return f"{len(sessions)} recent ({', '.join(parts)})"
+
+
+def _llm_prompt(
+    goal: str | None,
+    days: int,
+    signals: ContextSignals,
+    sessions: list[dict[str, Any]],
+    memory: list[MemoryItem],
+) -> str:
+    facts = "; ".join(m.text for m in memory) or "no profile facts yet"
+    return (
+        f"You are Forge, an elite hybrid-athlete coach. Write a {days}-day training week "
+        f"for the goal '{goal or 'general fitness'}', grounded in this athlete's real data.\n"
+        f"Readiness: {signals.readiness} ({signals.readiness_label}); load {signals.load_label}; "
+        f"7-day load {signals.load7}; momentum {signals.momentum}.\n"
+        f"Athlete facts (PRs, injuries, equipment, supplements, preferences): {facts}.\n"
+        f"Recent training: {_sessions_summary(sessions)}.\n"
+        "Rules: respect injuries and available equipment from the facts; scale intensity to "
+        "readiness (if readiness is low, include a recovery day and cap intensity); reference the "
+        "athlete's real numbers where useful. Every exercise needs a movement 'group' (e.g. squat, "
+        "hinge, horizontal_press, vertical_pull, lunge, run, core) so it stays swappable, plus a "
+        "concrete target (sets x reps @ RPE, or a run prescription). Give each day a short focus "
+        "and an icon name (one of: dumbbell, route, leaf, heart, bolt). Return only the plan."
+    )
+
+
+async def build_training_plan_llm(
+    model: BaseChatModel,
+    *,
+    goal: str | None,
+    weekly_target_days: int | None,
+    signals: ContextSignals,
+    sessions: list[dict[str, Any]],
+    memory: list[MemoryItem],
+) -> TrainingPlan | None:
+    """An LLM-written week grounded in the athlete's real sessions/PRs/memory (#70).
+
+    Returns None to fall back to the deterministic rule-based generator — a keyless
+    model, a parse failure, or an outage. It never fabricates: on any doubt the
+    caller uses the grounded rule-based week instead.
+    """
+    if isinstance(model, FallbackChatModel):
+        return None
+    days = max(2, min(6, weekly_target_days or 4))
+    try:
+        structured = model.with_structured_output(TrainingPlan)
+        result = await structured.ainvoke(_llm_prompt(goal, days, signals, sessions, memory))
+    except Exception:  # noqa: BLE001 - any LLM/parse failure must degrade, not 500
+        logger.warning("LLM training-plan failed; using the rule-based week", exc_info=True)
+        return None
+    if isinstance(result, TrainingPlan) and result.days:
+        return result
+    return None
