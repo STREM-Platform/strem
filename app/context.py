@@ -199,6 +199,22 @@ def _profile_memory(profile: dict[str, Any]) -> list[MemoryItem]:
     return items
 
 
+def _supplement_memory(supplements: list[dict[str, Any]]) -> list[MemoryItem]:
+    """Surface the user's current supplement stack (#62) as memory facts Forge can
+    reason over (timing/gaps) — context only, never a dose or recommendation (A8)."""
+    items: list[MemoryItem] = []
+    for supplement in supplements[:8]:
+        name = str(supplement.get("name", "")).strip()
+        if not name:
+            continue
+        detail = " · ".join(
+            str(supplement[key]) for key in ("dose", "timing") if supplement.get(key)
+        )
+        text = f"Takes {name} ({detail})" if detail else f"Takes {name}"
+        items.append(MemoryItem(icon="leaf", text=text))
+    return items
+
+
 class AthleteContextProvider(Protocol):
     """Assembles sources + signals for a user, or None when context is insufficient."""
 
@@ -236,6 +252,7 @@ class HttpAthleteContextProvider:
             integration_sources: list[dict[str, Any]] = []
             recovery_samples: list[dict[str, Any]] = []
             athlete_profile: dict[str, Any] = {}
+            supplements: list[dict[str, Any]] = []
             try:
                 xp_res = await client.get(f"{self._user}/users/me/xp", headers=headers)
                 if xp_res.status_code == 200:
@@ -246,6 +263,12 @@ class HttpAthleteContextProvider:
                 )
                 if ath_res.status_code == 200:
                     athlete_profile = ath_res.json()
+                # Supplements (#62) → memory facts (informs, never prescribes).
+                sup_res = await client.get(
+                    f"{self._nutrition}/nutrition/supplements", headers=headers
+                )
+                if sup_res.status_code == 200:
+                    supplements = sup_res.json().get("items", [])
                 sess_res = await client.get(
                     f"{self._training}/training/sessions?limit=50", headers=headers
                 )
@@ -312,7 +335,7 @@ class HttpAthleteContextProvider:
             signals=_to_context_signals(derived),
             sessions=sessions,
             nutrition=nutrition,
-            memory=_profile_memory(athlete_profile),
+            memory=_profile_memory(athlete_profile) + _supplement_memory(supplements),
         )
 
 

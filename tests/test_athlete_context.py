@@ -19,7 +19,9 @@ from app.context import GraphSnapshot, HttpAthleteContextProvider
 _PROFILE = {"onboarding_completed": True, "identity_statement": "I am a hybrid athlete."}
 
 
-def _handler(athlete: dict[str, Any] | None) -> Callable[[httpx.Request], httpx.Response]:
+def _handler(
+    athlete: dict[str, Any] | None, supplements: list[dict[str, Any]] | None = None
+) -> Callable[[httpx.Request], httpx.Response]:
     def handle(request: httpx.Request) -> httpx.Response:
         path = request.url.path
         if path.endswith("/users/me/athlete-profile"):
@@ -32,6 +34,8 @@ def _handler(athlete: dict[str, Any] | None) -> Callable[[httpx.Request], httpx.
             return httpx.Response(200, json=_PROFILE)
         if path.endswith("/training/sessions"):
             return httpx.Response(200, json={"items": []})
+        if path.endswith("/nutrition/supplements"):
+            return httpx.Response(200, json={"items": supplements or []})
         if path.endswith("/nutrition/days"):
             return httpx.Response(200, json={"items": []})
         if path.endswith("/integrations/sources"):
@@ -43,11 +47,13 @@ def _handler(athlete: dict[str, Any] | None) -> Callable[[httpx.Request], httpx.
     return handle
 
 
-def _snapshot(athlete: dict[str, Any] | None) -> GraphSnapshot | None:
+def _snapshot(
+    athlete: dict[str, Any] | None, supplements: list[dict[str, Any]] | None = None
+) -> GraphSnapshot | None:
     provider = HttpAthleteContextProvider(
         "http://user.test/v1", "http://training.test/v1", "http://nutrition.test/v1"
     )
-    transport = httpx.MockTransport(_handler(athlete))
+    transport = httpx.MockTransport(_handler(athlete, supplements))
     real_client = httpx.AsyncClient
 
     def _factory(*args: Any, **kwargs: Any) -> httpx.AsyncClient:
@@ -87,6 +93,12 @@ def test_no_profile_means_no_fabricated_memory() -> None:
     snap = _snapshot(None)
     assert snap is not None
     assert snap.memory == []
+
+
+def test_supplement_facts_appear_in_context_memory() -> None:
+    snap = _snapshot(None, supplements=[{"name": "Creatine", "dose": "5g", "timing": "daily"}])
+    assert snap is not None
+    assert any("Takes Creatine" in m.text for m in snap.memory)
 
 
 def test_profile_memory_only_surfaces_set_fields() -> None:
