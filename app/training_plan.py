@@ -15,7 +15,7 @@ from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 
-from app.agent.llm import FallbackChatModel
+from app.agent.llm import FallbackChatModel, build_planning_model
 from app.schemas import ContextSignals, MemoryItem, PlanDay, PlanExercise, TrainingPlan
 
 logger = logging.getLogger("strem-ai-orchestrator")
@@ -239,20 +239,22 @@ def _llm_prompt(
 
 
 async def build_training_plan_llm(
-    model: BaseChatModel,
     *,
     goal: str | None,
     weekly_target_days: int | None,
     signals: ContextSignals,
     sessions: list[dict[str, Any]],
     memory: list[MemoryItem],
+    model: BaseChatModel | None = None,
 ) -> TrainingPlan | None:
     """An LLM-written week grounded in the athlete's real sessions/PRs/memory (#70).
 
+    Uses a higher-token planning model (the chat default truncates a full week).
     Returns None to fall back to the deterministic rule-based generator — a keyless
     model, a parse failure, or an outage. It never fabricates: on any doubt the
     caller uses the grounded rule-based week instead.
     """
+    model = model or build_planning_model()
     if isinstance(model, FallbackChatModel):
         return None
     days = max(2, min(6, weekly_target_days or 4))

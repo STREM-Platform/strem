@@ -246,7 +246,6 @@ async def training_plan(
     current: CurrentUserDep,
     provider: AthleteContextProviderDep,
     bundle_provider: ContextProviderDep,
-    model: AgentModelDep,
     token: BearerTokenDep,
     goal: Annotated[str | None, Query()] = None,
 ) -> TrainingPlan:
@@ -265,7 +264,6 @@ async def training_plan(
     chosen_goal = goal or (bundle.transformation_goal if bundle else None)
     weekly_target = bundle.weekly_target_days if bundle else None
     plan = await build_training_plan_llm(
-        model,
         goal=chosen_goal,
         weekly_target_days=weekly_target,
         signals=snapshot.signals,

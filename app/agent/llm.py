@@ -71,6 +71,26 @@ def build_model(settings: Settings | None = None) -> BaseChatModel:
     return FallbackChatModel()
 
 
+def build_planning_model(settings: Settings | None = None) -> BaseChatModel:
+    """A higher-token Claude for structured plan generation (#70).
+
+    A full week of structured output needs far more than the chat default (800),
+    which otherwise truncates and trips the parser. Keyless still returns the
+    deterministic fallback so the caller degrades to the rule-based week.
+    """
+    settings = settings or get_settings()
+    if settings.anthropic_api_key:
+        from langchain_anthropic import ChatAnthropic
+        from pydantic import SecretStr
+
+        return ChatAnthropic(  # type: ignore[call-arg]
+            model=settings.anthropic_model,
+            api_key=SecretStr(settings.anthropic_api_key),
+            max_tokens=2500,
+        )
+    return FallbackChatModel()
+
+
 _model: BaseChatModel | None = None
 
 

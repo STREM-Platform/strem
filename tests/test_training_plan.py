@@ -146,7 +146,7 @@ class _StubModel:
 def _llm(model: object) -> TrainingPlan | None:
     return asyncio.run(
         build_training_plan_llm(
-            cast(BaseChatModel, model),
+            model=cast(BaseChatModel, model),
             goal="build_strength",
             weekly_target_days=4,
             signals=_signals(60),
