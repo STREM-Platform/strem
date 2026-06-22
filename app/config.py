@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # Redis Streams broker for publishing training.session_logged.
     message_broker_url: str = "redis://localhost:6379/0"
 
+    # Base URL of strem-user-service — used to read the athlete-baseline PRs (#61)
+    # that seed PR detection, so an experienced athlete's first logged lift below
+    # a known PR isn't a false PR. Read is best-effort; a failure just disables
+    # seeding for that finish.
+    user_service_base_url: str = "http://localhost:8002/v1"
+
     # Connected-source ingestion (A3). Provider OAuth tokens are stored encrypted
     # at rest with this Fernet key (urlsafe base64, 32 bytes). Empty disables
     # connecting sources — a provider token is never stored in plaintext.

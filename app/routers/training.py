@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app.deps import CurrentUserDep, PublisherDep, SessionDep
+from app.deps import CurrentUserDep, PrBaselineDep, PublisherDep, SessionDep
 from app.schemas import (
     FinishSessionResponse,
     LogSetRequest,
@@ -113,9 +113,14 @@ async def finish_workout_session(
     current: CurrentUserDep,
     session: SessionDep,
     publisher: PublisherDep,
+    baseline: PrBaselineDep,
 ) -> FinishSessionResponse:
     prs = await finish_session(
-        session, publisher, user_id=current.user_id, session_id=session_id
+        session,
+        publisher,
+        user_id=current.user_id,
+        session_id=session_id,
+        seed_baseline=baseline,
     )
     await session.commit()
     return FinishSessionResponse(

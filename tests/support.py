@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.config import Settings, get_settings
 from app.db import Base, get_session
+from app.deps import get_pr_baseline
 from app.events import InMemoryPublisher, get_publisher
 from app.integrations.providers import Provider, SyncResult, TokenSet, get_provider_registry
 from app.main import create_app
@@ -75,6 +76,7 @@ class Harness:
 @asynccontextmanager
 async def training_app(
     providers: Mapping[str, Provider] | None = None,
+    pr_baseline: Mapping[str, float] | None = None,
 ) -> AsyncIterator[Harness]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
@@ -97,6 +99,9 @@ async def training_app(
     app.dependency_overrides[get_settings] = lambda: TEST_SETTINGS
     app.dependency_overrides[get_publisher] = lambda: publisher
     app.dependency_overrides[get_provider_registry] = lambda: registry
+    # Inject the PR baseline directly (no network to user-service in tests).
+    seeded = dict(pr_baseline or {})
+    app.dependency_overrides[get_pr_baseline] = lambda: seeded
 
     transport = httpx.ASGITransport(app=app)
     try:

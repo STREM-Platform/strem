@@ -9,6 +9,7 @@ exercise whose best effort beats recorded history (by estimated 1RM) records a
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime
 
 from sqlalchemy import desc, func, select
@@ -85,10 +86,18 @@ async def finish_session(
     *,
     user_id: uuid.UUID,
     session_id: uuid.UUID,
+    seed_baseline: Mapping[str, float] | None = None,
 ) -> list[PersonalRecord]:
-    """Detect PRs across the session's sets, persist them, and publish events."""
+    """Detect PRs across the session's sets, persist them, and publish events.
+
+    `seed_baseline` (athlete-baseline PRs, #61) is the e1RM floor used when there
+    is no recorded history yet, so an experienced athlete's first logged lift
+    below a known PR is not a false PR. Keys are lower-cased exercise names; the
+    baseline itself is never recorded — only a real logged lift that beats it.
+    """
     await _owned_session(session, user_id=user_id, session_id=session_id)
     best = await _best_set_per_exercise(session, session_id)
+    baseline = seed_baseline or {}
 
     detected: list[PersonalRecord] = []
     for exercise, best_set in best.items():
@@ -98,7 +107,10 @@ async def finish_session(
                 PersonalRecord.user_id == user_id, PersonalRecord.exercise == exercise
             )
         )
-        prior_best = prior.estimated_1rm if prior is not None else None
+        if prior is not None:
+            prior_best: float | None = prior.estimated_1rm
+        else:
+            prior_best = baseline.get(exercise.strip().lower())
         if not is_pr(candidate, prior_best):
             continue
 
