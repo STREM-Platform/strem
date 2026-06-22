@@ -44,6 +44,7 @@ def test_routes_each_service_to_its_upstream() -> None:
             "/v1/nutrition/days": "http://localhost:8004/v1/nutrition/days",
             "/v1/tribes/me": "http://localhost:8005/v1/tribes/me",
             "/v1/duels": "http://localhost:8005/v1/duels",
+            "/v1/matches": "http://localhost:8005/v1/matches",
             "/v1/ai/missions/active": "http://localhost:8006/v1/ai/missions/active",
         }
         for path, expected in cases.items():
