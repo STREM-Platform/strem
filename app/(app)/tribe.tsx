@@ -228,7 +228,7 @@ function InTribe({
                   <Icon name="users" size={16} color={mine ? T.green : T.mut} />
                 </View>
                 <Text style={[styles.memberName, { color: mine ? T.green : T.text }]}>
-                  {mine ? "You" : `Teammate · ${m.user_id.slice(0, 4)}`}
+                  {mine ? "You" : m.display_name?.trim() || `Teammate · ${m.user_id.slice(0, 4)}`}
                 </Text>
                 <Chip
                   label={m.role === "admin" ? "Founder" : "Member"}

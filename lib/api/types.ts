@@ -296,6 +296,8 @@ export interface Membership {
   role: MemberRole;
   status: MembershipStatus;
   joined_at: string;
+  /** Resolved best-effort from the user service (#72); null when unavailable. */
+  display_name?: string | null;
 }
 
 export interface CreateCheckinRequest {
