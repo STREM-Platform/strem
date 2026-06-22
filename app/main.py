@@ -16,7 +16,15 @@ from app.db import configure
 from app.errors import register_error_handlers
 from app.events import configure_publisher
 from app.observability import configure_logging, install_request_logging
-from app.routers import agent_settings, athlete, legal, onboarding, profile, xp
+from app.routers import (
+    agent_settings,
+    athlete,
+    biomarker,
+    legal,
+    onboarding,
+    profile,
+    xp,
+)
 
 
 @asynccontextmanager
@@ -44,6 +52,7 @@ def create_app() -> FastAPI:
     application.include_router(agent_settings.router)
     application.include_router(legal.router)
     application.include_router(athlete.router)
+    application.include_router(biomarker.router)
 
     @application.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:

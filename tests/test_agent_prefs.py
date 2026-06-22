@@ -28,11 +28,18 @@ def test_consent_defaults_match_catalog() -> None:
         )
         assert res.status_code == 200
         body = res.json()
-        assert [g["label"] for g in body["groups"]] == ["Recovery", "Training", "Fuel", "Memory"]
+        assert [g["label"] for g in body["groups"]] == [
+            "Recovery",
+            "Training",
+            "Fuel",
+            "Health",
+            "Memory",
+        ]
         items = _all_items(body)
         assert items == {s.id: s.default_on for s in SOURCE_CATALOG}
-        # Hydration ships off by default; everything else on.
+        # Hydration and biomarkers ship off by default; everything else on.
         assert items["hydration"] is False
+        assert items["biomarkers"] is False
         assert items["whoop"] is True
 
     run(scenario)

@@ -46,9 +46,16 @@ SOURCE_CATALOG: tuple[ConsentSource, ...] = (
     ConsentSource("pr_history", "Training", "PR history", True),
     ConsentSource("meals", "Fuel", "Meals & macros", True),
     ConsentSource("hydration", "Fuel", "Hydration", False),
+    # Lab/blood results (#63): highly sensitive, so OFF by default and revocable
+    # here at any time. Reading biomarkers also requires Medical Disclaimer
+    # acceptance — consent alone is not enough.
+    ConsentSource("biomarkers", "Health", "Lab & blood results", False),
     ConsentSource("memory_prefs", "Memory", "Stated preferences & injuries", True),
     ConsentSource("memory_convos", "Memory", "Past conversations", True),
 )
+
+# The A7 source id that gates biomarker access (must exist in SOURCE_CATALOG).
+BIOMARKER_SOURCE_ID = "biomarkers"
 
 _SOURCE_IDS = frozenset(source.id for source in SOURCE_CATALOG)
 
@@ -77,6 +84,17 @@ DEFAULT_AUTONOMY: dict[AgentCapability, AutonomyLevel] = {
 
 def is_known_source(source_id: str) -> bool:
     return source_id in _SOURCE_IDS
+
+
+_DEFAULT_ON: dict[str, bool] = {s.id: s.default_on for s in SOURCE_CATALOG}
+
+
+async def is_source_enabled(
+    session: AsyncSession, user_id: uuid.UUID, source_id: str
+) -> bool:
+    """Whether a data source is currently ON for the user (default + override)."""
+    overrides = await _consent_overrides(session, user_id)
+    return overrides.get(source_id, _DEFAULT_ON.get(source_id, False))
 
 
 async def _consent_overrides(

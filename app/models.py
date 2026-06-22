@@ -164,6 +164,29 @@ class AthleteProfile(Base):
     )
 
 
+class Biomarker(Base):
+    """A single lab / blood-result reading entered by the user (issue #63).
+
+    Append-only readings keyed by the auth `user_id`; trends are derived on read.
+    Highly sensitive, so access is gated behind explicit consent + Medical
+    Disclaimer acceptance, and the user can revoke the A7 "biomarkers" source at
+    any time. Forge surfaces trends + context only — never a diagnosis (A8).
+    """
+
+    __tablename__ = "biomarkers"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
+    marker_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String(20), nullable=False)
+    taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(280), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ProcessedEvent(Base):
     """A consumed domain event, recorded so redelivery never double-awards XP.
 
