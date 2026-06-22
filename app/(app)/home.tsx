@@ -15,6 +15,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CoachChatTeaser, CoachSees, ProactiveCheckin, TodaysClimb } from "@/components/agent/today";
+import { AthleteProfileCard } from "@/components/athlete/athlete-profile-card";
 import { BottomNav } from "@/components/bottom-nav";
 import { BrandLogo } from "@/components/brand-logo";
 import { Icon } from "@/components/ui/icon";
@@ -70,6 +71,7 @@ export default function HomeScreen() {
           <>
             <CompactHeader data={data} topInset={insets.top} onProfile={() => router.push("/(app)/profile")} />
             <View style={styles.stack}>
+              <AthleteProfileCard />
               {FLAGS.forgeAgentMock ? (
                 <>
                   <ProactiveCheckin />

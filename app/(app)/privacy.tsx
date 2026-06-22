@@ -90,6 +90,16 @@ export default function PrivacyScreen() {
           <Icon name="chevron" size={18} color={T.sub} />
         </Pressable>
 
+        {/* athlete baseline (#61) — the coaching inputs Forge knows about */}
+        <Pressable style={[styles.sideMargin, styles.activityLink]} onPress={() => router.push("/(app)/athlete-profile")}>
+          <IconTile name="compass" size={40} iconSize={19} />
+          <View style={styles.shrink}>
+            <Text style={styles.activityTitle}>Athlete profile</Text>
+            <Text style={styles.activitySub}>Body, PRs, injuries & equipment — the baseline Forge coaches from.</Text>
+          </View>
+          <Icon name="chevron" size={18} color={T.sub} />
+        </Pressable>
+
         {/* autonomy — how much Forge can do on its own (per capability) */}
         <SectionHead icon="bot" title="WHAT FORGE CAN DO" sub="Per-ability autonomy" />
         <View style={styles.sideMargin}>

@@ -12,6 +12,8 @@ import { clearTokens, getStoredTokens, storeTokens } from "@/lib/session/tokens"
 
 import type {
   ApiErrorBody,
+  AthleteProfile,
+  AthleteProfileUpdate,
   AuthIdentity,
   AuthSession,
   Challenge,
@@ -172,6 +174,16 @@ export const api = {
     return request<LegalStatus>("/users/me/legal/accept", {
       method: "POST",
       body: { acceptances },
+      auth: true,
+    });
+  },
+  getAthleteProfile(): Promise<AthleteProfile> {
+    return request<AthleteProfile>("/users/me/athlete-profile", { auth: true });
+  },
+  updateAthleteProfile(body: AthleteProfileUpdate): Promise<AthleteProfile> {
+    return request<AthleteProfile>("/users/me/athlete-profile", {
+      method: "PUT",
+      body,
       auth: true,
     });
   },

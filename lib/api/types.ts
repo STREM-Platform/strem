@@ -72,6 +72,40 @@ export interface LegalStatus {
   needs_acceptance: boolean;
 }
 
+// --- Athlete Baseline (issue #61) — mirrors the user contract ---
+
+export type AgeBand = "under_20" | "20_29" | "30_39" | "40_49" | "50_59" | "60_plus";
+export type BiologicalSex = "male" | "female" | "other" | "prefer_not_to_say";
+export type EquipmentAccess = "full_gym" | "home_gym" | "minimal" | "bodyweight_only";
+
+export interface PersonalRecord {
+  exercise: string;
+  weight_kg?: number | null;
+  reps?: number | null;
+  time?: string | null;
+  note?: string | null;
+}
+
+export interface Injury {
+  area: string;
+  note?: string | null;
+}
+
+export interface AthleteProfile {
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  age_band?: AgeBand | null;
+  biological_sex?: BiologicalSex | null;
+  years_training?: number | null;
+  equipment_access?: EquipmentAccess | null;
+  personal_records: PersonalRecord[];
+  injuries: Injury[];
+  dietary_constraints: string[];
+  is_started: boolean;
+}
+
+export type AthleteProfileUpdate = Partial<Omit<AthleteProfile, "is_started">>;
+
 export type TransformationGoal =
   | "build_strength"
   | "build_endurance"
