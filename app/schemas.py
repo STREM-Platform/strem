@@ -47,6 +47,9 @@ class TrainingSessionResponse(BaseModel):
     distance_km: float | None = None
     elevation_m: int | None = None
     notes: str | None = None
+    # Provenance (A3): "manual" for in-app logs, else the connected source
+    # ("strava", "whoop", …). Lets Forge cite where a session came from.
+    source: str = "manual"
     logged_at: datetime
     created_at: datetime
 
