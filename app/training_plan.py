@@ -124,6 +124,15 @@ GOAL_WEEK: dict[str, list[str]] = {
     "lean_and_strong": ["Full Body", "Easy Run", "Upper · Push", "Lower", "Quality Run", _R],
     "build_discipline": ["Full Body", "Easy Run", _R, "Upper · Pull", "Easy Run", "Lower"],
     "general_health": ["Full Body", "Easy Run", _R, "Easy Run", "Lower", _R],
+    # Event-specific goals (the athlete picks what they're preparing for). The
+    # LLM path tailors these from real data; these rotations are the grounded
+    # rule-based fallback.
+    "marathon": ["Easy Run", "Quality Run", "Easy Run", "Long Run", _R, "Lower"],
+    "half_marathon": ["Easy Run", "Quality Run", "Lower", "Long Run", _R, "Easy Run"],
+    "ironman": ["Easy Run", "Lower", "Quality Run", "Easy Run", "Long Run", "Full Body"],
+    "trail_ultra": ["Easy Run", "Long Run", "Lower", "Easy Run", "Quality Run", _R],
+    "hyrox": ["Full Body", "Quality Run", "Lower", "Easy Run", "Upper · Push", "Long Run"],
+    "base_building": ["Easy Run", "Full Body", "Easy Run", _R, "Easy Run", "Lower"],
 }
 DEFAULT_WEEK = GOAL_WEEK["hybrid_athlete"]
 
@@ -134,6 +143,12 @@ _GOAL_TITLE = {
     "lean_and_strong": "Lean & Strong",
     "build_discipline": "Discipline",
     "general_health": "Health",
+    "marathon": "Marathon",
+    "half_marathon": "Half-Marathon",
+    "ironman": "Ironman",
+    "trail_ultra": "Trail",
+    "hyrox": "Hyrox",
+    "base_building": "Base",
 }
 
 
@@ -220,11 +235,22 @@ def _llm_prompt(
     signals: ContextSignals,
     sessions: list[dict[str, Any]],
     memory: list[MemoryItem],
+    adjust: str | None = None,
 ) -> str:
     facts = "; ".join(m.text for m in memory) or "no profile facts yet"
+    # The athlete's free-form refinement ("make it harder", "more volume", "more
+    # recovery"…). Honored within the readiness/injury guardrails — never above them.
+    adjust_line = (
+        f"The athlete asked to adjust this plan: '{adjust.strip()}'. Honor that request as far as "
+        "is safe, but never override the readiness-based intensity caps or injury constraints "
+        "below.\n"
+        if adjust and adjust.strip()
+        else ""
+    )
     return (
         f"You are Forge, an elite hybrid-athlete coach. Write a {days}-day training week "
         f"for the goal '{goal or 'general fitness'}', grounded in this athlete's real data.\n"
+        f"{adjust_line}"
         f"Readiness: {signals.readiness} ({signals.readiness_label}); load {signals.load_label}; "
         f"7-day load {signals.load7}; momentum {signals.momentum}.\n"
         f"Athlete facts (PRs, injuries, equipment, supplements, preferences): {facts}.\n"
@@ -245,9 +271,13 @@ async def build_training_plan_llm(
     signals: ContextSignals,
     sessions: list[dict[str, Any]],
     memory: list[MemoryItem],
+    adjust: str | None = None,
     model: BaseChatModel | None = None,
 ) -> TrainingPlan | None:
     """An LLM-written week grounded in the athlete's real sessions/PRs/memory (#70).
+
+    `adjust` is the athlete's free-form refinement ("harder", "more volume",
+    "more recovery") — honored within the readiness/injury guardrails.
 
     Uses a higher-token planning model (the chat default truncates a full week).
     Returns None to fall back to the deterministic rule-based generator — a keyless
@@ -260,7 +290,9 @@ async def build_training_plan_llm(
     days = max(2, min(6, weekly_target_days or 4))
     try:
         structured = model.with_structured_output(TrainingPlan)
-        result = await structured.ainvoke(_llm_prompt(goal, days, signals, sessions, memory))
+        result = await structured.ainvoke(
+            _llm_prompt(goal, days, signals, sessions, memory, adjust)
+        )
     except Exception:  # noqa: BLE001 - any LLM/parse failure must degrade, not 500
         logger.warning("LLM training-plan failed; using the rule-based week", exc_info=True)
         return None

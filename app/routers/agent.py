@@ -255,14 +255,17 @@ async def training_plan(
     bundle_provider: ContextProviderDep,
     token: BearerTokenDep,
     goal: Annotated[str | None, Query()] = None,
+    adjust: Annotated[str | None, Query()] = None,
 ) -> TrainingPlan:
     """A full structured weekly plan, shaped by goal + weekly volume + readiness.
 
     `goal` overrides the onboarding goal so the athlete can build a plan for what
-    they're preparing for right now (an unknown value falls back to the default
-    week — never an error). LLM-written and grounded in the athlete's real
-    sessions/PRs/memory (#70) when a model is available; the deterministic
-    rule-based week is the keyless / parse-failure fallback — never fabricated.
+    they're preparing for right now — including an event ('marathon', 'ironman',
+    'trail_ultra', 'hyrox', 'base_building'); an unknown value falls back to the
+    default week, never an error. `adjust` is the athlete's free-form refinement
+    ("harder", "more volume", "more recovery") honored within the readiness/injury
+    guardrails. LLM-written and grounded in real sessions/PRs/memory (#70) when a
+    model is available; the deterministic rule-based week is the fallback.
     """
     snapshot = await provider.for_user(str(current.user_id), token)
     if snapshot is None:
@@ -276,6 +279,7 @@ async def training_plan(
         signals=snapshot.signals,
         sessions=snapshot.sessions,
         memory=snapshot.memory,
+        adjust=adjust,
     )
     if plan is None:
         plan = build_training_plan(

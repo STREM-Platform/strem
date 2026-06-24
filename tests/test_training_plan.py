@@ -10,6 +10,7 @@ from app.agent.llm import FallbackChatModel
 from app.schemas import ContextSignals, MemoryItem, PlanDay, PlanExercise, TrainingPlan
 from app.training_plan import (
     LIBRARY,
+    _llm_prompt,
     build_training_plan,
     build_training_plan_llm,
     swap_exercise,
@@ -183,3 +184,30 @@ def test_llm_plan_uses_a_keyed_model() -> None:
 
 def test_llm_plan_parse_failure_falls_back() -> None:
     assert _llm(_StubModel(fail=True)) is None
+
+
+# ── event goals + adjustment (#5 plan refinement) ────────────────────────────
+
+
+def test_event_goal_marathon_is_run_heavy() -> None:
+    plan = build_training_plan(goal="marathon", weekly_target_days=5, signals=_signals(60))
+    assert plan.title == "Marathon Week"
+    run_days = sum(1 for d in plan.days if d.icon == "route" or "Run" in d.focus)
+    assert run_days >= 3
+
+
+def test_unknown_event_goal_falls_back_to_default_week() -> None:
+    # An exotic goal the rule-based map doesn't know still returns a valid week.
+    plan = build_training_plan(goal="spartan_race", weekly_target_days=4, signals=_signals(60))
+    assert len(plan.days) == 4
+
+
+def test_adjust_is_injected_into_the_prompt_with_guardrails() -> None:
+    prompt = _llm_prompt("marathon", 5, _signals(60), [], [], "make it harder")
+    assert "make it harder" in prompt
+    assert "never override" in prompt  # the readiness/injury guardrail is preserved
+
+
+def test_no_adjust_keeps_the_prompt_clean() -> None:
+    prompt = _llm_prompt("marathon", 5, _signals(60), [], [], None)
+    assert "asked to adjust" not in prompt
