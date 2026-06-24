@@ -99,9 +99,14 @@ export const agentApi = {
   getAdaptivePlan(): Promise<AdaptivePlan> {
     return request<AdaptivePlan>("/ai/agent/plan", { auth: true });
   },
-  getTrainingPlan(goal?: string): Promise<TrainingPlan> {
-    const query = goal ? `?goal=${encodeURIComponent(goal)}` : "";
-    return request<TrainingPlan>(`/ai/agent/training-plan${query}`, { auth: true });
+  getTrainingPlan(goal?: string, adjust?: string): Promise<TrainingPlan> {
+    const params = new URLSearchParams();
+    if (goal) params.set("goal", goal);
+    if (adjust) params.set("adjust", adjust);
+    const query = params.toString();
+    return request<TrainingPlan>(`/ai/agent/training-plan${query ? `?${query}` : ""}`, {
+      auth: true,
+    });
   },
   swapExercise(group: string, exclude: string): Promise<{ exercise: PlanExercise }> {
     return request<{ exercise: PlanExercise }>("/ai/agent/training-plan/swap", {

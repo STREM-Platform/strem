@@ -362,15 +362,19 @@ function PlanImportView({ onBack }: { onBack: () => void }) {
 }
 
 // ── Mode 2: Plan — goal-based weekly plan (stays on the page once built) ──────
-type PlanGoal =
-  | "hybrid_athlete"
-  | "build_strength"
-  | "build_endurance"
-  | "lean_and_strong"
-  | "build_discipline"
-  | "general_health";
+type GoalOption = { value: string; label: string };
 
-const PLAN_GOALS: { value: PlanGoal; label: string }[] = [
+// What the athlete is preparing for — a specific event…
+const EVENT_GOALS: GoalOption[] = [
+  { value: "marathon", label: "Marathon" },
+  { value: "half_marathon", label: "Half marathon" },
+  { value: "ironman", label: "Ironman" },
+  { value: "trail_ultra", label: "Trail / ultra" },
+  { value: "hyrox", label: "Hyrox" },
+  { value: "base_building", label: "Base building" },
+];
+// …or a general focus.
+const FOCUS_GOALS: GoalOption[] = [
   { value: "hybrid_athlete", label: "Hybrid athlete" },
   { value: "build_strength", label: "Build strength" },
   { value: "build_endurance", label: "Build endurance" },
@@ -378,23 +382,29 @@ const PLAN_GOALS: { value: PlanGoal; label: string }[] = [
   { value: "build_discipline", label: "Discipline" },
   { value: "general_health", label: "General health" },
 ];
+const ALL_GOALS = [...EVENT_GOALS, ...FOCUS_GOALS];
+const goalLabel = (value: string | null): string =>
+  ALL_GOALS.find((g) => g.value === value)?.label ?? "your goal";
+
+// Quick refinements the athlete can ask Forge for after a plan is built.
+const ADJUSTMENTS = ["Make it harder", "More volume", "More recovery", "Make it shorter"];
 
 // A manually-generated plan stays on the Plan page across navigation (in-session;
 // "New plan" replaces it). Module-scoped so it survives the screen unmounting.
-let planStore: { goal: PlanGoal | null; plan: TrainingPlan } | null = null;
+let planStore: { goal: string | null; plan: TrainingPlan } | null = null;
 
 export function PlanView() {
   const [view, setView] = useState<"menu" | "import">("menu");
   const [state, setState] = useState<"idle" | "loading" | "done">(planStore ? "done" : "idle");
   const [plan, setPlan] = useState<TrainingPlan | null>(planStore?.plan ?? null);
-  const [goal, setGoal] = useState<PlanGoal | null>(planStore?.goal ?? null);
+  const [goal, setGoal] = useState<string | null>(planStore?.goal ?? null);
 
   if (view === "import") return <PlanImportView onBack={() => setView("menu")} />;
 
-  const gen = async () => {
+  const gen = async (adjust?: string) => {
     setState("loading");
     try {
-      const built = await agentApi.getTrainingPlan(goal ?? undefined);
+      const built = await agentApi.getTrainingPlan(goal ?? undefined, adjust);
       setPlan(built);
       planStore = { goal, plan: built };
       setState("done");
@@ -409,26 +419,28 @@ export function PlanView() {
     setState("idle");
   };
 
+  const goalChip = (g: GoalOption) => {
+    const on = goal === g.value;
+    return (
+      <Text
+        key={g.value}
+        onPress={() => setGoal(g.value)}
+        style={[styles.goalChip, on ? styles.goalChipOn : styles.goalChipOff]}
+      >
+        {g.label}
+      </Text>
+    );
+  };
+
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.planScroll} showsVerticalScrollIndicator={false}>
       {state === "idle" ? (
         <View style={styles.menuCol}>
           <View style={styles.goalBlock}>
             <Text style={styles.goalEyebrow}>WHAT ARE YOU TRAINING FOR?</Text>
-            <View style={styles.goalChips}>
-              {PLAN_GOALS.map((g) => {
-                const on = goal === g.value;
-                return (
-                  <Text
-                    key={g.value}
-                    onPress={() => setGoal(g.value)}
-                    style={[styles.goalChip, on ? styles.goalChipOn : styles.goalChipOff]}
-                  >
-                    {g.label}
-                  </Text>
-                );
-              })}
-            </View>
+            <View style={styles.goalChips}>{EVENT_GOALS.map(goalChip)}</View>
+            <Text style={[styles.goalEyebrow, styles.goalEyebrow2]}>OR A GENERAL FOCUS</Text>
+            <View style={styles.goalChips}>{FOCUS_GOALS.map(goalChip)}</View>
           </View>
 
           <Panel raised accent={T.greenLine} pad={0} style={styles.menuCard}>
@@ -446,14 +458,14 @@ export function PlanView() {
           </Panel>
 
           <Panel pad={0} style={styles.menuCard}>
-            <Pressable onPress={gen} style={styles.menuRow2}>
+            <Pressable onPress={() => void gen()} style={styles.menuRow2}>
               <IconTile name="sparkles" size={46} iconSize={23} bg={T.surf2} border={T.line} color={T.sub} />
               <View style={styles.shrink}>
                 <Text style={[styles.menuEyebrow, { color: T.sub }]}>GENERATE FRESH</Text>
                 <Text style={[styles.menuTitle, { color: T.text }]}>BUILD ME A WEEK</Text>
                 <Text style={styles.menuBody2}>
                   {goal
-                    ? `Forge writes a ${PLAN_GOALS.find((g) => g.value === goal)?.label.toLowerCase()} week from your last 4 weeks, readiness and calendar.`
+                    ? `Forge writes a ${goalLabel(goal).toLowerCase()} week from your last 4 weeks, readiness and calendar.`
                     : "Pick a goal above, then Forge writes a week from your last 4 weeks, readiness and calendar."}
                 </Text>
               </View>
@@ -471,11 +483,28 @@ export function PlanView() {
 
       {state === "done" && plan ? (
         <View style={styles.doneWrap}>
-          <Pressable onPress={reset} style={styles.newPlanBtn} accessibilityLabel="Build a new plan">
-            <Icon name="refresh" size={14} color={T.green} />
-            <Text style={styles.newPlanText}>New plan</Text>
-          </Pressable>
+          <View style={styles.doneTopRow}>
+            <Pressable onPress={() => setState("idle")} style={styles.goalPill} accessibilityLabel="Change goal">
+              <Icon name="target" size={13} color={T.green} />
+              <Text style={styles.goalPillText}>{goalLabel(goal)}</Text>
+              <Text style={styles.goalPillEdit}>· change</Text>
+            </Pressable>
+            <Pressable onPress={reset} style={styles.newPlanBtn} accessibilityLabel="Build a new plan">
+              <Icon name="refresh" size={14} color={T.green} />
+              <Text style={styles.newPlanText}>New plan</Text>
+            </Pressable>
+          </View>
           <TrainingPlanView plan={plan} />
+          <View style={styles.adjustBlock}>
+            <Text style={styles.adjustLabel}>ASK FORGE TO TUNE IT</Text>
+            <View style={styles.adjustChips}>
+              {ADJUSTMENTS.map((a) => (
+                <Text key={a} onPress={() => void gen(a)} style={styles.adjustChip}>
+                  {a}
+                </Text>
+              ))}
+            </View>
+          </View>
         </View>
       ) : null}
     </ScrollView>
@@ -663,13 +692,22 @@ const styles = StyleSheet.create({
   menuCol: { gap: 12, paddingTop: 4 },
   goalBlock: { gap: 10, marginBottom: 2 },
   goalEyebrow: { ...mono(10, 700), letterSpacing: 1.4, color: T.sub },
+  goalEyebrow2: { marginTop: 6 },
   goalChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   goalChip: { ...ui(13, 700), paddingVertical: 8, paddingHorizontal: 13, borderRadius: 11, overflow: "hidden", borderWidth: 1 },
   goalChipOn: { backgroundColor: T.green, color: "#06130D", borderColor: T.green },
   goalChipOff: { backgroundColor: T.surf, color: T.mut, borderColor: T.line },
   doneWrap: { gap: 12 },
-  newPlanBtn: { flexDirection: "row", alignSelf: "flex-end", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
+  doneTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  goalPill: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line2 },
+  goalPillText: { ...ui(12.5, 700), color: T.text },
+  goalPillEdit: { ...ui(12, 600), color: T.green },
+  newPlanBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
   newPlanText: { ...ui(12, 700), color: T.green },
+  adjustBlock: { gap: 9, marginTop: 4, paddingTop: 14, borderTopWidth: 1, borderTopColor: T.line },
+  adjustLabel: { ...mono(10, 700), letterSpacing: 1.2, color: T.sub },
+  adjustChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  adjustChip: { ...ui(12.5, 700), color: T.green, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 11, overflow: "hidden", backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
   menuCard: { overflow: "hidden" },
   menuInner: { padding: 16 },
   menuRow: { flexDirection: "row", alignItems: "center", gap: 12 },
