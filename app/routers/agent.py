@@ -216,7 +216,14 @@ async def insights(
     snapshot = await provider.for_user(str(current.user_id), token)
     if snapshot is None:
         return InsightList(items=[])
-    return InsightList(items=build_insights(snapshot.sessions, snapshot.nutrition))
+    return InsightList(
+        items=build_insights(
+            snapshot.sessions,
+            snapshot.nutrition,
+            signals=snapshot.signals,
+            memory=snapshot.memory,
+        )
+    )
 
 
 @router.get("/ai/agent/plan", response_model=AdaptivePlan)

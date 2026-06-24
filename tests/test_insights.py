@@ -6,8 +6,21 @@ from datetime import UTC, datetime, timedelta
 
 from app import insights
 from app.context import GraphSnapshot
-from app.schemas import ContextSignals, ContextSource
+from app.schemas import ContextSignals, ContextSource, MemoryItem
 from tests.support import ai_app, auth_header
+
+
+def _signals(acwr: float, load28: float = 388) -> ContextSignals:
+    return ContextSignals(
+        readiness=62,
+        readiness_label="Moderate",
+        load7=412,
+        load28=load28,
+        acwr=acwr,
+        load_label="Optimal",
+        momentum="Rising",
+        streak_risk=False,
+    )
 
 NOW = datetime(2026, 6, 18, 12, 0, tzinfo=UTC)
 
@@ -43,6 +56,36 @@ def test_fuel_alignment_uses_real_overlap() -> None:
     out = insights.build_insights(sessions, fueled)
     fuel = next((i for i in out if i.title == "Fuel follows your training"), None)
     assert fuel is not None and fuel.tone == "green"
+
+
+def test_load_spike_is_flagged_amber() -> None:
+    out = insights.build_insights([], [], signals=_signals(1.45))
+    spike = next((i for i in out if i.title == "Your training load is spiking"), None)
+    assert spike is not None and spike.tone == "amber"
+
+
+def test_eased_load_invites_building() -> None:
+    out = insights.build_insights([], [], signals=_signals(0.7))
+    assert any(i.title == "You've got room to build" for i in out)
+
+
+def test_no_load_insight_without_chronic_load() -> None:
+    # No 28-day base yet → the engine won't assert a load pattern.
+    assert insights.build_insights([], [], signals=_signals(1.5, load28=0)) == []
+
+
+def test_biomarker_trend_redirects_to_clinician_never_diagnoses() -> None:
+    mem = [MemoryItem(icon="heart", text="Lab: ferritin 48 ng/mL (rising)")]
+    out = insights.build_insights([], [], memory=mem)
+    bio = next((i for i in out if i.title == "A lab marker is trending"), None)
+    assert bio is not None
+    assert "ferritin" in bio.body
+    assert "clinician" in bio.chip.lower()
+
+
+def test_single_lab_reading_is_not_a_trend() -> None:
+    mem = [MemoryItem(icon="heart", text="Lab: vitamin d 28 ng/mL (first reading)")]
+    assert insights.build_insights([], [], memory=mem) == []
 
 
 def _snapshot(

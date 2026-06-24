@@ -12,7 +12,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
 
-from app.schemas import Insight
+from app.schemas import ContextSignals, Insight, MemoryItem
 
 # Minimum observations before we'll claim a pattern.
 _MIN_SESSIONS = 8
@@ -97,13 +97,81 @@ def _consistency_day(sessions: list[dict[str, Any]]) -> Insight | None:
     )
 
 
+def _load_balance(signals: ContextSignals | None) -> Insight | None:
+    """Read the acute:chronic load ratio (A4) so insights account for *recovery and
+    load*, not just what was logged. Gated on having real chronic load."""
+    if signals is None or signals.load28 <= 0 or signals.acwr <= 0:
+        return None
+    acwr = signals.acwr
+    if acwr >= 1.3:
+        return Insight(
+            icon="bolt",
+            tone="amber",
+            title="Your training load is spiking",
+            body=f"Your acute load is running ahead of your base (ACWR {acwr}). This is the "
+            "window where injury risk climbs — keep the next hard day honest and protect sleep.",
+            chip=f"ACWR {acwr} · {signals.load_label}",
+        )
+    if acwr <= 0.8:
+        return Insight(
+            icon="route",
+            tone="green",
+            title="You've got room to build",
+            body=f"Your recent load has eased off (ACWR {acwr}). You're fresh — a good week to add "
+            "a quality session without overreaching.",
+            chip=f"ACWR {acwr} · {signals.load_label}",
+        )
+    return Insight(
+        icon="flame",
+        tone="green",
+        title="Your load is sustainable",
+        body=f"Acute and chronic load are in balance (ACWR {acwr}) — the sweet spot for steady "
+        "progress. Keep stacking weeks.",
+        chip=f"ACWR {acwr} · {signals.load_label}",
+    )
+
+
+def _biomarker_trend(memory: list[MemoryItem] | None) -> Insight | None:
+    """Surface a *lab* trend the athlete entered (#63) so insights account for
+    biomarkers too. Never interprets or diagnoses — direction + a clinician
+    redirect only (A8)."""
+    if not memory:
+        return None
+    trending = [
+        m.text
+        for m in memory
+        if m.text.startswith("Lab:") and ("(rising)" in m.text or "(falling)" in m.text)
+    ]
+    if not trending:
+        return None
+    markers = "; ".join(t.removeprefix("Lab:").strip() for t in trending[:3])
+    return Insight(
+        icon="heart",
+        tone="green",
+        title="A lab marker is trending",
+        body=f"From the labs you entered: {markers}. That's context to bring to your next "
+        "check-up — Forge tracks the direction, it doesn't interpret or diagnose.",
+        chip="Discuss with a clinician",
+    )
+
+
 def build_insights(
-    sessions: list[dict[str, Any]], nutrition: list[dict[str, Any]]
+    sessions: list[dict[str, Any]],
+    nutrition: list[dict[str, Any]],
+    *,
+    signals: ContextSignals | None = None,
+    memory: list[MemoryItem] | None = None,
 ) -> list[Insight]:
-    """All correlations the current data supports, above the sample gate."""
+    """All correlations the current data supports, above the sample gate.
+
+    Considers the whole graph, not just logged sessions/nutrition: readiness &
+    acute:chronic load (A4 signals) and entered biomarker trends (#63) feed in too.
+    """
     candidates = [
+        _load_balance(signals),
         _endurance_base(sessions),
         _fuel_alignment(sessions, nutrition),
         _consistency_day(sessions),
+        _biomarker_trend(memory),
     ]
     return [c for c in candidates if c is not None]
