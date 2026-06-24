@@ -150,8 +150,26 @@ export function ChatView() {
     }
   };
 
+  // Start a fresh conversation — clears the thread and the persisted store so the
+  // chat doesn't carry an ever-growing history.
+  const newChat = (): void => {
+    chatStore = [];
+    askedStore = [];
+    setAsked([]);
+    setThread(C ? [{ role: "coach", text: C.opener.text, cites: C.opener.cites }] : []);
+    setInput("");
+  };
+
   return (
     <View style={styles.flex}>
+      {thread.length > 1 ? (
+        <View style={styles.chatBar}>
+          <Pressable onPress={newChat} style={styles.newChatBtn} accessibilityLabel="Start a new chat">
+            <Icon name="plus" size={13} color={T.green} />
+            <Text style={styles.newChatText}>New chat</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <ScrollView ref={scrollRef} style={styles.flex} contentContainerStyle={styles.threadContent} showsVerticalScrollIndicator={false}>
         {thread.map((m, i) => (m.role === "coach" ? <CoachBubble key={i} m={m} /> : <YouBubble key={i} m={m} />))}
         {typing ? <ForgeThinking labels={CHAT_THINKING} /> : null}
@@ -632,6 +650,9 @@ const styles = StyleSheet.create({
   forgeName: { ...ui(13.5, 700), color: T.green },
 
   // chat
+  chatBar: { flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 16, paddingTop: 10 },
+  newChatBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 6, paddingHorizontal: 11, borderRadius: 10, backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine },
+  newChatText: { ...ui(12, 700), color: T.green },
   threadContent: { paddingVertical: 16, gap: 14 },
   coachRow: { flexDirection: "row", gap: 9, alignItems: "flex-start", marginHorizontal: 16 },
   avatar: { width: 30, height: 30, borderRadius: 9, marginTop: 2, backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine, alignItems: "center", justifyContent: "center" },

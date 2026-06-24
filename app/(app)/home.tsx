@@ -11,6 +11,7 @@
  */
 
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -23,6 +24,7 @@ import { T, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import type { UserProfile, XPSummary } from "@/lib/api/types";
 import { FLAGS } from "@/lib/flags";
+import { syncConnectedSources } from "@/lib/sync-sources";
 import { useAsync } from "@/lib/use-async";
 
 interface HomeData {
@@ -46,6 +48,11 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data, loading, error, reload } = useAsync(loadHome);
+
+  // Pull fresh Strava/Whoop activity once per session so Forge isn't stale.
+  useEffect(() => {
+    void syncConnectedSources();
+  }, []);
 
   return (
     <View style={styles.root}>

@@ -211,6 +211,8 @@ export interface TrainingSession {
   /** Elevation gain in metres, when the source provides it (trail/run/bike). */
   elevation_m?: number | null;
   notes?: string | null;
+  /** "manual" for in-app logs, else the connected source ("strava", "whoop"). */
+  source?: string;
   logged_at: string;
   created_at: string;
 }
