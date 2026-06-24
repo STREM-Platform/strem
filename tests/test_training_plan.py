@@ -196,6 +196,12 @@ def test_event_goal_marathon_is_run_heavy() -> None:
     assert run_days >= 3
 
 
+def test_training_day_is_a_full_session() -> None:
+    plan = build_training_plan(goal="build_strength", weekly_target_days=4, signals=_signals(62))
+    work_days = [d for d in plan.days if d.focus != "Recovery / Mobility"]
+    assert work_days and all(len(d.exercises) >= 5 for d in work_days)
+
+
 def test_unknown_event_goal_falls_back_to_default_week() -> None:
     # An exotic goal the rule-based map doesn't know still returns a valid week.
     plan = build_training_plan(goal="spartan_race", weekly_target_days=4, signals=_signals(60))

@@ -95,24 +95,40 @@ LIBRARY: dict[str, list[tuple[str, str]]] = {
         ("Hip & T-Spine", "12 min"),
         ("Yoga Reset", "20 min"),
     ],
+    "warmup": [
+        ("Dynamic Warm-up", "8 min"),
+        ("Band Activation", "6 min"),
+        ("Movement Prep", "8 min"),
+        ("Mobility Flow", "10 min"),
+    ],
+    "conditioning": [
+        ("Sled Push", "4 × 20m"),
+        ("Kettlebell Swing", "4 × 15"),
+        ("Row Intervals", "5 × 250m"),
+        ("Assault Bike", "6 × 30s hard"),
+    ],
 }
 
-# Each focus → (icon, the movement groups that compose it).
+# Each focus → (icon, the movement groups that compose it). Training days are a
+# complete session: warm-up → main lifts → accessories → core/conditioning.
 FOCUS: dict[str, tuple[str, list[str]]] = {
     "Upper · Push": (
         "dumbbell",
-        ["horizontal_press", "vertical_press", "horizontal_pull", "arms", "core"],
+        ["warmup", "horizontal_press", "vertical_press", "horizontal_pull", "arms", "core"],
     ),
     "Upper · Pull": (
         "dumbbell",
-        ["vertical_pull", "horizontal_pull", "horizontal_press", "arms", "core"],
+        ["warmup", "vertical_pull", "horizontal_pull", "horizontal_press", "arms", "core"],
     ),
-    "Lower": ("dumbbell", ["squat", "hinge", "lunge", "core"]),
-    "Full Body": ("dumbbell", ["squat", "horizontal_press", "vertical_pull", "hinge", "core"]),
-    "Easy Run": ("route", ["easy_run"]),
-    "Quality Run": ("bolt", ["quality_run"]),
-    "Long Run": ("route", ["long_run"]),
-    "Recovery / Mobility": ("refresh", ["mobility"]),
+    "Lower": ("dumbbell", ["warmup", "squat", "hinge", "lunge", "core", "conditioning"]),
+    "Full Body": (
+        "dumbbell",
+        ["warmup", "squat", "horizontal_press", "vertical_pull", "hinge", "core", "conditioning"],
+    ),
+    "Easy Run": ("route", ["warmup", "easy_run", "core"]),
+    "Quality Run": ("bolt", ["warmup", "quality_run", "core"]),
+    "Long Run": ("route", ["long_run", "mobility"]),
+    "Recovery / Mobility": ("refresh", ["mobility", "warmup"]),
 }
 
 # Goal → weekly focus rotation (we take the first `weekly_target_days`).
@@ -257,10 +273,15 @@ def _llm_prompt(
         f"Recent training: {_sessions_summary(sessions)}.\n"
         "Rules: respect injuries and available equipment from the facts; scale intensity to "
         "readiness (if readiness is low, include a recovery day and cap intensity); reference the "
-        "athlete's real numbers where useful. Every exercise needs a movement 'group' (e.g. squat, "
-        "hinge, horizontal_press, vertical_pull, lunge, run, core) so it stays swappable, plus a "
-        "concrete target (sets x reps @ RPE, or a run prescription). Give each day a short focus "
-        "and an icon name (one of: dumbbell, route, leaf, heart, bolt). Return only the plan."
+        "athlete's real numbers where useful. Make each TRAINING day a complete session of 5–8 "
+        "movements — a brief warm-up/activation, the main lift(s) or run set, 2–3 accessories, and "
+        "a core or conditioning finisher; recovery/mobility days stay short (2–3 easy items). "
+        "Every exercise needs a movement 'group' (e.g. warmup, squat, hinge, horizontal_press, "
+        "vertical_press, vertical_pull, horizontal_pull, lunge, arms, core, conditioning, "
+        "easy_run, quality_run, long_run, mobility) so it stays swappable, plus a concrete target "
+        "(sets x "
+        "reps @ RPE, or a run prescription). Give each day a short focus and an icon name (one of: "
+        "dumbbell, route, leaf, heart, bolt). Return only the plan."
     )
 
 
