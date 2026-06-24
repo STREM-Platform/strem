@@ -22,6 +22,7 @@ import { T, disp, mono, readinessColor, ui } from "@/constants/theme";
 import { forge } from "@/lib/agent";
 import { agentApi } from "@/lib/api/agent";
 import type { AthleteContext, Checkin, ContextSignals, Nudge, TodayBrief } from "@/lib/agent/types";
+import { checkinInCooldown, markCheckinDone } from "@/lib/checkin-cooldown";
 import { PHOTOS } from "@/lib/photos";
 import { useAsync } from "@/lib/use-async";
 
@@ -37,16 +38,21 @@ function realWhy(s: ContextSignals): { icon: IconName; text: string; em: string 
 // ── Proactive nudge + 10-second check-in ─────────────────────────────────────
 export function ProactiveCheckin() {
   const { data } = useAsync(() => Promise.all([forge.getNudge(), forge.getCheckin()]));
+  // A periodic nudge, not a daily chore: once done it hides for ~3 days (persisted).
+  const { data: inCooldown } = useAsync(checkinInCooldown);
   const [open, setOpen] = useState(false);
   const [picks, setPicks] = useState<Record<string, number>>({});
   const [done, setDone] = useState(false);
 
+  // While the cooldown check is loading (undefined) or active (true), stay hidden.
+  if (inCooldown !== false) return null;
   if (!data) return null;
   const [n, ci]: [Nudge, Checkin] = data;
   const allPicked = ci.fields.every((f) => picks[f.id] != null);
 
   const submit = () => {
     setDone(true);
+    void markCheckinDone(); // start the ~3-day cooldown
     // The agent records the readiness it derived from the check-in (AUTO → feed).
     forge.updateReadiness(
       `Set readiness to ${ci.result.readiness} from your check-in`,
