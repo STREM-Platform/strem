@@ -56,6 +56,15 @@ function daysLeft(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
 }
 
+/** Hours since the user's most recent check-in (Infinity if they never have). */
+function hoursSinceLastCheckin(checkins: CheckIn[], userId: string | undefined): number {
+  const last = checkins
+    .filter((c) => userId != null && c.user_id === userId)
+    .map((c) => new Date(c.checked_in_at).getTime())
+    .sort((a, b) => b - a)[0];
+  return last ? (Date.now() - last) / 3_600_000 : Infinity;
+}
+
 const MATCH_METRIC_LABEL: Record<TribeMatch["metric"], string> = {
   training_days: "Training days",
   sessions: "Sessions",
@@ -202,6 +211,16 @@ function InTribe({
   const [selected, setSelected] = useState<CompletedAction | null>(null);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
+  const [forceCheckin, setForceCheckin] = useState(false);
+
+  // The quick check-in is a nudge, not a daily chore: once you've checked in it
+  // collapses for ~3 days (you can still open it). Founder ask — "should appear
+  // one time in 3 days, not always there."
+  const CHECKIN_COOLDOWN_H = 72;
+  const hoursSince = hoursSinceLastCheckin(checkins, currentUserId);
+  const inCooldown = (hoursSince < CHECKIN_COOLDOWN_H || posted) && !forceCheckin;
+  const lastCheckin = checkins.find((c) => currentUserId != null && c.user_id === currentUserId);
+  const daysUntilNext = Math.max(1, Math.ceil((CHECKIN_COOLDOWN_H - hoursSince) / 24));
 
   const post = async () => {
     if (!selected) return;
@@ -305,39 +324,65 @@ function InTribe({
         </>
       ) : null}
 
-      {/* check in */}
-      <SectionHead icon="check" title="CHECK IN" sub="What did you do today?" />
-      <View style={styles.sideMargin}>
-        <View style={styles.actionGrid}>
-          {ACTIONS.map((a) => {
-            const on = selected === a.id;
-            return (
-              <Pressable
-                key={a.id}
-                onPress={() => {
-                  setSelected(a.id);
-                  setPosted(false);
-                }}
-                style={[styles.actionCell, on ? styles.actionOn : styles.actionOff]}
-              >
-                <Icon name={a.icon} size={20} color={on ? T.green : T.mut} />
-                <Text style={[styles.actionLabel, { color: on ? T.text : T.mut }]}>{a.label}</Text>
+      {/* check in — a nudge every few days, not a daily chore */}
+      {inCooldown && lastCheckin ? (
+        <>
+          <SectionHead icon="check" title="CHECK IN" sub="You're on track" />
+          <View style={styles.sideMargin}>
+            <Panel accent={T.greenLine} pad={14}>
+              <View style={styles.checkinDoneRow}>
+                <IconTile name="check" size={40} iconSize={19} />
+                <View style={styles.shrink}>
+                  <Text style={styles.checkinDoneText}>
+                    Checked in {relativeTime(lastCheckin.checked_in_at)} ago · {ACTION_META[lastCheckin.completed_action].label}
+                  </Text>
+                  <Text style={styles.checkinDoneSub}>
+                    Next nudge in {daysUntilNext} {daysUntilNext === 1 ? "day" : "days"}. Rest counts too.
+                  </Text>
+                </View>
+              </View>
+              <Pressable onPress={() => setForceCheckin(true)} style={styles.checkinAgain}>
+                <Text style={styles.checkinAgainText}>Check in anyway</Text>
               </Pressable>
-            );
-          })}
-        </View>
-        <View style={{ marginTop: 12 }}>
-          <Btn
-            kind={selected ? "primary" : "ghost"}
-            full
-            icon={posted ? "check" : "send"}
-            label={posted ? "Checked in" : "Post check-in"}
-            onPress={post}
-            loading={posting}
-            disabled={!selected}
-          />
-        </View>
-      </View>
+            </Panel>
+          </View>
+        </>
+      ) : (
+        <>
+          <SectionHead icon="check" title="CHECK IN" sub="What did you do today?" />
+          <View style={styles.sideMargin}>
+            <View style={styles.actionGrid}>
+              {ACTIONS.map((a) => {
+                const on = selected === a.id;
+                return (
+                  <Pressable
+                    key={a.id}
+                    onPress={() => {
+                      setSelected(a.id);
+                      setPosted(false);
+                    }}
+                    style={[styles.actionCell, on ? styles.actionOn : styles.actionOff]}
+                  >
+                    <Icon name={a.icon} size={20} color={on ? T.green : T.mut} />
+                    <Text style={[styles.actionLabel, { color: on ? T.text : T.mut }]}>{a.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={{ marginTop: 12 }}>
+              <Btn
+                kind={selected ? "primary" : "ghost"}
+                full
+                icon={posted ? "check" : "send"}
+                label={posted ? "Checked in" : "Post check-in"}
+                onPress={post}
+                loading={posting}
+                disabled={!selected}
+              />
+            </View>
+          </View>
+        </>
+      )}
 
       {/* activity timeline */}
       <SectionHead icon="users" title="TRIBE ACTIVITY" sub="No likes. No followers. Just proof." />
@@ -490,6 +535,13 @@ const styles = StyleSheet.create({
   capSeg: { flex: 1, height: 8, borderRadius: 3 },
   capSegOn: { backgroundColor: T.green, boxShadow: "0px 0px 6px rgba(52,226,160,0.4)" },
   capSegOff: { backgroundColor: "rgba(255,255,255,0.08)" },
+
+  // collapsed quick check-in (cooldown)
+  checkinDoneRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  checkinDoneText: { ...ui(14, 700), color: T.text },
+  checkinDoneSub: { ...ui(12.5, 500), color: T.sub, marginTop: 3, lineHeight: 17 },
+  checkinAgain: { alignSelf: "flex-start", marginTop: 12, paddingVertical: 6 },
+  checkinAgainText: { ...ui(12.5, 700), color: T.green },
 
   // tribe-vs-tribe match banner
   matchTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
