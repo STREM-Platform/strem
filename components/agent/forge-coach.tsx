@@ -97,13 +97,24 @@ function YouBubble({ m }: { m: CoachMessage }) {
 
 const CHAT_THINKING = ["Reading your context…", "Grounding in your data…", "Writing…"];
 
+// The conversation persists across navigation within the session (module-scoped,
+// like the plan store) so leaving Coach and coming back keeps the thread.
+let chatStore: CoachMessage[] = [];
+let askedStore: string[] = [];
+
 export function ChatView() {
   const { data: C } = useAsync<CoachConversation>(forge.getCoachConversation);
-  const [thread, setThread] = useState<CoachMessage[]>([]);
+  const [thread, setThread] = useState<CoachMessage[]>(chatStore);
   const [typing, setTyping] = useState(false);
-  const [asked, setAsked] = useState<string[]>([]);
+  const [asked, setAsked] = useState<string[]>(askedStore);
   const [input, setInput] = useState("");
   const scrollRef = useRef<ScrollView>(null);
+
+  // Mirror the thread into the module store so it survives the screen unmounting.
+  useEffect(() => {
+    chatStore = thread;
+    askedStore = asked;
+  }, [thread, asked]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- seeds the opener once the async conversation loads.
@@ -579,7 +590,14 @@ function TrainingPlanView({ plan }: { plan: TrainingPlan }) {
 
 // ── Mode 3: Insights ─────────────────────────────────────────────────────────
 export function InsightsView() {
-  const { data } = useAsync<Insight[]>(forge.getInsights);
+  // Real cross-domain insights from the live engine (B8), grounded in the user's
+  // own sessions/load/biomarkers; falls back to the mock only if it errors.
+  const { data } = useAsync<Insight[]>(() =>
+    agentApi
+      .getInsights()
+      .then((r) => r.items)
+      .catch(() => forge.getInsights()),
+  );
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.insightsScroll} showsVerticalScrollIndicator={false}>
       <Text style={styles.insightsIntro}>

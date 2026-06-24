@@ -16,13 +16,23 @@ import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CiteChips, ReadinessRing } from "@/components/agent/shared";
-import { Icon } from "@/components/ui/icon";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { Btn, IconTile, Panel } from "@/components/ui/primitives";
 import { T, disp, mono, readinessColor, ui } from "@/constants/theme";
 import { forge } from "@/lib/agent";
-import type { AthleteContext, Checkin, Nudge, TodayBrief } from "@/lib/agent/types";
+import { agentApi } from "@/lib/api/agent";
+import type { AthleteContext, Checkin, ContextSignals, Nudge, TodayBrief } from "@/lib/agent/types";
 import { PHOTOS } from "@/lib/photos";
 import { useAsync } from "@/lib/use-async";
+
+/** Readiness drivers from the *real* signals (A4) — sleep, HRV, load. */
+function realWhy(s: ContextSignals): { icon: IconName; text: string; em: string }[] {
+  const why: { icon: IconName; text: string; em: string }[] = [];
+  if (s.sleepHours) why.push({ icon: "moon", text: "Sleep", em: s.sleepHours });
+  if (s.hrv) why.push({ icon: "heart", text: "HRV", em: `${s.hrv}ms ${s.hrvDelta}`.trim() });
+  why.push({ icon: "bolt", text: "Load", em: s.loadLabel });
+  return why;
+}
 
 // ── Proactive nudge + 10-second check-in ─────────────────────────────────────
 export function ProactiveCheckin() {
@@ -116,27 +126,36 @@ export function ProactiveCheckin() {
 // ── Today's Climb — readiness + one coached action ───────────────────────────
 export function TodaysClimb({ onStart }: { onStart: () => void }) {
   const { data: b } = useAsync<TodayBrief>(forge.getTodayBrief);
+  // Real readiness/signals from the live context graph (A4/A6), overlaid on the
+  // brief's narrative; falls back to the brief if context isn't available yet.
+  const { data: ctx } = useAsync<AthleteContext | null>(() =>
+    agentApi.getContext().catch(() => null),
+  );
   if (!b) return null;
-  const c = readinessColor(b.readiness);
+  const s = ctx?.signals;
+  const readiness = s ? s.readiness : b.readiness;
+  const label = s ? s.readinessLabel : b.label;
+  const why = s ? realWhy(s) : b.why;
+  const c = readinessColor(readiness);
   return (
     <Panel raised accent={T.amberLine} style={styles.sideMargin} pad={0}>
       <View style={styles.climbTop}>
         <View style={styles.climbHead}>
-          <ReadinessRing v={b.readiness} />
+          <ReadinessRing v={readiness} />
           <View style={styles.shrink}>
             <View style={styles.climbEyebrowRow}>
               <Icon name="bot" size={14} color={T.green} />
               <Text style={styles.climbEyebrow}>TODAY’S CLIMB</Text>
             </View>
             <Text style={styles.climbHeadline}>{b.headline}</Text>
-            <Text style={[styles.climbReadiness, { color: c }]}>◇ {b.label.toUpperCase()} READINESS</Text>
+            <Text style={[styles.climbReadiness, { color: c }]}>◇ {label.toUpperCase()} READINESS</Text>
           </View>
         </View>
 
         <Text style={styles.climbBody}>{b.body}</Text>
 
         <View style={styles.whyRow}>
-          {b.why.map((w, i) => (
+          {why.map((w, i) => (
             <View key={i} style={styles.whyChip}>
               <Icon name={w.icon} size={12} color={T.sub} />
               <Text style={styles.whyText}>{w.text}</Text>

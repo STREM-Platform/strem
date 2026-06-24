@@ -220,7 +220,9 @@ function InTribe({
   const hoursSince = hoursSinceLastCheckin(checkins, currentUserId);
   const inCooldown = (hoursSince < CHECKIN_COOLDOWN_H || posted) && !forceCheckin;
   const lastCheckin = checkins.find((c) => currentUserId != null && c.user_id === currentUserId);
-  const daysUntilNext = Math.max(1, Math.ceil((CHECKIN_COOLDOWN_H - hoursSince) / 24));
+  // Just posted but the reload hasn't surfaced the record yet → treat as 0h ago.
+  const sinceForCount = Number.isFinite(hoursSince) ? hoursSince : 0;
+  const daysUntilNext = Math.max(1, Math.ceil((CHECKIN_COOLDOWN_H - sinceForCount) / 24));
 
   const post = async () => {
     if (!selected) return;
@@ -325,7 +327,7 @@ function InTribe({
       ) : null}
 
       {/* check in — a nudge every few days, not a daily chore */}
-      {inCooldown && lastCheckin ? (
+      {inCooldown ? (
         <>
           <SectionHead icon="check" title="CHECK IN" sub="You're on track" />
           <View style={styles.sideMargin}>
@@ -334,7 +336,9 @@ function InTribe({
                 <IconTile name="check" size={40} iconSize={19} />
                 <View style={styles.shrink}>
                   <Text style={styles.checkinDoneText}>
-                    Checked in {relativeTime(lastCheckin.checked_in_at)} ago · {ACTION_META[lastCheckin.completed_action].label}
+                    {lastCheckin
+                      ? `Checked in ${relativeTime(lastCheckin.checked_in_at)} ago · ${ACTION_META[lastCheckin.completed_action].label}`
+                      : "You're checked in — nice work."}
                   </Text>
                   <Text style={styles.checkinDoneSub}>
                     Next nudge in {daysUntilNext} {daysUntilNext === 1 ? "day" : "days"}. Rest counts too.
