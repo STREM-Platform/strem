@@ -35,6 +35,16 @@ const MACROS: { label: string; key: "protein" | "carbs" | "fat"; color: string }
   { label: "Fat", key: "fat", color: "#F4C45A" },
 ];
 
+// The handful of micros that actually move performance & recovery (preview).
+const SAMPLE_MICROS: { label: string; cur: number; target: number; unit: string; color: string }[] = [
+  { label: "Vitamin D", cur: 600, target: 800, unit: "IU", color: "#F4C45A" },
+  { label: "Vitamin A", cur: 720, target: 900, unit: "µg", color: "#F4C45A" },
+  { label: "Vitamin C", cur: 78, target: 90, unit: "mg", color: "#34E2A0" },
+  { label: "Iron", cur: 13, target: 18, unit: "mg", color: "#37C6F2" },
+  { label: "Magnesium", cur: 330, target: 400, unit: "mg", color: "#34E2A0" },
+  { label: "Omega-3", cur: 1.1, target: 1.6, unit: "g", color: "#37C6F2" },
+];
+
 const LOG_METHODS: { id: string; icon: IconName; label: string; sub: string; neutral?: boolean }[] = [
   { id: "photo", icon: "grid", label: "Snap a photo", sub: "AI estimates macros" },
   { id: "voice", icon: "bot", label: "Say what you ate", sub: "Voice → logged" },
@@ -108,6 +118,7 @@ export default function FuelScreen() {
         {FLAGS.nutritionMacrosPreview ? (
           <>
             <MacroHero />
+            <MicrosPreview />
             <LogMethods />
             <HydrationPreview />
             <MealsTimeline onShare={() => router.push("/(app)/recaps")} />
@@ -194,6 +205,32 @@ function MacroHero() {
         </View>
       </View>
     </Panel>
+  );
+}
+
+function MicrosPreview() {
+  return (
+    <>
+      <SectionHead icon="leaf" title="VITAL MICROS" sub="The few that move the needle · preview" />
+      <View style={styles.sideMargin}>
+        <Panel pad={14}>
+          <View style={styles.microGrid}>
+            {SAMPLE_MICROS.map((m) => (
+              <View key={m.label} style={styles.microCell}>
+                <View style={styles.microHead}>
+                  <Text style={styles.microLabel}>{m.label}</Text>
+                  <Text style={styles.microVal}>
+                    <Text style={{ color: m.color }}>{m.cur}</Text>
+                    <Text style={styles.microMuted}> / {m.target}{m.unit}</Text>
+                  </Text>
+                </View>
+                <Bar pct={Math.min(1, m.cur / m.target)} color={m.color} h={6} />
+              </View>
+            ))}
+          </View>
+        </Panel>
+      </View>
+    </>
   );
 }
 
@@ -285,6 +322,12 @@ const styles = StyleSheet.create({
   macroLabel: { ...ui(13, 700), color: T.text },
   macroVal: { ...mono(11, 700), color: T.mut },
   macroMuted: { color: T.mut },
+  microGrid: { flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 14 },
+  microCell: { width: "46%", flexGrow: 1 },
+  microHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 },
+  microLabel: { ...ui(12.5, 700), color: T.text },
+  microVal: { ...mono(10, 700), color: T.mut },
+  microMuted: { color: T.mut },
 
   hydrationRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   cups: { flex: 1, flexDirection: "row", gap: 7 },

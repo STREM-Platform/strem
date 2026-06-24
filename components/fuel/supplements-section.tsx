@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Icon } from "@/components/ui/icon";
-import { Btn, Panel, SectionHead } from "@/components/ui/primitives";
+import { Btn, IconTile, Panel, SectionHead } from "@/components/ui/primitives";
 import { T, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import { useAsync } from "@/lib/use-async";
@@ -94,24 +94,46 @@ export function SupplementsSection() {
       />
       <View style={styles.list}>
         {items.length === 0 && !open ? (
-          <Panel pad={14}>
+          <Panel pad={16} style={styles.emptyCard}>
+            <IconTile name="leaf" size={44} iconSize={21} />
             <Text style={styles.empty}>
-              Add creatine, whey, vitamin D… Forge uses this to reason about timing and gaps — it
-              never doses or recommends products.
+              Add creatine, whey, vitamin D… Forge reads your stack to reason about timing and gaps —
+              it never doses or recommends products.
             </Text>
           </Panel>
         ) : null}
 
         {items.map((s) => (
-          <Panel key={s.id} pad={13} style={styles.row}>
+          <Panel key={s.id} pad={12} style={styles.row}>
+            <IconTile name="leaf" size={42} iconSize={20} />
             <View style={styles.shrink}>
-              <Text style={styles.suppName}>{s.name}</Text>
-              <Text style={styles.suppMeta}>
-                {[s.dose, s.timing, s.purpose].filter(Boolean).join(" · ") || "—"}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.suppName}>{s.name}</Text>
+                {s.dose ? (
+                  <View style={styles.doseChip}>
+                    <Text style={styles.doseText}>{s.dose}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {s.timing || s.purpose ? (
+                <View style={styles.metaRow}>
+                  {s.timing ? (
+                    <View style={styles.metaItem}>
+                      <Icon name="clock" size={12} color={T.sub} />
+                      <Text style={styles.metaText}>{s.timing}</Text>
+                    </View>
+                  ) : null}
+                  {s.purpose ? (
+                    <View style={styles.metaItem}>
+                      <Icon name="target" size={12} color={T.sub} />
+                      <Text style={styles.metaText}>{s.purpose}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
-            <Pressable onPress={() => void remove(s.id)} hitSlop={8} accessibilityLabel={`Remove ${s.name}`}>
-              <Icon name="minus" size={18} color={T.sub} />
+            <Pressable onPress={() => void remove(s.id)} hitSlop={8} accessibilityLabel={`Remove ${s.name}`} style={styles.removeBtn}>
+              <Icon name="minus" size={16} color={T.sub} />
             </Pressable>
           </Panel>
         ))}
@@ -141,11 +163,18 @@ export function SupplementsSection() {
 
 const styles = StyleSheet.create({
   list: { gap: 9, marginHorizontal: 16 },
-  empty: { ...ui(13, 500), color: T.mut, lineHeight: 19 },
+  emptyCard: { flexDirection: "row", alignItems: "center", gap: 13 },
+  empty: { ...ui(13, 500), color: T.mut, lineHeight: 19, flex: 1 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   shrink: { flex: 1, flexShrink: 1 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   suppName: { ...ui(15, 700), color: T.text },
-  suppMeta: { ...mono(11, 600), color: T.sub, marginTop: 2 },
+  doseChip: { backgroundColor: T.greenSoft, borderWidth: 1, borderColor: T.greenLine, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2 },
+  doseText: { ...mono(10, 700), color: T.green, letterSpacing: 0.2 },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 5 },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  metaText: { ...ui(12, 500), color: T.sub },
+  removeBtn: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: T.surf2, borderWidth: 1, borderColor: T.line2 },
   toggle: { ...mono(10, 700), color: T.green, letterSpacing: 0.8 },
   form: { gap: 12 },
   formRow: { flexDirection: "row", gap: 12 },
