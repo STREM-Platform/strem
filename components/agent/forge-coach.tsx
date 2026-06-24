@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { CiteChips } from "@/components/agent/shared";
+import { CiteChips, ForgeThinking } from "@/components/agent/shared";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Btn, Chip, IconTile, Panel } from "@/components/ui/primitives";
 import { Ring } from "@/components/ui/ring";
@@ -20,6 +20,57 @@ import type { CoachConversation, CoachMessage, Insight, PlanImport } from "@/lib
 import { useAsync } from "@/lib/use-async";
 
 // ── Mode 1: Chat ─────────────────────────────────────────────────────────────
+
+/** Inline markdown spans for a chat answer: **bold**, *italic*, `code`. */
+function MdSpans({ text }: { text: string }) {
+  const tokens = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g).filter(Boolean);
+  return (
+    <Text>
+      {tokens.map((tok, i) => {
+        if (tok.startsWith("**") && tok.endsWith("**"))
+          return <Text key={i} style={styles.chatBold}>{tok.slice(2, -2)}</Text>;
+        if (tok.startsWith("`") && tok.endsWith("`"))
+          return <Text key={i} style={styles.chatCode}>{tok.slice(1, -1)}</Text>;
+        if (tok.startsWith("*") && tok.endsWith("*"))
+          return <Text key={i} style={styles.chatItalic}>{tok.slice(1, -1)}</Text>;
+        return <Text key={i}>{tok}</Text>;
+      })}
+    </Text>
+  );
+}
+
+/** Render an AI answer as light markdown — headings, bullets, numbered steps,
+ *  and inline emphasis — so a structured reply reads like one, not a wall of text. */
+function ChatMarkdown({ text }: { text: string }) {
+  const lines = text.split("\n");
+  return (
+    <View style={styles.chatMd}>
+      {lines.map((raw, i) => {
+        const line = raw.trim();
+        if (line === "") return <View key={i} style={styles.chatGap} />;
+        const heading = line.match(/^#{1,3}\s+(.*)$/);
+        if (heading) return <Text key={i} style={styles.chatH}>{heading[1]}</Text>;
+        if (/^[-*]\s+/.test(line))
+          return (
+            <View key={i} style={styles.chatLi}>
+              <View style={styles.chatBullet} />
+              <Text style={styles.chatLiText}><MdSpans text={line.replace(/^[-*]\s+/, "")} /></Text>
+            </View>
+          );
+        const num = line.match(/^(\d+)\.\s+(.*)$/);
+        if (num)
+          return (
+            <View key={i} style={styles.chatLi}>
+              <Text style={styles.chatNum}>{num[1]}.</Text>
+              <Text style={styles.chatLiText}><MdSpans text={num[2]} /></Text>
+            </View>
+          );
+        return <Text key={i} style={styles.coachText}><MdSpans text={line} /></Text>;
+      })}
+    </View>
+  );
+}
+
 function CoachBubble({ m }: { m: CoachMessage }) {
   return (
     <View style={styles.coachRow}>
@@ -27,7 +78,7 @@ function CoachBubble({ m }: { m: CoachMessage }) {
         <Icon name="bot" size={16} color={T.green} />
       </View>
       <View style={styles.coachBubble}>
-        <Text style={styles.coachText}>{m.text}</Text>
+        <ChatMarkdown text={m.text} />
         <CiteChips cites={m.cites} />
       </View>
     </View>
@@ -44,20 +95,7 @@ function YouBubble({ m }: { m: CoachMessage }) {
   );
 }
 
-function Typing() {
-  return (
-    <View style={styles.coachRow}>
-      <View style={styles.avatar}>
-        <Icon name="bot" size={16} color={T.green} />
-      </View>
-      <View style={styles.typing}>
-        {[0, 1, 2].map((i) => (
-          <View key={i} style={styles.typingDot} />
-        ))}
-      </View>
-    </View>
-  );
-}
+const CHAT_THINKING = ["Reading your context…", "Grounding in your data…", "Writing…"];
 
 export function ChatView() {
   const { data: C } = useAsync<CoachConversation>(forge.getCoachConversation);
@@ -105,7 +143,7 @@ export function ChatView() {
     <View style={styles.flex}>
       <ScrollView ref={scrollRef} style={styles.flex} contentContainerStyle={styles.threadContent} showsVerticalScrollIndicator={false}>
         {thread.map((m, i) => (m.role === "coach" ? <CoachBubble key={i} m={m} /> : <YouBubble key={i} m={m} />))}
-        {typing ? <Typing /> : null}
+        {typing ? <ForgeThinking labels={CHAT_THINKING} /> : null}
       </ScrollView>
       <View style={styles.composer}>
         {remaining.length > 0 ? (
@@ -425,16 +463,10 @@ export function PlanView() {
       ) : null}
 
       {state === "loading" ? (
-        <View style={styles.loading}>
-          <Ring size={92} stroke={9} pct={0.7} color={T.green}>
-            <Icon name="sparkles" size={30} color={T.green} />
-          </Ring>
-          {["Reading your training…", "Weighing readiness & goal…", "Building your week…"].map((s, i) => (
-            <Text key={i} style={[styles.loadingText, { color: i === 2 ? T.text : T.sub }]}>
-              {s}
-            </Text>
-          ))}
-        </View>
+        <ForgeThinking
+          variant="block"
+          labels={["Reading your training…", "Weighing readiness & goal…", "Building your week…"]}
+        />
       ) : null}
 
       {state === "done" && plan ? (
@@ -561,8 +593,18 @@ const styles = StyleSheet.create({
   youRow: { flexDirection: "row", justifyContent: "flex-end", marginHorizontal: 16 },
   youBubble: { maxWidth: "78%", backgroundColor: T.green, borderRadius: 14, borderTopRightRadius: 4, paddingVertical: 10, paddingHorizontal: 13 },
   youText: { ...ui(14, 600), color: "#06130D", lineHeight: 20 },
-  typing: { flexDirection: "row", gap: 4, padding: 12, paddingHorizontal: 14, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line, borderRadius: 14, borderTopLeftRadius: 4 },
-  typingDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
+
+  // chat markdown
+  chatMd: { gap: 3 },
+  chatGap: { height: 5 },
+  chatBold: { ...ui(14, 800), color: "#fff" },
+  chatItalic: { ...ui(14, 500), color: "#dfe4e3", fontStyle: "italic" },
+  chatCode: { ...mono(12.5, 600), color: T.green },
+  chatH: { ...ui(14.5, 800), color: "#fff", marginTop: 4, marginBottom: 1 },
+  chatLi: { flexDirection: "row", gap: 8, alignItems: "flex-start", paddingLeft: 2 },
+  chatBullet: { width: 5, height: 5, borderRadius: 3, marginTop: 8, backgroundColor: T.green },
+  chatNum: { ...ui(13.5, 700), color: T.green, marginTop: 0.5 },
+  chatLiText: { ...ui(14, 500), color: "#dfe4e3", lineHeight: 21, flex: 1 },
   composer: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 16, borderTopWidth: 1, borderTopColor: T.line, backgroundColor: "rgba(13,16,21,0.9)" },
   promptRow: { gap: 7, paddingBottom: 10 },
   prompt: { backgroundColor: T.surf2, borderWidth: 1, borderColor: T.line2, borderRadius: 11, paddingVertical: 8, paddingHorizontal: 13 },
@@ -636,8 +678,6 @@ const styles = StyleSheet.create({
   menuTitle: { ...disp(20, 800), color: "#fff", marginTop: 3, lineHeight: 21 },
   menuBody: { ...ui(13, 500), color: T.mut, lineHeight: 18, marginTop: 11 },
   menuBody2: { ...ui(12.5, 500), color: T.mut, lineHeight: 17, marginTop: 5 },
-  loading: { alignItems: "center", gap: 16, paddingTop: 50 },
-  loadingText: { ...ui(13.5, 600) },
   doneCol: { gap: 12 },
   reason: { backgroundColor: "rgba(52,226,160,0.05)" },
   reasonText: { ...ui(13.5, 500), color: "#cdd3d8", lineHeight: 19 },
