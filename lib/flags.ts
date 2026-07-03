@@ -30,6 +30,14 @@ export const FLAGS = {
   nutritionMacrosPreview: true,
 
   /**
+   * The Crew (issue #73, design direction v3) — Forge presented as four routed
+   * personas (Forge / Luna / Atlas / Sage) signing the surfaces they own. Pure
+   * product-feeling layer over the ONE agent context: same backend, same data,
+   * same guardrails. Off = the app renders exactly as before.
+   */
+  crewPersonas: true,
+
+  /**
    * Forge — the omniscient AI agent. The context graph (A1), signals (A4),
    * memory (A5), coach chat (B1), proactive nudges/run-loop (B3), adaptive
    * missions + plan import (B4), insights (B8), live-workout autoregulation

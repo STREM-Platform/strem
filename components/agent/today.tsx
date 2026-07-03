@@ -15,11 +15,14 @@
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { CrewSignature } from "@/components/agent/crew-signature";
 import { CiteChips, ReadinessRing } from "@/components/agent/shared";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Btn, IconTile, Panel } from "@/components/ui/primitives";
 import { T, disp, mono, readinessColor, ui } from "@/constants/theme";
 import { forge } from "@/lib/agent";
+import { personaFor } from "@/lib/agent/personas";
+import { FLAGS } from "@/lib/flags";
 import { agentApi } from "@/lib/api/agent";
 import type { AthleteContext, Checkin, ContextSignals, Nudge, TodayBrief } from "@/lib/agent/types";
 import { checkinInCooldown, markCheckinDone } from "@/lib/checkin-cooldown";
@@ -64,13 +67,18 @@ export function ProactiveCheckin() {
     );
   };
 
+  // The morning nudge + check-in belong to Luna when the crew layer is on.
+  const signer = FLAGS.crewPersonas ? personaFor("checkin") : null;
+
   if (done) {
     return (
       <Panel accent={T.greenLine} style={[styles.sideMargin, styles.doneCard]} pad={14}>
         <View style={styles.doneRow}>
           <IconTile name="check" size={34} iconSize={18} />
           <Text style={styles.doneText}>
-            <Text style={styles.forgeName}>Forge: </Text>
+            <Text style={[styles.forgeName, signer ? { color: signer.color } : null]}>
+              {signer ? signer.name : "Forge"}:{" "}
+            </Text>
             {ci.result.line}
           </Text>
         </View>
@@ -81,10 +89,14 @@ export function ProactiveCheckin() {
   return (
     <Panel accent={T.amberLine} style={[styles.sideMargin, styles.nudgeCard]} pad={0}>
       <View style={styles.nudgeInner}>
-        <View style={styles.nudgeTagRow}>
-          <View style={styles.pulse} />
-          <Text style={styles.nudgeTag}>{n.tag}</Text>
-        </View>
+        {signer ? (
+          <CrewSignature persona={signer} style={styles.nudgeSig} />
+        ) : (
+          <View style={styles.nudgeTagRow}>
+            <View style={styles.pulse} />
+            <Text style={styles.nudgeTag}>{n.tag}</Text>
+          </View>
+        )}
         <View style={styles.nudgeBody}>
           <IconTile name={n.icon} size={40} iconSize={20} color={T.amber} bg={T.amberSoft} border={T.amberLine} />
           <View style={styles.shrink}>
@@ -146,6 +158,7 @@ export function TodaysClimb({ onStart }: { onStart: () => void }) {
   return (
     <Panel raised accent={T.amberLine} style={styles.sideMargin} pad={0}>
       <View style={styles.climbTop}>
+        {FLAGS.crewPersonas && <CrewSignature persona={personaFor("climb")} style={styles.climbSig} />}
         <View style={styles.climbHead}>
           <ReadinessRing v={readiness} />
           <View style={styles.shrink}>
@@ -272,6 +285,7 @@ const styles = StyleSheet.create({
   forgeName: { ...ui(13.5, 700), color: T.green },
   nudgeCard: { backgroundColor: "#16130d" },
   nudgeInner: { padding: 15 },
+  nudgeSig: { marginBottom: 10 },
   nudgeTagRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 9 },
   pulse: { width: 7, height: 7, borderRadius: 4, backgroundColor: T.amber, boxShadow: "0px 0px 8px #F4B740" },
   nudgeTag: { ...mono(9, 700), letterSpacing: 1.4, color: T.amber },
@@ -290,6 +304,7 @@ const styles = StyleSheet.create({
 
   // today's climb
   climbTop: { padding: 16, paddingBottom: 0 },
+  climbSig: { marginBottom: 12 },
   climbHead: { flexDirection: "row", alignItems: "center", gap: 14 },
   climbEyebrowRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   climbEyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: T.green },
