@@ -10,6 +10,9 @@ STREM is in trail-running pivot validation. The current mobile app is a product-
 |---|---|---|
 | Product thesis, first customer, boundaries, and commercial hypothesis | Documented | `trail-running-pivot.md` |
 | Paid pilot gate and repository delivery sequence | Documented | `trail-running-delivery-plan.md` |
+| Advanced race-command experience, responsive flows, motion, accessibility, and component rules | Documented; implementation not started | `race-experience-blueprint.md` |
+| Licensed event-media acquisition, attribution, fallback, takedown, and `EventMedia` proposal | Documented; contract implementation not started | `race-media-policy.md` |
+| Five-athlete comprehension and usability gate | Documented; test not run | `race-experience-usability.md` |
 | Mobile navigation: Mission, Plan, Race Lab, AI, Athlete | Merged to `strem-mobile/main`; prototype data remains | `88468e6` |
 | Trail visual system, responsive auth, onboarding, legal, and atmospheric race UI | Merged to `strem-mobile/main`; visually reviewed, not the final advanced experience | `f7b867d` and `strem-mobile#103` |
 | Live authentication, legal acceptance, user profile, athlete baseline, consent, AI chat, action receipts, and Strava/Whoop source status | Existing live paths retained | mobile API clients and existing services |
@@ -30,7 +33,7 @@ The mobile Mission, Plan, and Race Lab currently use one centralized, visibly la
 
 If a live athlete endpoint fails, active trust surfaces show an empty or unavailable state. They do not fall back to a fictional athlete graph.
 
-The advanced experience may use approved event photography, athlete-owned media, or licensed stock fallbacks. No race-site or social-media image may be scraped, and no stock or generated image may be presented as the official event. The governing design and media-rights work is `strem-docs#17`.
+The advanced experience may use approved event photography, athlete-owned media, or licensed stock fallbacks. No race-site or social-media image may be scraped, and no stock or generated image may be presented as the official event. The governing design and media-rights work is now documented in `race-experience-blueprint.md`, `race-media-policy.md`, and `race-experience-usability.md` under `strem-docs#17`.
 
 ## Removed from the active mobile product
 
@@ -51,4 +54,4 @@ The pre-pivot mobile issues for Fuel, Tribe, Crew, Forge personas, generic captu
 
 ## Next irreversible decision
 
-Do not build more unconnected prototype breadth. Execute `strem-docs#17` first to define the advanced race-first experience and the legal path to real event imagery. The next engineering review gate is `strem-shared-contracts#38`. In parallel, the next business decision remains whether real athletes will pay for the concierge pilot in `strem-docs#16`.
+Do not build more unconnected prototype breadth. The advanced race-first experience and legal path to real event imagery are defined. The next engineering review gate is `strem-shared-contracts#38`, beginning with the `RaceMission`, `EventMedia`, provenance, evidence, risk, rehearsal, and decision proposal semantics in the new design authority. In parallel, the next business decision remains whether real athletes will pay for the concierge pilot in `strem-docs#16`.
