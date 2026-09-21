@@ -15,8 +15,8 @@ Feature:
 
 Review against:
 
-- MVP scope
-- transformation moat
+- active trail scope and delivery stage
+- Race Mission value and trail-running focus
 - service ownership
 - contracts
 - security model
@@ -36,4 +36,4 @@ Do not approve:
 - unbounded AI behavior
 - fake placeholder logic
 - scope creep into postponed features
-- generic fitness, social, dashboard, or chat behavior that does not support identity, consistency, AI transformation coaching, or tribe accountability
+- generic fitness, social, dashboard, calendar, plan, or chat behavior that does not improve an event-specific decision, rehearsal, risk, or operation

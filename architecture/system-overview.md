@@ -1,5 +1,9 @@
 # System Overview
 
+> This document describes the existing runtime boundaries. Product authority is
+> `product/trail-running-pivot.md`. A service may remain deployed for data
+> compatibility while its old feature set is dormant in the active mobile product.
+
 STREM is built as a bounded service architecture with strict contracts and a mobile-first user experience.
 
 The architecture must avoid two failure modes:
@@ -48,20 +52,20 @@ Supporting systems (technology to be evaluated at implementation time):
 
 - cache and short-lived state layer (Redis, Valkey, or equivalent)
 - async messaging layer (Redis Streams, NATS, RabbitMQ, or equivalent — see event-driven-strategy.md)
-- `strem-ai-orchestrator` for AI transformation coaching, mission generation, and behavioral adaptation
+- `strem-ai-orchestrator` for Race Mission context, cited decisions, adaptation proposals, and safety enforcement
 - `strem-shared-contracts` for OpenAPI and event schemas
 - `strem-infra` for local development, CI/CD, and deployment assets
 
-## MVP Domain Ownership
+## Runtime ownership and active status
 
-| Service | Owns |
-|---------|------|
-| `strem-auth-service` | identity, sessions, auth primitives |
-| `strem-user-service` | profiles, onboarding, user preferences, XP ledger, rank, medals |
-| `strem-training-service` | training and running logs |
-| `strem-nutrition-service` | nutrition logs |
-| `strem-community-service` | tribes, check-ins, Tribe Power, challenges |
-| `strem-ai-orchestrator` | AI transformation coach, mission generation, behavioral adaptation, narrative coaching |
+| Service | Runtime ownership | Product status |
+|---------|-------------------|----------------|
+| `strem-auth-service` | identity, sessions, auth primitives | active |
+| `strem-user-service` | profile, onboarding, athlete baseline, consent; legacy XP/rank/medal data | active core; progression dormant |
+| `strem-training-service` | activity history, connected sources, recovery samples, future course/evidence derivation | active input layer |
+| `strem-nutrition-service` | existing nutrition records | retained; no active standalone mobile surface |
+| `strem-community-service` | existing tribe and challenge records | retained; dormant in active product |
+| `strem-ai-orchestrator` | context assembly, cited chat/actions, future Race Mission decisions and proposals | active foundation; race contracts pending |
 
 These are ownership boundaries first. Physical repositories are created in implementation order — not as empty placeholders.
 

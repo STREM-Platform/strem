@@ -23,7 +23,7 @@ STREM launches in both Bulgaria and Germany from day one.
 
 **Germany:**
 - one of Europe's largest and most active fitness markets
-- strong hybrid athlete and endurance culture (running, cycling, functional fitness)
+- strong mountain and endurance culture, with trail running as the first proving ground
 - high willingness to pay for premium health and performance products
 - culturally aligned with STREM's discipline-first philosophy
 - solid foundation for broader Western European expansion
@@ -63,7 +63,7 @@ Global readiness requires:
 
 - clean internationalization architecture from the start (not bolted on later)
 - additional language support as markets expand
-- regional tribe discovery (V2)
+- trustworthy regional event facts and organizer partnerships after the athlete product is validated
 - data portability and trust built in from the beginning
 
 ## Strategic Standard

@@ -1,128 +1,59 @@
 # Service Map
 
-This document defines initial service ownership. It prevents agents from scattering related behavior across repositories.
+This map defines ownership for the active trail pivot while acknowledging existing legacy storage. Product status does not transfer ownership or authorize deletion of user data.
 
-## First-Wave Services
+## Active request path
 
-### strem-api-gateway
+`strem-mobile → strem-api-gateway → owning service → service-owned store`
 
-Owns external API entrypoint behavior:
+The AI orchestrator reads through approved APIs. It never shares domain databases.
 
-- request routing
-- auth handoff
-- rate limiting integration
-- public API aggregation where needed
-- mobile-facing gateway concerns
+## Repositories
 
-It must not own core domain data.
+### `strem-mobile`
 
-### strem-auth-service
+Owns Race Mission presentation, onboarding, manual input, source authorization, athlete controls, proposal review, and field-ready mobile interaction.
 
-Owns:
+### `strem-api-gateway`
 
-- account identity
-- authentication flows
-- sessions and tokens
-- password or provider-based login
-- auth audit events
+Owns external routing, authentication handoff, rate limiting, request correlation, and mobile-facing aggregation where justified. It owns no domain records.
 
-It must not own profile, training, nutrition, or community data.
+### `strem-auth-service`
 
-### strem-user-service
+Owns account identity, credentials, sessions, tokens, and authentication audit events.
 
-Owns:
+### `strem-user-service`
 
-- user profile
-- onboarding answers
-- goals
-- preferences
-- basic identity settings
+Owns athlete profile, onboarding, constraints that are not event-specific, legal acceptance, consent, and preferences. Existing XP, rank, and medal records remain legacy data until a reviewed retention or migration issue removes them.
 
-It is the source of truth for personalization context that is not authentication.
+### `strem-training-service`
 
-### strem-training-service
+Owns activity history, Strava/Whoop connection state, normalized sessions, recovery samples, and future course/activity evidence derivation. GPX and terrain responsibilities require an approved Race Mission contract before implementation.
 
-Owns:
+### `strem-ai-orchestrator`
 
-- strength/general training logs
-- running logs
-- training summaries
-- future workout templates only when approved
+Owns consent-filtered context assembly, evidence interpretation, cited AI responses, safety middleware, decision proposals, and action receipts. It owns no athlete, event, activity, or calendar source of truth.
 
-Running remains here for MVP. Do not create a separate endurance service yet.
+### `strem-nutrition-service`
 
-### strem-nutrition-service
+Owns existing nutrition records. It has no active standalone mobile surface. Race fueling should begin as a Race Mission rehearsal contract; do not expand this service until ownership is reviewed.
 
-Owns:
+### `strem-community-service`
 
-- basic meal logs
-- nutrition notes
-- simple daily nutrition records
+Owns existing tribe and challenge records. Community is dormant in the active product. Do not add new social behavior or delete retained data without a reviewed deprecation and privacy plan.
 
-It does not own meal-prep marketplace, grocery automation, or supplements during MVP.
+### `strem-shared-contracts`
 
-### strem-community-service
+Owns reviewed OpenAPI, event schemas, DTO definitions, contract tests, and schema history. The next product contract is the Race Mission vertical slice.
 
-Owns:
+### `strem-infra`
 
-- basic tribes
-- tribe membership
-- tribe check-ins
-- lightweight tribe discussion
-- basic moderation state
+Owns local orchestration, CI/CD, environment templates, observability configuration, and deployment assets.
 
-It must not become a broad social network during MVP.
+### `strem-docs`
 
-### strem-ai-orchestrator
+Owns product authority, architecture decisions, workflows, prompts, runbooks, and implementation status.
 
-Owns:
+## Not approved
 
-- basic AI transformation coach interactions
-- context assembly from approved service contracts
-- AI response policy enforcement
-- safety boundaries
-- future RAG and agent orchestration
-
-It must not become the owner of domain records. Domain services remain sources of truth.
-
-## Foundation Repositories
-
-### strem-docs
-
-Source of truth for product, architecture, workflows, prompts, runbooks, and ADRs.
-
-### strem-shared-contracts
-
-Future source of truth for:
-
-- OpenAPI specs
-- event schemas
-- shared DTOs
-- contract test definitions
-- schema version history
-
-### strem-infra
-
-Future source of truth for:
-
-- Docker Compose
-- GitHub Actions shared patterns
-- environment templates
-- observability config
-- deployment manifests
-
-## Postponed Services
-
-Postpone until validated need:
-
-- meal prep
-- recovery
-- challenges
-- XP
-- notifications
-- payments
-- coach
-- marketplace
-- web
-- admin
-- coach dashboard
+Do not create separate race, calendar, weather, payments, marketplace, coach, recovery, or endurance services until a scoped issue and ADR show why an existing owner cannot hold the capability.

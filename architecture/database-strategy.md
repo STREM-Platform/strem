@@ -1,5 +1,9 @@
 # Database Strategy
 
+> Existing nutrition, progression, and community stores may contain retained
+> legacy data even though those features are dormant in the active trail product.
+> Product removal does not authorize data deletion or ownership changes.
+
 Each service owns its data. No service may read or write another service's database directly. That principle is fixed. The specific database technology for each service is not — it should be chosen based on the service's actual access patterns, performance requirements, and operational cost.
 
 ## Decision Framework

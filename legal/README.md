@@ -90,13 +90,15 @@ required without parsing Markdown:
 
 ### Where the gates fire (product requirement)
 
-Per `product/next-steps-plan.md` §3.4, the accept gates surface:
+For the active Race Mission product, the accept gates surface:
 
 1. at **onboarding** (explicit accept of Terms + Privacy + Medical Disclaimer),
-2. **before the first biomarker entry** (re-confirm the Medical Disclaimer where
-   the highest-signal health inference happens), and
-3. in **Profile**, so a user can re-read the current policies and see what they
+2. in **Profile**, so a user can re-read the current policies and see what they
    accepted and when.
+
+Biomarker entry is not part of the active product. Any future sensitive-data
+surface requires a new privacy, safety, contract, and legal review before adding
+another consent gate.
 
 > **Scope note (this wave).** The backend (acceptance recording + versioned
 > registry + `/users/me/legal` endpoints), these policy documents, and the OpenAPI

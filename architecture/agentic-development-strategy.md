@@ -19,7 +19,7 @@ Agents must protect the product moat as much as they protect the codebase. A tec
 
 Every agent works from a scoped issue, reads the relevant `AGENTS.md`, and stays inside the repository and subsystem named by the task.
 
-Every agent must also state how the task supports the current product phase. For MVP work, that means supporting identity, consistency, AI transformation coaching, or tribe accountability.
+Every agent must state how the task supports the active trail product. For current work, that means improving a Race Mission decision, rehearsal, risk, operation, trust control, or paid validation step.
 
 ## Agent Boundaries
 

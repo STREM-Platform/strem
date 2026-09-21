@@ -12,14 +12,14 @@
 - rollback or forward-fix path known
 - release notes drafted
 
-## MVP Release Checks
+## Race Mission Release Checks
 
 Verify:
 
 - onboarding works
-- logging flows work
-- AI transformation coach fails safely
-- tribe flow works
+- manual evidence and connected-source flows fail honestly
+- AI Race Team fails safely and never substitutes fictional athlete data
+- Race Mission navigation and live trust controls work
 - auth/session behavior is stable
 - no sensitive data is exposed in logs
 
@@ -40,9 +40,9 @@ Watch:
 - latency
 - auth failures
 - queue failures
-- AI transformation coach errors
+- AI Race Team errors
 - onboarding drop-off
-- logging failures
+- evidence import and consent failures
 
 ## Rollback
 

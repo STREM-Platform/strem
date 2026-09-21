@@ -18,13 +18,13 @@ Out of scope:
 
 - 
 
-## Product Phase
+## Delivery Stage
 
-MVP / Phase 2 / Future / Internal foundation
+Paid proof / Mission foundation / Evidence and adaptation / Race Lab and calendar / Sellable Race Pass / Internal foundation
 
-## Transformation Value
+## Race Mission Value
 
-How does this support identity, discipline, consistency, AI transformation coaching, or tribe accountability?
+Which Race Mission decision, rehearsal, risk, operation, trust control, or paid-validation outcome does this improve?
 
 ## Acceptance Criteria
 

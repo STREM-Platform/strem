@@ -29,7 +29,7 @@ not been evaluated or cleared as a medical device by any regulator.
 
 ## 2. Not professional advice
 
-The content STREM provides — including AI coaching from the Forge agent, training
+The content STREM provides — including coaching from the STREM AI Race Team, training
 and nutrition guidance, readiness scores, plan adjustments, insights, PR detection,
 and biomarker trend context — is **general informational guidance only.** It is
 **not** medical, clinical, nutritional, psychological, or other professional advice,

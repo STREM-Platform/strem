@@ -1,5 +1,9 @@
 # Event-Driven Strategy
 
+> The event inventory includes existing legacy producers and consumers. New
+> product work must prioritize Race Mission evidence and decision events; dormant
+> tribe or progression events are maintenance-only until formally deprecated.
+
 STREM uses asynchronous domain events to decouple services. The service that owns domain state owns the event. The choice of message broker is a technology decision that should be evaluated against operational cost, throughput requirements, and team bandwidth — not defaulted to without assessment.
 
 ## Why Events

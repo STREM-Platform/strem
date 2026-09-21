@@ -4,7 +4,7 @@ Use this prompt for security-sensitive work.
 
 ## Prompt
 
-STREM handles identity, performance, nutrition, tribe, and health-adjacent data. Treat trust as a product feature.
+STREM handles identity, performance, location-adjacent activity, recovery, fueling, calendar availability, and health-adjacent data. Treat trust as a product feature.
 
 Check:
 

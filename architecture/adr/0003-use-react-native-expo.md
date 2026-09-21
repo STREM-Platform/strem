@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-STREM is mobile-first. The MVP experience depends on fast logging, onboarding, AI transformation coach interaction, and tribe participation. The team needs one mobile codebase for iOS and Android.
+STREM is mobile-first. The trail Race Mission depends on fast check-ins, field access to the preparation plan and Race Lab, connected-source authorization, calendar handoff, and explainable AI decisions. The team needs one mobile codebase for iOS and Android.
 
 ## Decision
 

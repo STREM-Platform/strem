@@ -1,23 +1,23 @@
-# Product Docs — Index
+# STREM Product Source Of Truth
 
-Start here. **For "where are we now," read [`implementation-status.md`](implementation-status.md)** — the live build tracker (what's shipped / partial / planned).
+STREM is the AI race team for self-coached trail runners preparing for a real event.
 
-The rest describe the *intended* product (vision and specs). Some still label
-implemented capabilities as "V2/future"; reconciliation is tracked as a docs issue.
+Read these documents in order:
 
-| Doc | What it covers |
-|---|---|
-| [implementation-status.md](implementation-status.md) | **Live status: shipped vs planned per capability.** Read this first. |
-| [next-steps-plan.md](next-steps-plan.md) | **Forward plan (2026-06-19):** MVP-completeness verdict, deeper intake (baseline/supplements/labs), legal/policy, premium-quality + competitive gap analysis, prioritized roadmap |
-| [social-competition-plan.md](social-competition-plan.md) | Design for 1v1 duels, tribe-vs-tribe matches, and challenge proof (photo/video/data-verified) |
-| [prd.md](prd.md) | Product requirements overview |
-| [mvp-scope.md](mvp-scope.md) | What is (and isn't) in the MVP |
-| [feature-map.md](feature-map.md) | MVP vs Phase 2/3/4 feature inventory |
-| [roadmap.md](roadmap.md) | Phased roadmap + expansion gates |
-| [game-systems.md](game-systems.md) | XP, ranks, medals, missions, challenges, seasons |
-| [tribe-design.md](tribe-design.md) | Tribe mechanics + privacy |
-| [onboarding-flow.md](onboarding-flow.md) | The 7-screen identity-first onboarding |
-| [retention-strategy.md](retention-strategy.md) | Retention + accountability mechanics |
-| [user-personas.md](user-personas.md) | Target users |
-| [future-immersion.md](future-immersion.md) | North-star: audio, video, The Chronicle |
-| [monetization.md](monetization.md) | Monetization (later) |
+1. [`trail-running-pivot.md`](trail-running-pivot.md) — product thesis, first customer, Race Mission, surfaces, data strategy, commercial hypothesis, and exclusions.
+2. [`trail-running-delivery-plan.md`](trail-running-delivery-plan.md) — paid validation gate, implementation stages, repository packages, contract vocabulary, issue triage, and stop conditions.
+3. [`implementation-status.md`](implementation-status.md) — what is actually built, what is prototype-only, and what must happen next.
+
+These are the only active product documents. Previous hybrid-athlete, XP, rank, medal, Tribe, Crew, generic tracking, social-competition, and cinematic roadmaps were removed on 2026-09-20. Git history preserves them if a future evidence-based decision needs to reference them.
+
+## Product Test
+
+Every proposed capability must answer yes to at least one question:
+
+- Does it help the athlete understand whether they are prepared for their chosen event?
+- Does it turn fragmented evidence into an explainable decision?
+- Does it help rehearse terrain, fueling, equipment, conditions, or logistics before race day?
+- Does it make the solo athlete safer or more confident without pretending certainty?
+- Does it create paid value that a tracker or generic plan does not already provide?
+
+If not, it does not belong in the active product.

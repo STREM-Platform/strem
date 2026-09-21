@@ -1,73 +1,46 @@
 # Feature Build Prompt
 
-Use this template for future implementation agents.
+## Inputs
 
----
-
-## Prompt
-
-You are implementing a scoped STREM feature.
-
-Feature:
-
-- Name:
-- Issue:
-- Repository:
-- Service or app:
-- User outcome:
-- Product phase:
-- Transformation loop supported:
-- Transformation value: Which of the four moat pillars does this serve? (identity transformation / behavioral adaptation / tribe accountability / progression immersion)
+- Repository and scoped issue or explicit founder request:
+- Race Mission outcome:
+- Athlete problem:
 - Acceptance criteria:
+- Data sources and provenance:
+- Safety, consent, contract, migration, and deployment impact:
 
----
+## Required preparation
 
-## Before Coding
+1. Read `AGENTS.md` and the nearest repository guide.
+2. Read `product/trail-running-pivot.md`, `product/trail-running-delivery-plan.md`, and `product/implementation-status.md`.
+3. Inspect the current implementation and worktree before editing.
+4. State whether the feature improves a decision, rehearsal, risk, or race operation.
+5. Identify what is recorded fact, calculated evidence, athlete input, assumption, and unknown.
+6. Stop for the required review if shared contracts, service boundaries, auth, privacy, health behavior, AI safety, migrations, or deployment change.
 
-1. Read `AGENTS.md`.
-2. Read `prompts/global/agent-rules.md` and run the anti-drift checklist.
-3. Read related architecture and product docs:
-   - If this involves game mechanics: read `product/game-systems.md`
-   - If this involves tribe features: read `product/tribe-design.md`
-   - If this involves AI behavior or missions: read `architecture/ai-architecture.md`
-   - If scope is unclear: read `product/mvp-scope.md` and `product/feature-map.md`
-4. Identify the owned domain and data boundaries.
-5. Identify contracts affected.
-6. Identify tests required.
-7. Answer the transformation value question: which moat pillar does this feature serve, and how?
+## Build rules
 
----
+- Build for the first self-coached 20–50 km trail athlete, not a hypothetical all-sports market.
+- Keep manual entry useful when no wearable is connected.
+- Do not reproduce tracker functionality unless it is necessary input infrastructure.
+- Do not add XP, ranks, medals, Tribe, Crew, social comparison, or generic engagement mechanics.
+- Never ship fabricated personal data behind an unlabeled fallback.
+- AI decisions must expose evidence, assumptions, confidence, missing inputs, and athlete control.
+- Prefer one real vertical slice over several preview-only surfaces.
+- Remove replaced code, tests, assets, flags, and documentation.
 
-## Transformation Value Check
+## Verification
 
-Before implementing, confirm:
+- Run the repository type, lint, test, and build checks.
+- Test empty, unavailable, partial-data, and consent-revoked states.
+- Confirm no retired route or product language remains.
+- Reconcile `product/implementation-status.md`.
 
-- Does this feature make the user feel like a stronger, more disciplined version of themselves?
-- Does it reinforce identity transformation, behavioral adaptation, tribe accountability, or progression immersion?
-- Does it avoid social follower counts, public like systems, calorie shaming, or dark pattern notifications?
-- Is it within MVP scope as defined in `product/mvp-scope.md`? If not, stop and confirm with the issue author.
+## Final report
 
-If you cannot answer these questions confidently, stop and surface the ambiguity before writing code.
-
----
-
-## Constraints
-
-- Stay inside the named repository unless the issue scope explicitly authorizes cross-service work
-- Do not change shared contracts without contract review
-- Do not introduce future-phase features (V2 and beyond) into MVP scope
-- Do not add placeholder code or boilerplate for unscoped services
-- Do not add generic tracking, dashboard, chat, or social behavior unless it directly supports the transformation outcome in the issue
-- Preserve security and privacy assumptions
-- XP events should be fired as domain events (RabbitMQ), not direct service calls
-- Game mechanics must follow the specification in `product/game-systems.md` — do not invent new XP values, rank thresholds, or medal conditions without explicit approval
-
----
-
-## Deliver
-
-- implementation
-- focused tests
-- documentation update if behavior changes
-- transformation value summary in the final verification: which pillar was served and how
-- clear final verification summary: what changed, how it was tested, what risks remain
+- Race Mission value delivered
+- files and behavior changed
+- obsolete material removed
+- checks run and results
+- prototype versus live-data boundary
+- review gates and follow-ups

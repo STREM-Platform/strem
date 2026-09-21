@@ -46,7 +46,7 @@ We treat health and fitness data — including any biomarker or lab values you e
   ferritin, vitamin D, lipids, glucose/HbA1c, testosterone, and similar markers.
   This is gated behind explicit consent **and** acknowledgement of the
   [Medical Disclaimer](medical-disclaimer.md), and is a data source you can revoke.
-- **Content you create with the agent:** chat messages with the Forge coach,
+- **Content you create with the agent:** chat messages with the STREM AI Race Team,
   stated preferences, captured photos or voice notes you submit, and journal-style
   entries.
 - **Tribe & social activity:** the tribes you join and your participation in

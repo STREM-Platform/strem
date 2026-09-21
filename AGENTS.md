@@ -1,142 +1,53 @@
 # strem-docs Agent Guide
 
-This repository is the canonical documentation system for STREM. It exists to make the company buildable by humans and AI agents without losing strategic discipline.
+This repository is the canonical product, architecture, workflow, and operating documentation source for STREM.
 
----
+## Active authority
 
-## Rule #1 — Protect The Transformation Moat
+Read before contributing:
 
-STREM must never become a fitness tracker, calorie app, dashboard product, generic AI chatbot, or social feed.
+1. `product/trail-running-pivot.md`
+2. `product/trail-running-delivery-plan.md`
+3. `product/implementation-status.md`
+4. `prompts/global/agent-rules.md`
 
-Before making any documentation change, run the anti-drift checklist from `prompts/global/agent-rules.md`:
+STREM is the AI race team for self-coached trail runners. Older hybrid-athlete, gamification, Tribe, Crew, generic tracker, and cinematic directions have been removed. Do not recreate them from Git history without an explicit new founder decision.
 
-1. Does this change help the user feel like a stronger, more disciplined version of themselves?
-2. Would a generic fitness app do this the same way? If yes, what differentiates it?
-3. Does it reinforce at least one of the four moat pillars: identity transformation, behavioral adaptation, tribe accountability, or progression immersion?
-4. Does it optimize for transformation signals (XP earned, missions completed, rank progress, tribe participation) rather than engagement signals?
-5. Does it introduce social following mechanics, public likes, follower counts, calorie shaming, or dark patterns? If yes, stop.
+## Documentation rules
 
-**Required reading before contributing:**
-- `prompts/global/agent-rules.md` — Complete anti-drift rules and moat definition
-- `product/game-systems.md` — Game system specification (XP, ranks, medals, missions, challenges)
-- `product/tribe-design.md` — Tribe mechanics specification
-- `vision/product-philosophy.md` — The STREM Manifesto and design principles
-- `product/mvp-scope.md` — MVP inclusion and exclusion list
+- Write direct, testable product and engineering decisions.
+- Keep one active roadmap and one implementation-status source.
+- Distinguish shipped, locally implemented, prototype-only, planned, and validation work.
+- Do not claim runtime behavior that is not present in code and contracts.
+- Link cross-repository work to scoped issues and state its contract dependency.
+- Update indexes and repair links whenever a document is removed or renamed.
+- Prefer deletion over preserving contradictory product directions.
 
----
+## Product anti-drift
 
-## Mission
+A change belongs only if it improves an event-specific decision, rehearsal, risk, operation, trust control, or paid validation step for the first trail customer.
 
-Maintain the engineering operating system for STREM:
+Stop or narrow work that becomes:
 
-- product and brand source of truth
-- architecture strategy and ADRs
-- repository strategy
-- AI-agent workflows and reusable prompts
-- engineering standards
-- runbooks and templates
-- future skill and subagent definitions
+- a generic tracker or dashboard;
+- a generic AI chat or training plan;
+- social engagement, gamification, or mandatory community;
+- premature multi-sport breadth;
+- fabricated certainty or personal data;
+- unreviewed health, privacy, contract, or safety behavior.
 
----
+## Repository boundaries
 
-## Editing Rules
+- Product decisions belong here.
+- Shared APIs and schemas belong in `strem-shared-contracts` after review.
+- Runtime code belongs in its owning service or app repository.
+- Deployment and observability assets belong in `strem-infra`.
+- Do not place application code, fake services, migrations, or generated contract artifacts in this repository.
 
-- Write in clear, direct, production-oriented language.
-- Avoid motivational filler, fake implementation details, and unapproved runtime APIs.
-- Keep MVP scope narrow unless a roadmap document explicitly marks a feature as future.
-- Prefer concrete boundaries, ownership, and acceptance criteria over vague advice.
-- Use Markdown only unless a future issue explicitly asks for another artifact type.
-- Link related documents when it helps navigation.
-- When documenting game mechanics (XP, missions, challenges, medals), cross-reference `product/game-systems.md` rather than redefining them independently.
-- When documenting tribe mechanics, cross-reference `product/tribe-design.md`.
-- When documenting AI behavior, cross-reference `architecture/ai-architecture.md`.
+## Required review gates
 
----
+Human or review-agent approval is required for shared contracts, service boundaries, migrations, authentication, authorization, privacy, health-data behavior, safety-affecting AI behavior, CI/CD, and deployment.
 
-## Documentation Style
+## Completion
 
-STREM should read like a serious, AI-native engineering foundation with elite athletic ambition:
-
-- strategic but practical
-- AI-native but safety-aware
-- scalable but not prematurely complex
-- premium and disciplined, not hype-driven
-- Bulgaria-first and global-ready
-- transformation-oriented rather than tracker-oriented
-- identity-first rather than data-first
-
----
-
-## Canonical Product Constraints
-
-**MVP includes:**
-- authentication
-- user profiles
-- onboarding (identity-first, under 5 minutes)
-- training log
-- running log
-- nutrition log
-- basic AI transformation coach with weekly mission generation
-- small accountability tribes (invite-only, 4–8 members)
-- basic XP system (5 ranks: Initiate → Warrior)
-- 10 milestone medals
-- 2 challenge types (individual discipline + tribe collective)
-
-**MVP excludes:**
-- supplements, marketplace, coach marketplace
-- advanced wearables, advanced analytics
-- advanced social network, meal-prep marketplace
-- Titan and Ascended ranks (V2)
-- path ranks: Iron Mind, Mountain Runner, etc. (V2)
-- seasonal arcs (V2)
-- tribe vs. tribe challenges (V2)
-- audio generation (V3)
-- video generation and cinematic recaps (V4)
-- AI avatar system (V4)
-
-**Note on game system scope:** basic XP, 5 ranks, 10 medals, missions, and simple challenges ARE in MVP. The old exclusion "advanced challenge and XP systems" referred to the V2+ expanded game system (Titan rank, path ranks, seasons, tribe vs. tribe, global events). Do not exclude the MVP game layer.
-
----
-
-## Canonical Technology Constraints
-
-**Fixed (not re-evaluated per service):**
-- Backend language: Python
-- API framework: FastAPI
-- Mobile: React Native, Expo, TypeScript
-- CI/CD: GitHub Actions
-- Web/Admin: Next.js (later)
-
-**Evaluated per service (choose best fit, document the decision):**
-- Database: see `architecture/database-strategy.md` — PostgreSQL is the default for relational needs, but not mandated
-- Cache / rate limiting: Redis-compatible (Redis, Valkey, Dragonfly) — choose based on licensing and performance
-- Async messaging: see `architecture/event-driven-strategy.md` — Redis Streams or NATS preferred for MVP, RabbitMQ/Kafka only if justified
-- ORM / migrations: SQLAlchemy + Alembic for PostgreSQL services; adapt for other database choices
-
-**Infrastructure:**
-- Local dev: Docker Compose (services defined at implementation time based on chosen technologies)
-- Production: managed platform initially, Kubernetes when service count and scale justify it
-- Observability: OpenTelemetry + Prometheus/Grafana (later, after MVP)
-
-**AI:**
-- `strem-ai-orchestrator` owns mission generation, behavioral adaptation, narrative coaching, safety escalation
-- XP ledger in `strem-user-service` for MVP; extract to `strem-xp-service` only if V2 complexity demands it
-
----
-
-## Agent Review Checklist
-
-Before finishing a docs change, verify:
-
-- the change does not introduce implementation code
-- MVP and future-phase boundaries are respected
-- the anti-drift checklist from Rule #1 has been run
-- game system mechanics reference `product/game-systems.md` for consistency
-- tribe mechanics reference `product/tribe-design.md` for consistency
-- AI behavior references `architecture/ai-architecture.md` for consistency
-- repository ownership is clear
-- service boundaries are not silently changed
-- AI-agent instructions are safe for parallel work
-- security and privacy implications are acknowledged where relevant
-- templates remain usable by both humans and AI agents
-- the product is not drifting toward a generic fitness tracker, calorie app, dashboard, chatbot, or social feed
+When documentation changes, report what became authoritative, what was removed, which links were reconciled, and which implementation or validation decision remains next.

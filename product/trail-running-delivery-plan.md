@@ -1,0 +1,126 @@
+# Trail Running Delivery Plan
+
+**Status:** Active execution plan  
+**Authority:** [`trail-running-pivot.md`](trail-running-pivot.md)  
+**Started:** 2026-09-20
+
+## Outcome
+
+Prove that self-coached trail runners will pay STREM to reduce race-preparation uncertainty. The first sellable product is one complete Race Mission for a real 20–50 km event, not an activity tracker and not a broad multi-sport platform.
+
+## Non-Negotiable Product Loop
+
+1. The athlete commits to a real event.
+2. STREM understands the event demands and the athlete's constraints.
+3. STREM creates a preparation map with explicit assumptions.
+4. Imported or manual evidence updates readiness and unresolved risks.
+5. The AI proposes explainable decisions and plan changes.
+6. The athlete rehearses terrain, fueling, gear, and logistics.
+7. STREM produces an executable race-week and race-day plan.
+8. The outcome becomes memory for the next mission.
+
+Work that does not strengthen this loop is paused.
+
+## Stage 0 — Paid Concierge Proof
+
+Before broad backend implementation:
+
+- recruit 10 athletes already registered for a trail event 4–12 weeks away;
+- charge EUR 49–79 for a manually assisted Race Mission pilot;
+- collect event facts, course files, training history, constraints, and weekly check-ins with lightweight tools;
+- deliver a weekly decision, risk board, rehearsal plan, and race-week plan;
+- record whether STREM changed a decision, prevented a mistake, improved confidence, and would be purchased again;
+- interview at least five race organizers about providing structured race facts and a co-branded pilot.
+
+**Go gate:** at least five paid athletes complete four weeks, four report a concrete changed decision or avoided mistake, and three express strong repeat intent. Interest without payment does not pass.
+
+## Stage 1 — Race Mission Foundation
+
+Build only the smallest real vertical slice:
+
+- create one active Race Mission from a manually entered event;
+- capture goal, date, distance, elevation, terrain, cutoff, location, experience, limitations, availability, terrain access, and equipment;
+- ingest a GPX file and derive basic course facts;
+- show Mission, Plan, Race Lab, AI, and Athlete from real mission data;
+- preserve provenance for every athlete-entered, imported, calculated, and AI-inferred field.
+
+The first usable slice can work without wearable integrations. Manual evidence must remain a first-class path.
+
+## Stage 2 — Evidence And Adaptation
+
+- import Strava history and new sessions;
+- classify duration, distance, vertical gain, surface, long-run exposure, and climbing/descending specificity;
+- add a 10-second check-in for soreness, fatigue, illness, stress, confidence, and schedule changes;
+- calculate transparent preparation evidence rather than one opaque readiness score;
+- let the AI propose a change with sources, assumptions, confidence, safety flags, and accept/edit/reject controls;
+- never silently rewrite the plan.
+
+## Stage 3 — Race Lab And Calendar
+
+- model course sections, cutoffs, aid stations, mandatory kit, and race-week logistics;
+- build fueling, hydration, gear, and condition rehearsals tied to actual sessions;
+- export race weekend, deadlines, travel, and key rehearsals to Apple/Google/Outlook calendars;
+- optionally read free/busy windows after explicit consent; never ingest meeting content;
+- add live weather only inside a useful forecast window and label earlier conditions as assumptions.
+
+Do not build a broad race-discovery calendar until structured organizer data and a commercial reason exist.
+
+## Stage 4 — Sellable Race Pass
+
+- free: race card, countdown, initial gap assessment, and limited checklist;
+- Race Pass experiment: EUR 59–99 for the full mission;
+- expert-reviewed experiment: EUR 129–199;
+- measure activation, weekly evidence updates, accepted adaptations, rehearsal completion, race-plan completion, finish outcome, repeat intent, and refund reasons;
+- avoid pricing around data volume, dashboards, or AI-chat message limits.
+
+## Repository Work Packages
+
+Every package needs a scoped GitHub issue before implementation. Contract, service-boundary, privacy, health-data, AI-safety, and deployment work retains the required review gates.
+
+| Order | Repository | Scoped package |
+|---:|---|---|
+| 1 | `strem-docs` | Pilot script, interview guide, success metrics, and decision log |
+| 2 | `strem-shared-contracts` | Race Mission, event facts, athlete constraints, course, evidence, rehearsal, decision proposal, and calendar-intent contracts |
+| 3 | `strem-user-service` | Trail athlete context and consented constraint storage |
+| 4 | `strem-training-service` | GPX/course ingestion, activity evidence, elevation and terrain summaries |
+| 5 | `strem-ai-orchestrator` | Race-context assembly, gap detection, cited recommendation, adaptation proposal, and safety escalation |
+| 6 | `strem-api-gateway` | Route the approved mission/course/decision contracts |
+| 7 | `strem-mobile` | Replace the labelled prototype fixture with the real vertical slice |
+| 8 | `strem-infra` | Add observability and release support only when the slice is deployable |
+
+Nutrition and community services are not first-wave owners. Race fueling can begin as a mission rehearsal object; same-event support remains optional until the solo product retains.
+
+## First Contract Vocabulary
+
+- `RaceMission`: lifecycle, athlete goal, event reference, dates, phase, state.
+- `EventFacts`: official versus athlete-entered facts with provenance and freshness.
+- `CourseModel`: GPX, sections, distance, elevation, terrain, aid stations, cutoffs.
+- `AthleteConstraints`: availability, terrain access, limitations, equipment, preferences.
+- `PreparationEvidence`: observation, target, time window, source, confidence.
+- `Risk`: gap, severity, why it matters, mitigation, deadline, status.
+- `Rehearsal`: terrain, fuel, gear, heat/cold, night, or logistics test and result.
+- `DecisionProposal`: recommendation, alternatives, evidence, assumptions, confidence, safety classification, athlete response.
+- `CalendarIntent`: exportable event or task; calendar provider data stays outside the core mission contract.
+
+## Issue Triage Rule
+
+Audit every existing open issue against the Race Mission loop:
+
+- **Keep now:** directly enables the first paid mission or trust/safety.
+- **Rewrite:** useful capability framed around old XP, Crew, Tribe, generic dashboard, or tracker UI.
+- **Park:** potentially useful after trail retention, with no current implementation work.
+- **Close:** only creates generic engagement, social comparison, duplicate tracking, or premature multi-sport breadth.
+
+Do not keep an issue merely because code already exists.
+
+## Stop Conditions
+
+Pause or materially change direction if the paid pilot shows any of the following:
+
+- athletes value a static plan but not weekly adaptation;
+- manual data burden prevents weekly use;
+- recommendations cannot be made trustworthy with available evidence;
+- athletes will not pay above a low-cost generic plan;
+- the highest-value buyer is consistently a coach or organizer rather than an athlete.
+
+Those are learning outcomes, not failures. They determine whether STREM should become an athlete Race Pass, a coach copilot, or organizer infrastructure.
