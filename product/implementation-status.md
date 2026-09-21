@@ -16,7 +16,7 @@ STREM is in trail-running pivot validation. The current mobile app is a product-
 | Mobile navigation: Mission, Plan, Race Lab, AI, Athlete | Merged to `strem-mobile/main`; prototype data remains | `88468e6` |
 | Trail visual system, responsive auth, onboarding, legal, and atmospheric race UI | Merged to `strem-mobile/main`; visually reviewed, not the final advanced experience | `f7b867d` and `strem-mobile#103` |
 | Live authentication, legal acceptance, user profile, athlete baseline, consent, AI chat, action receipts, and Strava/Whoop source status | Existing live paths retained | mobile API clients and existing services |
-| Race Mission, event facts, GPX/course, constraints, evidence, risk, rehearsal, decision, and media contracts | Scoped; implementation not started | `strem-shared-contracts#38`, review required |
+| Race Mission, event facts/media, GPX/course, constraints, evidence, risk, rehearsal, decision, calendar-intent, and debrief contracts | Review draft open; not merged | `strem-shared-contracts#38`, PR `strem-shared-contracts#39`, human review required |
 | Real mission intake and persistence | Scoped; implementation not started | `strem-user-service#23`, `strem-mobile#104` |
 | GPX course intelligence | Scoped; implementation not started | `strem-training-service#10`, `strem-mobile#105` |
 | Real adaptive trail plan and preparation evidence | Scoped; implementation not started | `strem-training-service#11`, `strem-mobile#106` |
@@ -54,4 +54,4 @@ The pre-pivot mobile issues for Fuel, Tribe, Crew, Forge personas, generic captu
 
 ## Next irreversible decision
 
-Do not build more unconnected prototype breadth. The advanced race-first experience and legal path to real event imagery are defined. The next engineering review gate is `strem-shared-contracts#38`, beginning with the `RaceMission`, `EventMedia`, provenance, evidence, risk, rehearsal, and decision proposal semantics in the new design authority. In parallel, the next business decision remains whether real athletes will pay for the concierge pilot in `strem-docs#16`.
+Do not build more unconnected prototype breadth. The advanced race-first experience and legal path to real event imagery are defined. The next engineering decision is human review of `strem-shared-contracts#39` for issue `#38`; no service or mobile implementation should treat that draft as approved before it merges. In parallel, the next business decision remains whether real athletes will pay for the concierge pilot in `strem-docs#16`.
