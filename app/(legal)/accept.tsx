@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/ui/icon";
 import { Btn, Panel } from "@/components/ui/primitives";
 import { LEGAL_POLICIES, policyFor } from "@/constants/legal";
-import { T, disp, mono, ui } from "@/constants/theme";
+import { Trail, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
 import { pendingAcceptances } from "@/lib/legal";
 import { useAuth } from "@/lib/session/auth-context";
@@ -58,19 +58,19 @@ export default function LegalAcceptScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headRow}>
-          <Icon name="shield" size={16} color={T.green} />
+          <Icon name="shield" size={16} color={Trail.lime} />
           <Text style={styles.eyebrow}>BEFORE YOU BEGIN</Text>
         </View>
         <Text style={styles.title}>YOUR AGREEMENT WITH STREM</Text>
         <Text style={styles.intro}>
-          STREM gives AI-assisted coaching and stores your training, nutrition, and recovery
-          data. Please review and accept these before you continue.
+          STREM uses your race goal, training, activity, and recovery data to support trail
+          preparation. Please review and accept these policies before you continue.
         </Text>
 
         {/* Medical disclaimer surfaced verbatim — this is a health-guidance product. */}
         <Panel style={styles.disclaimer} pad={16}>
           <View style={styles.headRow}>
-            <Icon name="heart" size={14} color={T.green} />
+            <Icon name="heart" size={14} color={Trail.lime} />
             <Text style={styles.disclaimerEyebrow}>MEDICAL DISCLAIMER</Text>
           </View>
           <Text style={styles.disclaimerBody}>{disclaimerSummary(disclaimer.body)}</Text>
@@ -94,7 +94,7 @@ export default function LegalAcceptScreen() {
                 <Text style={styles.itemBlurb}>{p.blurb}</Text>
                 <Text style={styles.itemVersion}>Version {p.version}</Text>
               </View>
-              <Icon name="chevron" size={18} color={T.sub} />
+              <Icon name="chevron" size={18} color={Trail.textDim} />
             </Pressable>
           ))}
         </View>
@@ -121,17 +121,17 @@ function disclaimerSummary(body: string): string {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.bg },
+  root: { flex: 1, backgroundColor: Trail.bg },
   scroll: { paddingHorizontal: 20 },
   headRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  eyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: T.green },
-  title: { ...disp(28, 800), color: "#fff", marginTop: 6, lineHeight: 30 },
-  intro: { ...ui(13.5, 500), color: T.mut, marginTop: 10, lineHeight: 20 },
+  eyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: Trail.lime },
+  title: { ...disp(28, 800), color: Trail.text, marginTop: 6, lineHeight: 30 },
+  intro: { ...ui(13.5, 500), color: Trail.textMuted, marginTop: 10, lineHeight: 20 },
 
-  disclaimer: { marginTop: 18, borderColor: T.green, borderWidth: 1 },
-  disclaimerEyebrow: { ...mono(9, 700), letterSpacing: 1.4, color: T.green },
-  disclaimerBody: { ...ui(13, 500), color: T.text, marginTop: 8, lineHeight: 20 },
-  link: { ...ui(12.5, 700), color: T.green, marginTop: 10 },
+  disclaimer: { marginTop: 18, borderColor: Trail.lime, borderWidth: 1 },
+  disclaimerEyebrow: { ...mono(9, 700), letterSpacing: 1.4, color: Trail.lime },
+  disclaimerBody: { ...ui(13, 500), color: Trail.text, marginTop: 8, lineHeight: 20 },
+  link: { ...ui(12.5, 700), color: Trail.lime, marginTop: 10 },
 
   list: { marginTop: 16, gap: 10 },
   item: {
@@ -140,14 +140,14 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: T.surf,
+    backgroundColor: Trail.panel,
     borderWidth: 1,
-    borderColor: T.line,
+    borderColor: Trail.line,
   },
   itemText: { flex: 1, flexShrink: 1 },
-  itemTitle: { ...ui(15, 700), color: T.text },
-  itemBlurb: { ...ui(12, 500), color: T.sub, marginTop: 2, lineHeight: 17 },
-  itemVersion: { ...mono(9, 600), color: T.sub, marginTop: 6, letterSpacing: 0.6 },
+  itemTitle: { ...ui(15, 700), color: Trail.text },
+  itemBlurb: { ...ui(12, 500), color: Trail.textDim, marginTop: 2, lineHeight: 17 },
+  itemVersion: { ...mono(9, 600), color: Trail.textDim, marginTop: 6, letterSpacing: 0.6 },
 
-  consent: { ...ui(12, 500), color: T.sub, lineHeight: 18, marginTop: 20, marginBottom: 14 },
+  consent: { ...ui(12, 500), color: Trail.textDim, lineHeight: 18, marginTop: 20, marginBottom: 14 },
 });

@@ -11,8 +11,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font",
-      "expo-sharing"
+      "expo-font"
     ]
   }
 }

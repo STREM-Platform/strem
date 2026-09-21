@@ -1,190 +1,170 @@
-/**
- * Privacy — "What your coach knows" (A7 / Phase 8).
- *
- * The trust layer. If Forge can see everything, you must see and control
- * everything. Source toggles decide what feeds the context graph; the autonomy
- * controls decide how much Forge can do on its own (AUTO / ASK / OFF, per
- * ability); export & delete are one tap. A link jumps to the Agent Activity feed
- * — the receipts for everything Forge has done.
- */
-
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AutonomyControls } from "@/components/agent/activity";
-import { Icon } from "@/components/ui/icon";
-import { Btn, Chip, IconTile, Panel, SectionHead } from "@/components/ui/primitives";
-import { LEGAL_POLICIES } from "@/constants/legal";
-import { T, disp, mono, ui } from "@/constants/theme";
-import { forge } from "@/lib/agent";
-import type { PrivacyData } from "@/lib/agent/types";
+import { TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { Trail, disp, mono, ui } from "@/constants/theme";
+import { agentApi } from "@/lib/api/agent";
 import { useAsync } from "@/lib/use-async";
 
-function Toggle({ on, onPress }: { on: boolean; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.toggle, { backgroundColor: on ? T.green : T.surf2, borderColor: on ? T.green : T.line2 }]}>
-      <View style={[styles.knob, { left: on ? 20 : 2, backgroundColor: on ? "#06130D" : T.sub }]} />
-    </Pressable>
-  );
-}
-
-export default function PrivacyScreen() {
+export default function DataControlsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data: P } = useAsync<PrivacyData>(forge.getPrivacy);
-  const [state, setState] = useState<Record<string, boolean>>({});
+  const { data, error, reload } = useAsync(() => agentApi.getConsent());
+  const [saving, setSaving] = useState<string | null>(null);
 
-  if (!P) return <View style={styles.root} />;
-
-  // Seed local toggle state once from the contract.
-  const get = (gi: number, ii: number, fallback: boolean) => state[`${gi}-${ii}`] ?? fallback;
-  const total = P.groups.reduce((n, g) => n + g.items.length, 0);
-  const onCount = P.groups.reduce((n, g, gi) => n + g.items.filter((it, ii) => get(gi, ii, it.on)).length, 0);
+  const setConsent = async (key: string, enabled: boolean) => {
+    setSaving(key);
+    try {
+      await agentApi.setConsent(key, enabled);
+      reload();
+    } catch {
+      Alert.alert("Consent not changed", "The live consent service could not be reached.");
+    } finally {
+      setSaving(null);
+    }
+  };
 
   return (
-    <View style={styles.root}>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/coach"))} style={styles.back}>
-          <Icon name="chevronL" size={20} color={T.mut} />
-          <Text style={styles.backText}>Coach</Text>
+    <View style={trailStyles.root}>
+      <ScrollView contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false}>
+        <Pressable style={styles.back} onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/profile"))}>
+          <Icon name="chevronL" size={18} color={Trail.textMuted} />
+          <Text style={styles.backText}>Athlete</Text>
         </Pressable>
-
-        <View style={styles.head}>
-          <View style={styles.headRow}>
-            <Icon name="lock" size={16} color={T.green} />
-            <Text style={styles.headEyebrow}>YOUR DATA · YOUR CALL</Text>
-          </View>
-          <Text style={styles.headTitle}>WHAT YOUR COACH KNOWS</Text>
-          <Text style={styles.headIntro}>{P.intro}</Text>
-          <View style={styles.headChip}>
-            <Chip label={`${onCount}/${total} sources feeding Forge`} />
-          </View>
+        <View>
+          <Text style={trailStyles.pageOverline}>CONSENT & PROVENANCE</Text>
+          <Text style={trailStyles.pageTitle}>Data controls</Text>
+          <Text style={trailStyles.pageSub}>Choose what the AI Race Team may read. Turning a source off must remove it from future reasoning.</Text>
         </View>
 
-        <View style={styles.groups}>
-          {P.groups.map((g, gi) => (
-            <Panel key={gi} pad={0}>
-              <Text style={styles.groupLabel}>{g.label.toUpperCase()}</Text>
-              {g.items.map((it, ii) => {
-                const on = get(gi, ii, it.on);
-                return (
-                  <View key={ii} style={[styles.item, ii > 0 && styles.itemBorder]}>
-                    <Text style={[styles.itemLabel, { color: on ? T.text : T.sub }]}>{it.k}</Text>
-                    <Toggle on={on} onPress={() => setState((s) => ({ ...s, [`${gi}-${ii}`]: !on }))} />
+        <TrailPanel accent style={styles.principle}>
+          <View style={styles.principleIcon}>
+            <Icon name="lock" size={22} color={Trail.lime} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.principleOverline}>THE TRUST CONTRACT</Text>
+            <Text style={styles.principleTitle}>Useful context, never silent surveillance.</Text>
+            <Text style={styles.principleBody}>Recommendations should name the facts, assumptions and missing evidence that shaped them.</Text>
+          </View>
+        </TrailPanel>
+
+        {error ? (
+          <TrailPanel style={styles.errorPanel}>
+            <Text style={styles.errorText}>Live consent settings could not be loaded. STREM will not display invented settings.</Text>
+          </TrailPanel>
+        ) : null}
+
+        {(data?.groups ?? []).map((group) => (
+          <View key={group.label} style={styles.group}>
+            <TrailSectionHead title={group.label.toUpperCase()} label="INDIVIDUALLY REVOCABLE" />
+            <View style={styles.consentList}>
+              {group.items.map((item) => (
+                <View key={item.k} style={styles.consentRow}>
+                  <View style={styles.consentIcon}>
+                    <Icon name={iconFor(item.k)} size={18} color={item.on ? Trail.lime : Trail.textDim} />
                   </View>
-                );
-              })}
-            </Panel>
-          ))}
+                  <View style={styles.flex}>
+                    <Text style={styles.consentName}>{labelFor(item.k)}</Text>
+                    <Text style={styles.consentDetail}>{detailFor(item.k)}</Text>
+                  </View>
+                  <Switch
+                    value={item.on}
+                    disabled={saving === item.k}
+                    onValueChange={(enabled) => void setConsent(item.k, enabled)}
+                    trackColor={{ false: Trail.panelSoft, true: Trail.limeLine }}
+                    thumbColor={item.on ? Trail.lime : Trail.textDim}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+
+        {!data && !error ? <Text style={styles.loading}>Loading live consent settings…</Text> : null}
+
+        <TrailSectionHead title="SOURCE & ACTION RECEIPTS" label="VERIFY THE AI" icon="bot" />
+        <View style={styles.menuList}>
+          <MenuRow icon="route" title="Connected sources" detail="Connect, sync or disconnect external providers" onPress={() => router.push("/(app)/integrations")} />
+          <MenuRow icon="bolt" title="AI action history" detail="Reasoning, cited data, approvals and undo" onPress={() => router.push("/(app)/agent")} />
         </View>
 
-        {/* connect external sources (A3) — Strava / Whoop / Health */}
-        <Pressable style={[styles.sideMargin, styles.activityLink]} onPress={() => router.push("/(app)/integrations")}>
-          <IconTile name="route" size={40} iconSize={19} />
-          <View style={styles.shrink}>
-            <Text style={styles.activityTitle}>Connected sources</Text>
-            <Text style={styles.activitySub}>Link Strava, Whoop & more — what your coach can pull in.</Text>
-          </View>
-          <Icon name="chevron" size={18} color={T.sub} />
-        </Pressable>
-
-        {/* athlete baseline (#61) — the coaching inputs Forge knows about */}
-        <Pressable style={[styles.sideMargin, styles.activityLink]} onPress={() => router.push("/(app)/athlete-profile")}>
-          <IconTile name="compass" size={40} iconSize={19} />
-          <View style={styles.shrink}>
-            <Text style={styles.activityTitle}>Athlete profile</Text>
-            <Text style={styles.activitySub}>Body, PRs, injuries & equipment — the baseline Forge coaches from.</Text>
-          </View>
-          <Icon name="chevron" size={18} color={T.sub} />
-        </Pressable>
-
-        {/* biomarkers (#63) — gated lab results; trends only, never a diagnosis */}
-        <Pressable style={[styles.sideMargin, styles.activityLink]} onPress={() => router.push("/(app)/biomarkers")}>
-          <IconTile name="heart" size={40} iconSize={19} />
-          <View style={styles.shrink}>
-            <Text style={styles.activityTitle}>Lab results</Text>
-            <Text style={styles.activitySub}>Enter biomarkers — Forge surfaces trends to discuss with your clinician.</Text>
-          </View>
-          <Icon name="chevron" size={18} color={T.sub} />
-        </Pressable>
-
-        {/* autonomy — how much Forge can do on its own (per capability) */}
-        <SectionHead icon="bot" title="WHAT FORGE CAN DO" sub="Per-ability autonomy" />
-        <View style={styles.sideMargin}>
-          <AutonomyControls />
+        <TrailSectionHead title="LEGAL" label="CURRENT POLICIES" icon="shield" />
+        <View style={styles.menuList}>
+          <MenuRow icon="shield" title="Terms of service" detail="Account and acceptable-use terms" onPress={() => router.push("/(legal)/terms")} />
+          <MenuRow icon="lock" title="Privacy policy" detail="Collection, use, retention and rights" onPress={() => router.push("/(legal)/privacy")} />
+          <MenuRow icon="heart" title="Medical disclaimer" detail="Coaching boundaries and professional care" onPress={() => router.push("/(legal)/medical")} />
         </View>
 
-        {/* receipts */}
-        <Pressable style={[styles.sideMargin, styles.activityLink]} onPress={() => router.push("/(app)/agent")}>
-          <IconTile name="bolt" size={40} iconSize={19} />
-          <View style={styles.shrink}>
-            <Text style={styles.activityTitle}>Agent activity</Text>
-            <Text style={styles.activitySub}>Every action Forge took — reasoning, data, undo.</Text>
-          </View>
-          <Icon name="chevron" size={18} color={T.sub} />
-        </Pressable>
-
-        <View style={[styles.sideMargin, styles.dataActions]}>
-          <Btn kind="ghost" icon="download" label="Export" onPress={() => Alert.alert("Export", "Your full data export will be emailed to you.")} style={styles.flexOne} />
-          <Btn kind="danger" label="Delete my data" onPress={() => Alert.alert("Delete my data", "This permanently deletes everything. Are you sure?")} style={styles.flexOne} />
-        </View>
-
-        {/* legal & policies (#58) — the terms you accepted, viewable any time */}
-        <SectionHead icon="shield" title="LEGAL & POLICIES" sub="Terms, privacy & medical disclaimer" />
-        <View style={[styles.sideMargin, styles.legalList]}>
-          {LEGAL_POLICIES.map((p) => (
-            <Pressable
-              key={p.type}
-              style={styles.legalRow}
-              onPress={() => router.push(`/(legal)/${p.type}`)}
-              accessibilityRole="link"
-              accessibilityLabel={`Read ${p.title}`}
-            >
-              <Text style={styles.legalTitle}>{p.title}</Text>
-              <Icon name="chevron" size={16} color={T.sub} />
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.footer}>{P.footer}</Text>
+        <TrailPanel style={styles.dataPanel}>
+          <Text style={styles.dataTitle}>Your data must remain portable.</Text>
+          <Text style={styles.dataBody}>Export and account deletion require verified backend workflows. The old UI-only alerts have been removed until those operations are genuinely connected.</Text>
+        </TrailPanel>
       </ScrollView>
     </View>
   );
 }
 
+function iconFor(key: string): IconName {
+  const value = key.toLowerCase();
+  if (value.includes("sleep") || value.includes("recovery")) return "moon";
+  if (value.includes("nutrition") || value.includes("fuel")) return "utensils";
+  if (value.includes("calendar")) return "clock";
+  if (value.includes("profile") || value.includes("injur")) return "shield";
+  return "route";
+}
+
+function labelFor(key: string): string {
+  return key.replace(/[_-]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function detailFor(key: string): string {
+  const value = key.toLowerCase();
+  if (value.includes("calendar")) return "Availability only; meeting contents are not needed.";
+  if (value.includes("sleep") || value.includes("recovery")) return "Used to interpret fatigue, never to diagnose.";
+  if (value.includes("nutrition") || value.includes("fuel")) return "Used for race-fueling preparation and rehearsals.";
+  return "May be used only when it materially changes a Race Mission decision.";
+}
+
+function MenuRow({ icon, title, detail, onPress }: { icon: IconName; title: string; detail: string; onPress: () => void }) {
+  return (
+    <Pressable style={styles.menuRow} onPress={onPress}>
+      <View style={styles.menuIcon}><Icon name={icon} size={18} color={Trail.lime} /></View>
+      <View style={styles.flex}>
+        <Text style={styles.menuTitle}>{title}</Text>
+        <Text style={styles.menuDetail}>{detail}</Text>
+      </View>
+      <Icon name="chevron" size={18} color={Trail.textDim} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.bg },
-  scroll: { paddingBottom: 40 },
-  sideMargin: { marginHorizontal: 16 },
-  shrink: { flexShrink: 1, flex: 1 },
-  flexOne: { flex: 1 },
-
-  back: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, marginBottom: 6 },
-  backText: { ...ui(13, 600), color: T.mut },
-  head: { paddingHorizontal: 16, paddingBottom: 16 },
-  headRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  headEyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: T.green },
-  headTitle: { ...disp(28, 800), color: "#fff", marginTop: 5, lineHeight: 29 },
-  headIntro: { ...ui(13.5, 500), color: T.mut, marginTop: 8, lineHeight: 20 },
-  headChip: { marginTop: 12 },
-
-  groups: { paddingHorizontal: 16, gap: 14, marginBottom: 4 },
-  groupLabel: { ...mono(9, 700), letterSpacing: 1.4, color: T.sub, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
-  item: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 14 },
-  itemBorder: { borderTopWidth: 1, borderTopColor: T.line },
-  itemLabel: { flex: 1, ...ui(14, 600) },
-  toggle: { width: 44, height: 26, borderRadius: 13, borderWidth: 1, position: "relative" },
-  knob: { position: "absolute", top: 2, width: 20, height: 20, borderRadius: 10 },
-
-  activityLink: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 18, padding: 14, borderRadius: 14, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
-  activityTitle: { ...ui(15, 700), color: T.text },
-  activitySub: { ...ui(12, 500), color: T.sub, marginTop: 1 },
-
-  dataActions: { flexDirection: "row", gap: 10, marginTop: 18 },
-  legalList: { gap: 8, marginTop: 4 },
-  legalRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 13, paddingHorizontal: 14, borderRadius: 12, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
-  legalTitle: { ...ui(14, 600), color: T.text },
-  footer: { ...ui(12, 500), color: T.sub, textAlign: "center", lineHeight: 18, marginTop: 12, marginHorizontal: 24 },
+  flex: { flex: 1 },
+  back: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
+  backText: { ...ui(12, 600), color: Trail.textMuted },
+  principle: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  principleIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: Trail.limeSoft },
+  principleOverline: { ...mono(8, 700), letterSpacing: 0.8, color: Trail.lime },
+  principleTitle: { ...disp(19, 800), color: Trail.text, marginTop: 4 },
+  principleBody: { ...ui(10, 500), lineHeight: 15, color: Trail.textMuted, marginTop: 4 },
+  errorPanel: { backgroundColor: Trail.orangeSoft, borderColor: Trail.orangeLine },
+  errorText: { ...ui(11, 600), lineHeight: 17, color: Trail.orange },
+  group: { gap: 10 },
+  consentList: { gap: 8 },
+  consentRow: { flexDirection: "row", alignItems: "center", gap: 11, padding: 12, borderRadius: 15, backgroundColor: Trail.panel, borderWidth: 1, borderColor: Trail.line },
+  consentIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: Trail.panelSoft },
+  consentName: { ...ui(12, 700), color: Trail.text },
+  consentDetail: { ...ui(9, 500), lineHeight: 14, color: Trail.textMuted, marginTop: 2 },
+  loading: { ...ui(11, 500), color: Trail.textMuted, textAlign: "center", paddingVertical: 14 },
+  menuList: { gap: 8 },
+  menuRow: { flexDirection: "row", alignItems: "center", gap: 11, padding: 13, borderRadius: 15, backgroundColor: Trail.panel, borderWidth: 1, borderColor: Trail.line },
+  menuIcon: { width: 39, height: 39, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: Trail.limeSoft },
+  menuTitle: { ...ui(13, 700), color: Trail.text },
+  menuDetail: { ...ui(9, 500), lineHeight: 14, color: Trail.textMuted, marginTop: 2 },
+  dataPanel: { backgroundColor: Trail.skySoft, borderColor: "rgba(120,199,214,0.24)" },
+  dataTitle: { ...disp(18, 800), color: Trail.text },
+  dataBody: { ...ui(10, 500), lineHeight: 16, color: Trail.textMuted, marginTop: 5 },
 });

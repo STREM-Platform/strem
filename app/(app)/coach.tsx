@@ -1,120 +1,197 @@
-/**
- * Coach — "Forge": the AI brain, a primary surface.
- *
- * One agent, three ways in: Chat (B1/B6 omniscient, cited), Plan (B4 adaptive
- * missions + import-a-plan-from-image → adapt), Insights (B8 cross-domain
- * correlations). All read the one assembled context (A6). The weekly-recap and
- * mission endpoints stay live behind Home's teaser and the recaps screen; here
- * Forge is the standing agent, not a one-shot recap reader.
- *
- * Reachable as a bottom-nav tab and as a pushed route from Today's teasers.
- */
-
-import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ChatView, InsightsView, PlanView } from "@/components/agent/forge-coach";
 import { BottomNav } from "@/components/bottom-nav";
+import { PrototypeLabel, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
-import { IconTile } from "@/components/ui/primitives";
-import { T, disp, mono, ui } from "@/constants/theme";
-import { FLAGS } from "@/lib/flags";
+import { Trail, disp, mono, ui } from "@/constants/theme";
+import { agentApi, type CoachReply } from "@/lib/api/agent";
+import { TRAIL_MISSION_PREVIEW } from "@/lib/trail/mission-preview";
 
-type CoachMode = "chat" | "plan" | "insights";
-const TABS: { id: CoachMode; label: string }[] = [
-  { id: "chat", label: "Chat" },
-  { id: "plan", label: "Plan" },
-  { id: "insights", label: "Insights" },
+interface ChatMessage {
+  role: "athlete" | "ai";
+  text: string;
+  cites?: CoachReply["cites"];
+}
+
+const PROMPTS = [
+  "Why is downhill work the priority?",
+  "What must I prove on Saturday?",
+  "How should this change if I sleep badly?",
 ];
 
-export default function CoachScreen() {
-  const router = useRouter();
+export default function RaceTeamScreen() {
   const insets = useSafeAreaInsets();
-  const [mode, setMode] = useState<CoachMode>("chat");
-  const navClearance = Math.max(insets.bottom, 12) + 74;
+  const mission = TRAIL_MISSION_PREVIEW;
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  const send = async (question: string) => {
+    const text = question.trim();
+    if (!text || sending) return;
+    setMessages((current) => [...current, { role: "athlete", text }]);
+    setInput("");
+    setSending(true);
+    try {
+      const reply = await agentApi.chat(text);
+      setMessages((current) => [...current, { role: "ai", text: reply.text, cites: reply.cites }]);
+    } catch {
+      setMessages((current) => [
+        ...current,
+        {
+          role: "ai",
+          text: "I could not reach the live AI service. The Race Mission prototype remains available, but I will not invent an answer without athlete context.",
+        },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
-    <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/home"))} style={styles.back}>
-            <Icon name="chevronL" size={20} color={T.mut} />
-            <Text style={styles.backText}>Home</Text>
-          </Pressable>
-          <View style={styles.identity}>
-            <IconTile name="bot" size={34} iconSize={18} />
+    <KeyboardAvoidingView style={trailStyles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView
+        contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PrototypeLabel />
+        <View style={styles.titleRow}>
+          <View style={styles.aiMark}>
+            <Icon name="bot" size={23} color={Trail.lime} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={trailStyles.pageOverline}>ONE CONTEXT · ONE ACCOUNTABLE SYSTEM</Text>
+            <Text style={trailStyles.pageTitle}>AI Race Team</Text>
+          </View>
+        </View>
+        <Text style={trailStyles.pageSub}>It interprets your evidence for this race. Every decision must separate facts, assumptions and missing data.</Text>
+
+        <TrailPanel accent>
+          <View style={styles.decisionTop}>
             <View>
-              <Text style={styles.identityName}>FORGE</Text>
-              <Text style={styles.identityRole}>AI COACH</Text>
+              <Text style={styles.decisionOverline}>TODAY’S RECOMMENDATION</Text>
+              <Text style={styles.decisionTitle}>Protect Saturday. Build descending durability today.</Text>
+            </View>
+            <View style={styles.confidence}>
+              <Text style={styles.confidenceValue}>68</Text>
+              <Text style={styles.confidenceLabel}>CONFIDENCE</Text>
             </View>
           </View>
-          <View style={styles.headerActions}>
-            <Pressable onPress={() => router.push("/(app)/recaps")} style={styles.actionBtn} accessibilityLabel="Weekly recaps">
-              <Icon name="star" size={18} color={T.sub} />
-            </Pressable>
-            <Pressable onPress={() => router.push("/(app)/privacy")} style={styles.actionBtn} accessibilityLabel="What your coach sees">
-              <Icon name="lock" size={18} color={T.sub} />
-            </Pressable>
+          <Text style={styles.decisionBody}>{mission.today.reason}</Text>
+          <View style={styles.rule} />
+          <Text style={styles.evidenceOverline}>EVIDENCE USED IN THIS PROTOTYPE</Text>
+          {mission.decisionEvidence.map((evidence) => (
+            <View key={evidence} style={styles.evidenceRow}>
+              <View style={styles.evidenceDot} />
+              <Text style={styles.evidenceText}>{evidence}</Text>
+            </View>
+          ))}
+          <View style={styles.assumptionBox}>
+            <Icon name="flag" size={14} color={Trail.orange} />
+            <Text style={styles.assumptionText}>Assumption: the displayed course and athlete history are sample data until Race Mission contracts land.</Text>
           </View>
+        </TrailPanel>
+
+        <TrailSectionHead title="ASK THE RACE TEAM" label="LIVE ENDPOINT" icon="send" />
+        <View style={styles.promptRow}>
+          {PROMPTS.map((prompt) => (
+            <Pressable key={prompt} onPress={() => void send(prompt)} style={styles.prompt}>
+              <Text style={styles.promptText}>{prompt}</Text>
+            </Pressable>
+          ))}
         </View>
 
-        <View style={styles.statusRow}>
-          <View style={styles.statusDot} />
-          <Text style={styles.statusText}>Reading Whoop · Strava · Health · 47 days of logs</Text>
-        </View>
-
-        <View style={styles.segment}>
-          {TABS.map((t) => {
-            const on = mode === t.id;
-            return (
-              <Text key={t.id} onPress={() => setMode(t.id)} style={[styles.seg, on ? styles.segOn : styles.segOff]}>
-                {t.label}
-              </Text>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={[styles.body, { paddingBottom: navClearance }]}>
-        {!FLAGS.forgeAgentMock ? (
-          <View style={styles.off}>
-            <Text style={styles.offText}>Forge is warming up.</Text>
+        {messages.length > 0 ? (
+          <View style={styles.thread}>
+            {messages.map((message, index) => (
+              <View key={`${message.role}-${index}`} style={[styles.message, message.role === "athlete" ? styles.athleteMessage : styles.aiMessage]}>
+                <Text style={styles.messageRole}>{message.role === "athlete" ? "YOU" : "STREM AI"}</Text>
+                <Text style={styles.messageText}>{message.text}</Text>
+                {message.cites?.length ? (
+                  <View style={styles.cites}>
+                    {message.cites.map((cite) => (
+                      <View key={cite.text} style={styles.cite}>
+                        <Icon name="bolt" size={11} color={Trail.lime} />
+                        <Text style={styles.citeText}>{cite.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ))}
+            {sending ? (
+              <View style={[styles.message, styles.aiMessage, styles.thinking]}>
+                <ActivityIndicator size="small" color={Trail.lime} />
+                <Text style={styles.thinkingText}>Grounding the answer in your available data…</Text>
+              </View>
+            ) : null}
           </View>
-        ) : mode === "chat" ? (
-          <ChatView />
-        ) : mode === "plan" ? (
-          <PlanView />
-        ) : (
-          <InsightsView />
-        )}
-      </View>
+        ) : null}
 
+        <View style={styles.composer}>
+          <TextInput
+            value={input}
+            onChangeText={setInput}
+            placeholder="Ask about the plan, race or evidence…"
+            placeholderTextColor={Trail.textDim}
+            style={styles.input}
+            multiline
+            editable={!sending}
+          />
+          <Pressable disabled={!input.trim() || sending} onPress={() => void send(input)} style={[styles.send, (!input.trim() || sending) && styles.sendDisabled]}>
+            <Icon name="send" size={18} color={Trail.limeInk} />
+          </Pressable>
+        </View>
+
+        <TrailPanel style={styles.boundaryPanel}>
+          <Icon name="shield" size={18} color={Trail.sky} />
+          <Text style={styles.boundaryText}>STREM supports preparation decisions. It does not diagnose injury, illness or nutritional conditions, and it must name uncertainty instead of pretending confidence.</Text>
+        </TrailPanel>
+      </ScrollView>
       <BottomNav />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.bg },
-  header: { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: T.line, backgroundColor: "#0d1015" },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  back: { flexDirection: "row", alignItems: "center", gap: 6, width: 64 },
-  backText: { ...ui(13, 600), color: T.mut },
-  identity: { flexDirection: "row", alignItems: "center", gap: 8 },
-  identityName: { ...disp(16, 800), color: T.text, letterSpacing: 0.6, lineHeight: 16 },
-  identityRole: { ...mono(8, 700), letterSpacing: 0.8, color: T.green },
-  headerActions: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4, minWidth: 64 },
-  actionBtn: { padding: 5 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center", marginVertical: 12 },
-  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green, boxShadow: "0px 0px 8px #34E2A0" },
-  statusText: { ...mono(9, 600), letterSpacing: 0.4, color: T.sub },
-  segment: { flexDirection: "row", gap: 5, padding: 4, borderRadius: 13, backgroundColor: T.surf, borderWidth: 1, borderColor: T.line },
-  seg: { flex: 1, textAlign: "center", paddingVertical: 9, borderRadius: 10, overflow: "hidden", ...ui(13, 700) },
-  segOn: { backgroundColor: T.green, color: "#06130D" },
-  segOff: { backgroundColor: "transparent", color: T.mut },
-  body: { flex: 1 },
-  off: { flex: 1, alignItems: "center", justifyContent: "center" },
-  offText: { ...ui(14, 600), color: T.mut },
+  flex: { flex: 1 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  aiMark: { width: 48, height: 48, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: Trail.limeSoft, borderWidth: 1, borderColor: Trail.limeLine },
+  decisionTop: { flexDirection: "row", alignItems: "flex-start", gap: 13 },
+  decisionOverline: { ...mono(8, 700), color: Trail.lime, letterSpacing: 0.9 },
+  decisionTitle: { ...disp(22, 800), color: Trail.text, lineHeight: 25, marginTop: 5, maxWidth: 245 },
+  confidence: { alignItems: "center", paddingVertical: 8, paddingHorizontal: 9, borderRadius: 12, backgroundColor: Trail.limeSoft },
+  confidenceValue: { ...disp(22, 800), color: Trail.lime },
+  confidenceLabel: { ...mono(6, 700), color: Trail.textDim, letterSpacing: 0.5 },
+  decisionBody: { ...ui(12, 500), lineHeight: 18, color: Trail.textMuted, marginTop: 12 },
+  rule: { height: 1, backgroundColor: Trail.line, marginVertical: 14 },
+  evidenceOverline: { ...mono(8, 700), color: Trail.textDim, letterSpacing: 0.8, marginBottom: 6 },
+  evidenceRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 7 },
+  evidenceDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: Trail.lime, marginTop: 6 },
+  evidenceText: { flex: 1, ...ui(11, 500), lineHeight: 17, color: Trail.textMuted },
+  assumptionBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 11, backgroundColor: Trail.orangeSoft, marginTop: 13 },
+  assumptionText: { flex: 1, ...ui(9, 600), lineHeight: 14, color: Trail.orange },
+  promptRow: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  prompt: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 11, backgroundColor: Trail.panel, borderWidth: 1, borderColor: Trail.lineStrong },
+  promptText: { ...ui(10, 600), color: Trail.textMuted },
+  thread: { gap: 10 },
+  message: { padding: 13, borderRadius: 16, maxWidth: "92%", borderWidth: 1 },
+  athleteMessage: { alignSelf: "flex-end", backgroundColor: Trail.limeSoft, borderColor: Trail.limeLine },
+  aiMessage: { alignSelf: "flex-start", backgroundColor: Trail.panel, borderColor: Trail.line },
+  messageRole: { ...mono(7, 700), color: Trail.lime, letterSpacing: 0.7, marginBottom: 5 },
+  messageText: { ...ui(12, 500), lineHeight: 18, color: Trail.text },
+  cites: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  cite: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 6, borderRadius: 7, backgroundColor: Trail.limeSoft },
+  citeText: { ...mono(7, 700), color: Trail.textMuted },
+  thinking: { flexDirection: "row", alignItems: "center", gap: 9 },
+  thinkingText: { ...ui(10, 600), color: Trail.textMuted },
+  composer: { flexDirection: "row", alignItems: "flex-end", gap: 9, padding: 8, borderRadius: 17, backgroundColor: Trail.panel, borderWidth: 1, borderColor: Trail.lineStrong },
+  input: { flex: 1, minHeight: 42, maxHeight: 110, ...ui(12, 500), color: Trail.text, paddingHorizontal: 8, paddingVertical: 10 },
+  send: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: Trail.lime },
+  sendDisabled: { opacity: 0.35 },
+  boundaryPanel: { flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: Trail.skySoft, borderColor: "rgba(120,199,214,0.25)" },
+  boundaryText: { flex: 1, ...ui(10, 500), lineHeight: 16, color: Trail.textMuted },
 });

@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { AuthShell } from "@/components/auth-shell";
 import { FormError, PrimaryButton, TextField } from "@/components/form";
-import { Colors, Spacing } from "@/constants/theme";
+import { Trail } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/session/auth-context";
 import { validateEmail, validatePassword } from "@/lib/validation";
@@ -48,7 +48,7 @@ export default function LoginScreen() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Return to the identity, missions, and proof you are building."
+      subtitle="Return to your race mission, adaptive plan, and trail preparation."
       footer={
         <View style={styles.footer}>
           <Text style={styles.footerText}>New to STREM?</Text>
@@ -90,15 +90,15 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: Spacing.xs,
+    gap: 6,
   },
   footerText: {
-    color: Colors.textMuted,
+    color: Trail.textMuted,
     fontSize: 14,
     lineHeight: 18,
   },
   footerLink: {
-    color: Colors.accentGreenBright,
+    color: Trail.lime,
     fontSize: 14,
     lineHeight: 18,
     fontWeight: "800",

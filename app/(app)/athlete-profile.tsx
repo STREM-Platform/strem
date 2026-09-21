@@ -1,38 +1,14 @@
-/**
- * Athlete Baseline form (issue #61) — the progressive, optional "Athlete Profile"
- * (next-steps-plan.md §3.1), separate from the <5min identity onboarding. Body
- * metrics, training history, PRs, injuries, equipment, and dietary constraints —
- * coaching inputs only, never a "look" metric (A8). On save it confirms exactly
- * what "Forge now knows" and feeds the A6 context graph.
- */
-
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type KeyboardTypeOptions,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OptionSelect, type Option } from "@/components/select";
+import { TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
-import { Btn, Panel, SectionHead } from "@/components/ui/primitives";
-import { T, disp, mono, ui } from "@/constants/theme";
+import { Trail, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
-import type {
-  AgeBand,
-  AthleteProfile,
-  AthleteProfileUpdate,
-  BiologicalSex,
-  EquipmentAccess,
-} from "@/lib/api/types";
+import type { AgeBand, AthleteProfile, AthleteProfileUpdate, EquipmentAccess } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 
 const AGE_BANDS: Option<AgeBand>[] = [
@@ -44,340 +20,183 @@ const AGE_BANDS: Option<AgeBand>[] = [
   { value: "60_plus", label: "60+" },
 ];
 
-const SEXES: Option<BiologicalSex>[] = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-  { value: "prefer_not_to_say", label: "Prefer not to say" },
+const STRENGTH_ACCESS: Option<EquipmentAccess>[] = [
+  { value: "full_gym", label: "Full gym", hint: "Barbell, machines and free weights" },
+  { value: "home_gym", label: "Home gym", hint: "A useful strength setup at home" },
+  { value: "minimal", label: "Minimal equipment", hint: "Bands, kettlebell or a few weights" },
+  { value: "bodyweight_only", label: "Bodyweight only", hint: "No strength equipment required" },
 ];
 
-const EQUIPMENT: Option<EquipmentAccess>[] = [
-  { value: "full_gym", label: "Full gym" },
-  { value: "home_gym", label: "Home gym" },
-  { value: "minimal", label: "Minimal" },
-  { value: "bodyweight_only", label: "Bodyweight only" },
-];
+interface InjuryRow { area: string; note: string }
 
-interface PrRow {
-  exercise: string;
-  weight: string;
-  reps: string;
+export default function TrailAthleteProfileScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { data, loading, error } = useAsync<AthleteProfile>(api.getAthleteProfile);
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [ageBand, setAgeBand] = useState<AgeBand | undefined>();
+  const [years, setYears] = useState("");
+  const [equipment, setEquipment] = useState<EquipmentAccess | undefined>();
+  const [injuries, setInjuries] = useState<InjuryRow[]>([]);
+  const [fuelConstraints, setFuelConstraints] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- seed controlled fields from the live profile once loaded. */
+  useEffect(() => {
+    if (!data) return;
+    setHeightCm(data.height_cm == null ? "" : String(data.height_cm));
+    setWeightKg(data.weight_kg == null ? "" : String(data.weight_kg));
+    setAgeBand(data.age_band ?? undefined);
+    setYears(data.years_training == null ? "" : String(data.years_training));
+    setEquipment(data.equipment_access ?? undefined);
+    setInjuries(data.injuries.map((item) => ({ area: item.area, note: item.note ?? "" })));
+    setFuelConstraints(data.dietary_constraints.join(", "));
+  }, [data]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const save = async () => {
+    const payload: AthleteProfileUpdate = {
+      height_cm: numberOrNull(heightCm),
+      weight_kg: numberOrNull(weightKg),
+      age_band: ageBand ?? null,
+      biological_sex: data?.biological_sex ?? null,
+      years_training: integerOrNull(years),
+      equipment_access: equipment ?? null,
+      personal_records: data?.personal_records ?? [],
+      injuries: injuries.filter((item) => item.area.trim()).map((item) => ({ area: item.area.trim(), note: item.note.trim() || null })),
+      dietary_constraints: fuelConstraints.split(",").map((item) => item.trim()).filter(Boolean),
+    };
+    setBusy(true);
+    try {
+      await api.updateAthleteProfile(payload);
+      setSaved(true);
+    } catch {
+      Alert.alert("Profile not saved", "Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (saved) {
+    return (
+      <View style={[trailStyles.root, styles.savedRoot, { paddingTop: insets.top + 70 }]}>
+        <View style={styles.savedIcon}><Icon name="check" size={28} color={Trail.lime} /></View>
+        <Text style={styles.savedOverline}>ATHLETE CONTEXT UPDATED</Text>
+        <Text style={styles.savedTitle}>Your Race Team has a cleaner baseline.</Text>
+        <Text style={styles.savedBody}>These facts can shape load, recovery and fueling decisions. Race-specific terrain and event constraints will live in the Race Mission intake.</Text>
+        <Pressable style={styles.saveButton} onPress={() => router.back()}><Text style={styles.saveButtonText}>Back to Athlete</Text></Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={trailStyles.root}>
+      <ScrollView contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Pressable style={styles.back} onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/profile"))}>
+          <Icon name="chevronL" size={18} color={Trail.textMuted} />
+          <Text style={styles.backText}>Athlete</Text>
+        </Pressable>
+
+        <View>
+          <Text style={trailStyles.pageOverline}>TRAIL ATHLETE BASELINE</Text>
+          <Text style={trailStyles.pageTitle}>Context that changes decisions</Text>
+          <Text style={trailStyles.pageSub}>Keep only facts that help STREM adapt preparation safely. Nothing here is a score or appearance target.</Text>
+        </View>
+
+        {error ? <TrailPanel style={styles.errorPanel}><Text style={styles.errorText}>The live athlete profile could not be loaded. No sample values are being shown.</Text></TrailPanel> : null}
+        {loading && !data ? <ActivityIndicator color={Trail.lime} /> : null}
+
+        <TrailSectionHead title="EXPERIENCE" label="LOAD CONTEXT" icon="mountain" />
+        <TrailPanel style={styles.formPanel}>
+          <Field label="Years training consistently" value={years} onChangeText={setYears} placeholder="3" keyboardType="numeric" />
+          <Text style={styles.fieldLabel}>Age band</Text>
+          <OptionSelect options={AGE_BANDS} selected={ageBand} onSelect={setAgeBand} />
+        </TrailPanel>
+
+        <TrailSectionHead title="OPTIONAL PHYSIOLOGY" label="PRIVATE" icon="heart" />
+        <TrailPanel style={styles.formPanel}>
+          <Text style={styles.sectionNote}>Used only where body size materially affects load or fueling estimates.</Text>
+          <View style={styles.twoColumns}>
+            <Field label="Height" value={heightCm} onChangeText={setHeightCm} placeholder="178" keyboardType="numeric" suffix="cm" />
+            <Field label="Weight" value={weightKg} onChangeText={setWeightKg} placeholder="72" keyboardType="numeric" suffix="kg" />
+          </View>
+        </TrailPanel>
+
+        <TrailSectionHead title="STRENGTH ACCESS" label="SUPPORT WORK" icon="dumbbell" />
+        <OptionSelect options={STRENGTH_ACCESS} selected={equipment} onSelect={setEquipment} />
+
+        <TrailSectionHead title="LIMITATIONS" label="SAFETY INPUT" icon="shield" />
+        <View style={styles.stack}>
+          {injuries.map((injury, index) => (
+            <TrailPanel key={index} style={styles.formPanel}>
+              <View style={styles.repeaterHead}>
+                <Text style={styles.repeaterTitle}>LIMITATION {index + 1}</Text>
+                <Pressable onPress={() => setInjuries((items) => items.filter((_, itemIndex) => itemIndex !== index))}><Icon name="minus" size={17} color={Trail.textDim} /></Pressable>
+              </View>
+              <Field label="Area" value={injury.area} onChangeText={(value) => setInjuries((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, area: value } : item))} placeholder="Left Achilles" />
+              <Field label="What aggravates it?" value={injury.note} onChangeText={(value) => setInjuries((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, note: value } : item))} placeholder="Long descents, especially when fatigued" />
+            </TrailPanel>
+          ))}
+          <Pressable style={styles.addButton} onPress={() => setInjuries((items) => [...items, { area: "", note: "" }])}>
+            <Icon name="plus" size={16} color={Trail.lime} /><Text style={styles.addButtonText}>Add limitation</Text>
+          </Pressable>
+        </View>
+
+        <TrailSectionHead title="FUEL CONSTRAINTS" label="RACE REHEARSAL" icon="utensils" />
+        <TrailPanel style={styles.formPanel}>
+          <Field label="Allergies, intolerances or preferences" value={fuelConstraints} onChangeText={setFuelConstraints} placeholder="dairy-free, nut allergy" />
+          <Text style={styles.sectionNote}>Separate multiple items with commas. STREM uses these to avoid unsuitable rehearsal suggestions.</Text>
+        </TrailPanel>
+
+        <Pressable disabled={busy || !data} style={[styles.saveButton, (busy || !data) && styles.disabled]} onPress={() => void save()}>
+          <Text style={styles.saveButtonText}>{busy ? "Saving…" : "Save athlete baseline"}</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
 }
-interface InjuryRow {
-  area: string;
-  note: string;
-}
 
-const numOrNull = (s: string): number | null => {
-  const n = Number.parseFloat(s);
-  return Number.isFinite(n) ? n : null;
-};
-const intOrNull = (s: string): number | null => {
-  const n = Number.parseInt(s, 10);
-  return Number.isFinite(n) ? n : null;
-};
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType = "default",
-  suffix,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  keyboardType?: KeyboardTypeOptions;
-  suffix?: string;
-}) {
+function Field({ label, value, onChangeText, placeholder, keyboardType = "default", suffix }: { label: string; value: string; onChangeText: (value: string) => void; placeholder?: string; keyboardType?: KeyboardTypeOptions; suffix?: string }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldLabel}>{label.toUpperCase()}</Text>
       <View style={styles.inputRow}>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={T.sub}
-          keyboardType={keyboardType}
-          style={styles.input}
-        />
+        <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={Trail.textDim} keyboardType={keyboardType} style={styles.input} />
         {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
       </View>
     </View>
   );
 }
 
-export default function AthleteProfileScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { data, loading } = useAsync<AthleteProfile>(api.getAthleteProfile);
-
-  const [heightCm, setHeightCm] = useState("");
-  const [weightKg, setWeightKg] = useState("");
-  const [ageBand, setAgeBand] = useState<AgeBand | undefined>();
-  const [sex, setSex] = useState<BiologicalSex | undefined>();
-  const [years, setYears] = useState("");
-  const [equipment, setEquipment] = useState<EquipmentAccess | undefined>();
-  const [prs, setPrs] = useState<PrRow[]>([]);
-  const [injuries, setInjuries] = useState<InjuryRow[]>([]);
-  const [diet, setDiet] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState<AthleteProfile | null>(null);
-
-  // Seed the form from the loaded profile once.
-  /* eslint-disable react-hooks/set-state-in-effect -- one-time seed of the form
-     fields from the async-loaded profile (same pattern as lib/use-async.ts). */
-  useEffect(() => {
-    if (!data) return;
-    setHeightCm(data.height_cm != null ? String(data.height_cm) : "");
-    setWeightKg(data.weight_kg != null ? String(data.weight_kg) : "");
-    setAgeBand(data.age_band ?? undefined);
-    setSex(data.biological_sex ?? undefined);
-    setYears(data.years_training != null ? String(data.years_training) : "");
-    setEquipment(data.equipment_access ?? undefined);
-    setPrs(
-      data.personal_records.map((p) => ({
-        exercise: p.exercise,
-        weight: p.weight_kg != null ? String(p.weight_kg) : "",
-        reps: p.reps != null ? String(p.reps) : "",
-      })),
-    );
-    setInjuries(data.injuries.map((i) => ({ area: i.area, note: i.note ?? "" })));
-    setDiet(data.dietary_constraints.join(", "));
-  }, [data]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  const updatePr = (i: number, patch: Partial<PrRow>) =>
-    setPrs((rows) => rows.map((row, j) => (j === i ? { ...row, ...patch } : row)));
-  const updateInjury = (i: number, patch: Partial<InjuryRow>) =>
-    setInjuries((rows) => rows.map((row, j) => (j === i ? { ...row, ...patch } : row)));
-
-  async function save() {
-    const payload: AthleteProfileUpdate = {
-      height_cm: numOrNull(heightCm),
-      weight_kg: numOrNull(weightKg),
-      age_band: ageBand ?? null,
-      biological_sex: sex ?? null,
-      years_training: intOrNull(years),
-      equipment_access: equipment ?? null,
-      personal_records: prs
-        .filter((p) => p.exercise.trim())
-        .map((p) => ({
-          exercise: p.exercise.trim(),
-          weight_kg: numOrNull(p.weight),
-          reps: intOrNull(p.reps),
-        })),
-      injuries: injuries
-        .filter((i) => i.area.trim())
-        .map((i) => ({ area: i.area.trim(), note: i.note.trim() || null })),
-      dietary_constraints: diet
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    };
-    setBusy(true);
-    try {
-      const result = await api.updateAthleteProfile(payload);
-      setSaved(result);
-    } catch {
-      Alert.alert("Couldn’t save", "Check the values and your connection, then try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (saved) {
-    return (
-      <SavedConfirmation profile={saved} insets={insets.top} onDone={() => router.back()} />
-    );
-  }
-
-  return (
-    <View style={styles.root}>
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Pressable
-          onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/home"))}
-          style={styles.back}
-          accessibilityRole="button"
-        >
-          <Icon name="chevronL" size={20} color={T.mut} />
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
-
-        <View style={styles.headRow}>
-          <Icon name="compass" size={16} color={T.green} />
-          <Text style={styles.eyebrow}>ATHLETE BASELINE</Text>
-        </View>
-        <Text style={styles.title}>HELP FORGE COACH THE REAL YOU</Text>
-        <Text style={styles.intro}>
-          Optional, and you can change it anytime. These are coaching inputs — not a scoreboard.
-          The more Forge knows, the better it scopes your week.
-        </Text>
-
-        {loading && !data ? (
-          <ActivityIndicator color={T.green} style={styles.loader} />
-        ) : null}
-
-        <SectionHead icon="heart" title="BODY" sub="For load math & recovery norms" />
-        <View style={styles.section}>
-          <View style={styles.row}>
-            <Field label="Height" value={heightCm} onChangeText={setHeightCm} placeholder="180" keyboardType="numeric" suffix="cm" />
-            <Field label="Weight" value={weightKg} onChangeText={setWeightKg} placeholder="80" keyboardType="numeric" suffix="kg" />
-          </View>
-          <Text style={styles.fieldLabel}>Age band</Text>
-          <OptionSelect options={AGE_BANDS} selected={ageBand} onSelect={setAgeBand} />
-          <Text style={styles.fieldLabel}>Sex (for HR/HRV norms & load math)</Text>
-          <OptionSelect options={SEXES} selected={sex} onSelect={setSex} />
-        </View>
-
-        <SectionHead icon="dumbbell" title="TRAINING" sub="Where you're starting from" />
-        <View style={styles.section}>
-          <Field label="Years training" value={years} onChangeText={setYears} placeholder="5" keyboardType="numeric" />
-          <Text style={styles.fieldLabel}>Equipment & access</Text>
-          <OptionSelect options={EQUIPMENT} selected={equipment} onSelect={setEquipment} />
-        </View>
-
-        <SectionHead icon="bolt" title="PERSONAL RECORDS" sub="Seeds real PRs so early lifts aren't false" />
-        <View style={styles.section}>
-          {prs.map((pr, i) => (
-            <Panel key={i} pad={12} style={styles.repeater}>
-              <View style={styles.repeaterHead}>
-                <Text style={styles.repeaterTitle}>PR {i + 1}</Text>
-                <Pressable onPress={() => setPrs((r) => r.filter((_, j) => j !== i))} accessibilityLabel="Remove PR">
-                  <Icon name="minus" size={16} color={T.sub} />
-                </Pressable>
-              </View>
-              <Field label="Lift / event" value={pr.exercise} onChangeText={(t) => updatePr(i, { exercise: t })} placeholder="Back Squat" />
-              <View style={styles.row}>
-                <Field label="Weight" value={pr.weight} onChangeText={(t) => updatePr(i, { weight: t })} placeholder="140" keyboardType="numeric" suffix="kg" />
-                <Field label="Reps" value={pr.reps} onChangeText={(t) => updatePr(i, { reps: t })} placeholder="1" keyboardType="numeric" />
-              </View>
-            </Panel>
-          ))}
-          <Btn kind="ghost" icon="plus" label="Add a PR" onPress={() => setPrs((r) => [...r, { exercise: "", weight: "", reps: "" }])} />
-        </View>
-
-        <SectionHead icon="shield" title="INJURIES & LIMITATIONS" sub="So Forge protects your body" />
-        <View style={styles.section}>
-          {injuries.map((inj, i) => (
-            <Panel key={i} pad={12} style={styles.repeater}>
-              <View style={styles.repeaterHead}>
-                <Text style={styles.repeaterTitle}>Injury {i + 1}</Text>
-                <Pressable onPress={() => setInjuries((r) => r.filter((_, j) => j !== i))} accessibilityLabel="Remove injury">
-                  <Icon name="minus" size={16} color={T.sub} />
-                </Pressable>
-              </View>
-              <Field label="Area" value={inj.area} onChangeText={(t) => updateInjury(i, { area: t })} placeholder="Left knee" />
-              <Field label="Note (optional)" value={inj.note} onChangeText={(t) => updateInjury(i, { note: t })} placeholder="Flares on lunges" />
-            </Panel>
-          ))}
-          <Btn kind="ghost" icon="plus" label="Add an injury" onPress={() => setInjuries((r) => [...r, { area: "", note: "" }])} />
-        </View>
-
-        <SectionHead icon="leaf" title="DIETARY CONSTRAINTS" sub="Comma-separated" />
-        <View style={styles.section}>
-          <Field label="Allergies / preferences" value={diet} onChangeText={setDiet} placeholder="dairy-free, no pork" />
-        </View>
-
-        <View style={styles.saveWrap}>
-          <Btn label="Save & teach Forge" kind="primary" full loading={busy} onPress={save} />
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-function SavedConfirmation({
-  profile,
-  insets,
-  onDone,
-}: {
-  profile: AthleteProfile;
-  insets: number;
-  onDone: () => void;
-}) {
-  const facts: string[] = [];
-  if (profile.height_cm != null || profile.weight_kg != null) facts.push("your body metrics");
-  if (profile.years_training != null) facts.push(`${profile.years_training}y training`);
-  if (profile.personal_records.length) facts.push(`${profile.personal_records.length} PR${profile.personal_records.length > 1 ? "s" : ""}`);
-  if (profile.injuries.length) facts.push(`${profile.injuries.length} injury note${profile.injuries.length > 1 ? "s" : ""}`);
-  if (profile.equipment_access) facts.push(profile.equipment_access.replace(/_/g, " "));
-  if (profile.dietary_constraints.length) facts.push(profile.dietary_constraints.join(", "));
-
-  return (
-    <View style={[styles.root, styles.confirmRoot, { paddingTop: insets + 80 }]}>
-      <View style={styles.confirmIcon}>
-        <Icon name="check" size={28} color={T.green} />
-      </View>
-      <Text style={styles.confirmTitle}>FORGE NOW KNOWS</Text>
-      {facts.length ? (
-        <Text style={styles.confirmFacts}>{facts.join(" · ")}</Text>
-      ) : (
-        <Text style={styles.confirmFacts}>Your baseline is saved.</Text>
-      )}
-      <Text style={styles.confirmSub}>
-        It’ll use this to scope your week, protect your body, and ground your PRs — and you can
-        update it anytime. See it under “What your coach sees”.
-      </Text>
-      <View style={styles.saveWrap}>
-        <Btn label="Done" kind="primary" full onPress={onDone} />
-      </View>
-    </View>
-  );
-}
+function numberOrNull(value: string): number | null { const parsed = Number.parseFloat(value); return Number.isFinite(parsed) ? parsed : null; }
+function integerOrNull(value: string): number | null { const parsed = Number.parseInt(value, 10); return Number.isFinite(parsed) ? parsed : null; }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.bg },
-  scroll: { paddingHorizontal: 18 },
-  back: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
-  backText: { ...ui(13, 600), color: T.mut },
-  headRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  eyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: T.green },
-  title: { ...disp(26, 800), color: "#fff", marginTop: 6, lineHeight: 28 },
-  intro: { ...ui(13, 500), color: T.mut, marginTop: 8, lineHeight: 19 },
-  loader: { marginTop: 20 },
-
-  section: { gap: 12, marginBottom: 8 },
-  row: { flexDirection: "row", gap: 12 },
+  back: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
+  backText: { ...ui(12, 600), color: Trail.textMuted },
+  errorPanel: { backgroundColor: Trail.orangeSoft, borderColor: Trail.orangeLine },
+  errorText: { ...ui(11, 600), lineHeight: 17, color: Trail.orange },
+  formPanel: { gap: 13 },
+  stack: { gap: 10 },
+  twoColumns: { flexDirection: "row", gap: 10 },
   field: { flex: 1, gap: 6 },
-  fieldLabel: { ...mono(9, 700), letterSpacing: 1, color: T.sub },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: T.surf,
-    borderWidth: 1,
-    borderColor: T.line,
-    borderRadius: 12,
-    paddingHorizontal: 13,
-  },
-  input: { flex: 1, ...ui(15, 600), color: T.text, paddingVertical: 12 },
-  suffix: { ...mono(11, 700), color: T.sub, marginLeft: 6 },
-
-  repeater: { gap: 10 },
+  fieldLabel: { ...mono(8, 700), letterSpacing: 0.8, color: Trail.textDim },
+  inputRow: { minHeight: 48, flexDirection: "row", alignItems: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: Trail.panelSoft, borderWidth: 1, borderColor: Trail.line },
+  input: { flex: 1, ...ui(14, 600), color: Trail.text, paddingVertical: 11 },
+  suffix: { ...mono(9, 700), color: Trail.textDim },
+  sectionNote: { ...ui(10, 500), lineHeight: 16, color: Trail.textMuted },
   repeaterHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  repeaterTitle: { ...mono(10, 700), letterSpacing: 1, color: T.mut },
-
-  saveWrap: { marginTop: 20 },
-
-  confirmRoot: { paddingHorizontal: 28, alignItems: "center" },
-  confirmIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: T.greenSoft,
-    borderWidth: 1,
-    borderColor: T.greenLine,
-  },
-  confirmTitle: { ...mono(11, 700), letterSpacing: 2, color: T.green, marginTop: 18 },
-  confirmFacts: { ...disp(22, 800), color: "#fff", textAlign: "center", marginTop: 10, lineHeight: 27 },
-  confirmSub: { ...ui(13.5, 500), color: T.mut, textAlign: "center", marginTop: 12, lineHeight: 20 },
+  repeaterTitle: { ...mono(8, 700), letterSpacing: 0.8, color: Trail.textDim },
+  addButton: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderRadius: 12, borderWidth: 1, borderColor: Trail.limeLine, backgroundColor: Trail.limeSoft },
+  addButtonText: { ...ui(12, 700), color: Trail.lime },
+  saveButton: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: Trail.lime },
+  saveButtonText: { ...ui(13, 800), color: Trail.limeInk },
+  disabled: { opacity: 0.5 },
+  savedRoot: { paddingHorizontal: 28, alignItems: "center" },
+  savedIcon: { width: 66, height: 66, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: Trail.limeSoft, borderWidth: 1, borderColor: Trail.limeLine },
+  savedOverline: { ...mono(9, 700), letterSpacing: 1.1, color: Trail.lime, marginTop: 18 },
+  savedTitle: { ...disp(27, 800), lineHeight: 30, color: Trail.text, textAlign: "center", marginTop: 8 },
+  savedBody: { ...ui(12, 500), lineHeight: 19, color: Trail.textMuted, textAlign: "center", marginTop: 10, marginBottom: 24 },
 });

@@ -3,8 +3,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-na
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { Surface } from "@/components/ui/surface";
-import { Colors, Spacing, Typography } from "@/constants/theme";
+import { Trail, disp, ui } from "@/constants/theme";
 
 interface AuthShellProps {
   title: string;
@@ -25,13 +24,13 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
             <BrandLogo style={styles.logo} />
           </View>
 
-          <Surface variant="raised" style={styles.panel}>
+          <View style={styles.panel}>
             <View style={styles.copy}>
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
             {children}
-          </Surface>
+          </View>
 
           <View style={styles.footer}>{footer}</View>
         </View>
@@ -43,7 +42,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Trail.bg,
   },
   container: {
     flex: 1,
@@ -54,7 +53,7 @@ const styles = StyleSheet.create({
     width: "86%",
     maxWidth: 300,
     alignSelf: "center",
-    gap: Spacing.xl,
+    gap: 24,
   },
   brandBlock: {
     alignItems: "flex-start",
@@ -65,18 +64,26 @@ const styles = StyleSheet.create({
   },
   panel: {
     alignSelf: "stretch",
-    gap: Spacing.lg,
+    gap: 18,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: Trail.panelRaised,
+    borderWidth: 1,
+    borderColor: Trail.lineStrong,
+    boxShadow: "0px 14px 24px rgba(0, 0, 0, 0.26)",
   },
   copy: {
-    gap: Spacing.xs,
+    gap: 6,
   },
   title: {
-    ...Typography.title,
-    color: Colors.text,
+    ...disp(24, 800),
+    lineHeight: 29,
+    color: Trail.text,
   },
   subtitle: {
-    ...Typography.body,
-    color: Colors.textMuted,
+    ...ui(15, 500),
+    lineHeight: 22,
+    color: Trail.textMuted,
   },
   footer: {
     alignItems: "center",

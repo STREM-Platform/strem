@@ -20,8 +20,8 @@ export default function CommitmentScreen() {
   return (
     <OnboardingScaffold
       screen="commitment"
-      title="How many days a week?"
-      subtitle="Pick something you can actually hold. You can change it later."
+      title="What can real life support?"
+      subtitle="Choose the number of days you can protect most weeks. STREM adapts around constraints instead of punishing missed sessions."
       primaryLabel="Continue"
       onPrimary={() => void submit({ weekly_target_days: days })}
       submitting={submitting}

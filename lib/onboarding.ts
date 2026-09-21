@@ -1,7 +1,7 @@
 /** Onboarding screen order and resume helpers (mirrors onboarding-flow.md). */
 
 import type { IconName } from "@/components/ui/icon";
-import type { OnboardingScreen } from "@/lib/api/types";
+import type { LegacyOnboardingScreen, OnboardingScreen } from "@/lib/api/types";
 
 /** Per-step premium display metadata (emblem + overline), from screen-onboarding.jsx. */
 export const ONBOARDING_META: Record<OnboardingScreen, { emblem: IconName; overline: string }> = {
@@ -9,8 +9,6 @@ export const ONBOARDING_META: Record<OnboardingScreen, { emblem: IconName; overl
   identity: { emblem: "compass", overline: "Identity" },
   "training-background": { emblem: "dumbbell", overline: "Background" },
   commitment: { emblem: "flame", overline: "Commitment" },
-  nutrition: { emblem: "leaf", overline: "Nutrition" },
-  tribe: { emblem: "users", overline: "Tribe" },
   launch: { emblem: "star", overline: "Launch" },
 };
 
@@ -19,8 +17,6 @@ export const ONBOARDING_ORDER: OnboardingScreen[] = [
   "identity",
   "training-background",
   "commitment",
-  "nutrition",
-  "tribe",
   "launch",
 ];
 
@@ -29,8 +25,6 @@ const ROUTES: Record<OnboardingScreen, string> = {
   identity: "/(onboarding)/identity",
   "training-background": "/(onboarding)/training-background",
   commitment: "/(onboarding)/commitment",
-  nutrition: "/(onboarding)/nutrition",
-  tribe: "/(onboarding)/tribe",
   launch: "/(onboarding)/launch",
 };
 
@@ -39,11 +33,17 @@ export function routeForScreen(screen: OnboardingScreen): string {
 }
 
 /** The screen a user should resume at, given the last screen they completed. */
-export function resumeScreen(lastCompleted: OnboardingScreen | null | undefined): OnboardingScreen {
+export function resumeScreen(lastCompleted: OnboardingScreen | LegacyOnboardingScreen | null | undefined): OnboardingScreen {
   if (!lastCompleted) {
     return "welcome";
   }
+  if (lastCompleted === "nutrition" || lastCompleted === "tribe") {
+    return "launch";
+  }
   const index = ONBOARDING_ORDER.indexOf(lastCompleted);
+  if (index === -1) {
+    return "launch";
+  }
   const next = ONBOARDING_ORDER[index + 1];
   return next ?? "launch";
 }

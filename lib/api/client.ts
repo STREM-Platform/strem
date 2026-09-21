@@ -16,42 +16,14 @@ import type {
   AthleteProfileUpdate,
   AuthIdentity,
   AuthSession,
-  Biomarker,
-  BiomarkerCreate,
-  BiomarkerList,
-  Challenge,
-  ChallengePage,
-  CheckIn,
-  CheckInPage,
-  CreateChallengeRequest,
-  CreateCheckinRequest,
   LoginRequest,
   LegalAcceptanceInput,
   LegalStatus,
-  LogNutritionDayRequest,
-  LogTrainingSessionRequest,
-  MatchPage,
-  MedalListResponse,
-  Membership,
-  Mission,
-  MissionGenerationResult,
-  MissionList,
-  MissionPage,
-  NutritionDay,
-  NutritionDayPage,
   OnboardingStatus,
   OnboardingSubmission,
   RegisterRequest,
-  Supplement,
-  SupplementCreate,
   TokenPair,
-  TrainingSession,
-  TrainingSessionPage,
-  Tribe,
-  TribeMatch,
   UserProfile,
-  WeeklyRecap,
-  XPSummary,
 } from "./types";
 
 export class ApiError extends Error {
@@ -193,131 +165,5 @@ export const api = {
       body,
       auth: true,
     });
-  },
-  getXpSummary(): Promise<XPSummary> {
-    return request<XPSummary>("/users/me/xp", { auth: true });
-  },
-  getMedals(): Promise<MedalListResponse> {
-    return request<MedalListResponse>("/users/me/medals", { auth: true });
-  },
-  logTrainingSession(payload: LogTrainingSessionRequest): Promise<TrainingSession> {
-    return request<TrainingSession>("/training/sessions", {
-      method: "POST",
-      body: payload,
-      auth: true,
-    });
-  },
-  listTrainingSessions(limit = 50): Promise<TrainingSessionPage> {
-    return request<TrainingSessionPage>(`/training/sessions?limit=${limit}`, { auth: true });
-  },
-  logNutritionDay(payload: LogNutritionDayRequest): Promise<NutritionDay> {
-    return request<NutritionDay>("/nutrition/days", { method: "POST", body: payload, auth: true });
-  },
-  listNutritionDays(limit = 14): Promise<NutritionDayPage> {
-    return request<NutritionDayPage>(`/nutrition/days?limit=${limit}`, { auth: true });
-  },
-  listSupplements(): Promise<{ items: Supplement[] }> {
-    return request<{ items: Supplement[] }>("/nutrition/supplements", { auth: true });
-  },
-  createSupplement(body: SupplementCreate): Promise<Supplement> {
-    return request<Supplement>("/nutrition/supplements", { method: "POST", body, auth: true });
-  },
-  deleteSupplement(id: string): Promise<void> {
-    return request<void>(`/nutrition/supplements/${id}`, { method: "DELETE", auth: true });
-  },
-  getMyTribe(): Promise<Tribe> {
-    return request<Tribe>("/tribes/me", { auth: true });
-  },
-  joinTribe(inviteCode: string): Promise<Membership> {
-    return request<Membership>("/tribes/join", {
-      method: "POST",
-      body: { invite_code: inviteCode },
-      auth: true,
-    });
-  },
-  createCheckin(tribeId: string, payload: CreateCheckinRequest): Promise<CheckIn> {
-    return request<CheckIn>(`/tribes/${tribeId}/checkins`, {
-      method: "POST",
-      body: payload,
-      auth: true,
-    });
-  },
-  listCheckins(tribeId: string, limit = 20): Promise<CheckInPage> {
-    return request<CheckInPage>(`/tribes/${tribeId}/checkins?limit=${limit}`, { auth: true });
-  },
-  listTribeMembers(tribeId: string): Promise<{ items: Membership[] }> {
-    return request<{ items: Membership[] }>(`/tribes/${tribeId}/members`, { auth: true });
-  },
-  listChallenges(tribeId: string, limit = 20): Promise<ChallengePage> {
-    return request<ChallengePage>(`/tribes/${tribeId}/challenges?limit=${limit}`, { auth: true });
-  },
-  createChallenge(tribeId: string, payload: CreateChallengeRequest): Promise<Challenge> {
-    return request<Challenge>(`/tribes/${tribeId}/challenges`, {
-      method: "POST",
-      body: payload,
-      auth: true,
-    });
-  },
-  contributeToChallenge(tribeId: string, challengeId: string, amount: number): Promise<Challenge> {
-    return request<Challenge>(`/tribes/${tribeId}/challenges/${challengeId}/contributions`, {
-      method: "POST",
-      body: { amount },
-      auth: true,
-    });
-  },
-  completeChallenge(tribeId: string, challengeId: string): Promise<Challenge> {
-    return request<Challenge>(`/tribes/${tribeId}/challenges/${challengeId}/complete`, {
-      method: "POST",
-      auth: true,
-    });
-  },
-  listMatches(limit = 20): Promise<MatchPage> {
-    return request<MatchPage>(`/matches?limit=${limit}`, { auth: true });
-  },
-  listBiomarkers(): Promise<BiomarkerList> {
-    return request<BiomarkerList>("/users/me/biomarkers", { auth: true });
-  },
-  createBiomarker(payload: BiomarkerCreate): Promise<Biomarker> {
-    return request<Biomarker>("/users/me/biomarkers", { method: "POST", body: payload, auth: true });
-  },
-  deleteBiomarker(id: string): Promise<void> {
-    return request<void>(`/users/me/biomarkers/${id}`, { method: "DELETE", auth: true });
-  },
-  setAgentConsent(sourceId: string, enabled: boolean): Promise<unknown> {
-    return request<unknown>("/users/me/agent-consent", {
-      method: "PUT",
-      body: { source_id: sourceId, enabled },
-      auth: true,
-    });
-  },
-  acceptMatch(matchId: string): Promise<TribeMatch> {
-    return request<TribeMatch>(`/matches/${matchId}/accept`, { method: "POST", auth: true });
-  },
-  declineMatch(matchId: string): Promise<TribeMatch> {
-    return request<TribeMatch>(`/matches/${matchId}/decline`, { method: "POST", auth: true });
-  },
-  getActiveMissions(): Promise<MissionList> {
-    return request<MissionList>("/ai/missions/active", { auth: true });
-  },
-  listMissionHistory(limit = 10): Promise<MissionPage> {
-    return request<MissionPage>(`/ai/missions/history?limit=${limit}`, { auth: true });
-  },
-  generateMissions(): Promise<MissionGenerationResult> {
-    return request<MissionGenerationResult>("/ai/missions/generate", {
-      method: "POST",
-      auth: true,
-    });
-  },
-  completeMission(missionId: string): Promise<Mission> {
-    return request<Mission>(`/ai/missions/${missionId}/complete`, { method: "POST", auth: true });
-  },
-  skipMission(missionId: string): Promise<Mission> {
-    return request<Mission>(`/ai/missions/${missionId}/skip`, { method: "POST", auth: true });
-  },
-  getLatestRecap(): Promise<WeeklyRecap> {
-    return request<WeeklyRecap>("/ai/coach/recap", { auth: true });
-  },
-  generateRecap(): Promise<WeeklyRecap> {
-    return request<WeeklyRecap>("/ai/coach/recap/generate", { method: "POST", auth: true });
   },
 };

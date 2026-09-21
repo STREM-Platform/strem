@@ -1,11 +1,11 @@
 /**
  * Selectable option lists for onboarding and logging, in the premium kit
- * (design-spec OptionRow): green-soft active fill, ring radio, mono/UI type.
+ * Trail option row with a high-contrast selected state.
  */
 
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { T, ui } from "@/constants/theme";
+import { Trail, ui } from "@/constants/theme";
 
 export interface Option<T extends string> {
   value: T;
@@ -100,8 +100,8 @@ const styles = StyleSheet.create({
   option: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: T.surf,
-    borderColor: T.line,
+    backgroundColor: Trail.panel,
+    borderColor: Trail.line,
     borderWidth: 1,
     borderRadius: 14,
     paddingHorizontal: 15,
@@ -109,8 +109,8 @@ const styles = StyleSheet.create({
     gap: 13,
   },
   optionActive: {
-    borderColor: T.greenLine,
-    backgroundColor: T.greenSoft,
+    borderColor: Trail.limeLine,
+    backgroundColor: Trail.limeSoft,
   },
   optionPressed: {
     opacity: 0.82,
@@ -121,32 +121,32 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     ...ui(15, 700),
-    color: T.text,
+    color: Trail.text,
   },
   optionLabelActive: {
-    color: T.text,
+    color: Trail.text,
   },
   optionHint: {
     ...ui(12, 500),
-    color: T.sub,
+    color: Trail.textMuted,
   },
   radio: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: T.line2,
+    borderColor: Trail.lineStrong,
     alignItems: "center",
     justifyContent: "center",
   },
   radioActive: {
-    borderColor: T.green,
+    borderColor: Trail.lime,
   },
   radioDot: {
     width: 11,
     height: 11,
     borderRadius: 6,
-    backgroundColor: T.green,
+    backgroundColor: Trail.lime,
   },
   grid: {
     flexDirection: "row",
@@ -158,18 +158,18 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: T.line,
-    backgroundColor: T.surf,
+    borderColor: Trail.line,
+    backgroundColor: Trail.panel,
     paddingHorizontal: 14,
     paddingVertical: 16,
   },
   tileActive: {
-    borderColor: T.greenLine,
-    backgroundColor: T.greenSoft,
+    borderColor: Trail.limeLine,
+    backgroundColor: Trail.limeSoft,
   },
   tileLabel: {
     ...ui(14, 800),
-    color: T.mut,
+    color: Trail.textMuted,
     textAlign: "center",
   },
 });

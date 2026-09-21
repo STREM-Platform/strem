@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { AuthShell } from "@/components/auth-shell";
 import { FormError, PrimaryButton, TextField } from "@/components/form";
-import { Colors, Spacing } from "@/constants/theme";
+import { Trail } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/session/auth-context";
 import { validateEmail, validatePassword } from "@/lib/validation";
@@ -50,8 +50,8 @@ export default function RegisterScreen() {
 
   return (
     <AuthShell
-      title="Begin your transformation"
-      subtitle="Create the account, then define the identity your coach will build around."
+      title="Build your race mission"
+      subtitle="Create an account, choose your trail goal, and give the AI Race Team its starting context."
       footer={
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account?</Text>
@@ -102,15 +102,15 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: Spacing.xs,
+    gap: 6,
   },
   footerText: {
-    color: Colors.textMuted,
+    color: Trail.textMuted,
     fontSize: 14,
     lineHeight: 18,
   },
   footerLink: {
-    color: Colors.accentGreenBright,
+    color: Trail.lime,
     fontSize: 14,
     lineHeight: 18,
     fontWeight: "800",

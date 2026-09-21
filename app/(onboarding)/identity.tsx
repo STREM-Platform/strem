@@ -7,12 +7,9 @@ import type { TransformationGoal } from "@/lib/api/types";
 import { useOnboardingStep } from "@/lib/use-onboarding-step";
 
 const GOALS: Option<TransformationGoal>[] = [
-  { value: "build_strength", label: "Build strength" },
-  { value: "build_endurance", label: "Build endurance" },
-  { value: "hybrid_athlete", label: "Become a hybrid athlete" },
-  { value: "lean_and_strong", label: "Lean and strong" },
-  { value: "build_discipline", label: "Build discipline" },
-  { value: "general_health", label: "General health" },
+  { value: "build_endurance", label: "Finish my first serious trail race" },
+  { value: "hybrid_athlete", label: "Bring strength into trail performance" },
+  { value: "build_discipline", label: "Prepare consistently around real life" },
 ];
 
 /** Screen 2 — identity. The highest-value screen; both fields are required. */
@@ -26,8 +23,8 @@ export default function IdentityScreen() {
   return (
     <OnboardingScaffold
       screen="identity"
-      title="Who are you becoming?"
-      subtitle="One sentence. The coach references this everywhere."
+      title="What will this finish prove?"
+      subtitle="Give the Race Team the human reason behind the event, not only a target time."
       primaryLabel="Continue"
       onPrimary={() => {
         if (goal) {

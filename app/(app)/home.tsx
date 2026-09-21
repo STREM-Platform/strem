@@ -1,154 +1,149 @@
-/**
- * Today — the AI-first home, ported from `prototype/screens/screen-home-ai.jsx`.
- *
- * Leads with the agent, not a dashboard: a compact brand header (greeting +
- * identity + streak) over the Forge stack — proactive nudge + 10s check-in,
- * Today's Climb readiness + one coached action, "What your coach sees", and the
- * Ask-Forge teaser. Rank / XP / the body of work live on Profile now.
- *
- * Header data is live (name + identity from the user profile, streak from XP);
- * the Forge surfaces read the one assembled context.
- */
-
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CoachChatTeaser, ProactiveCheckin, TodaysClimb } from "@/components/agent/today";
-import { AthleteProfileCard } from "@/components/athlete/athlete-profile-card";
 import { BottomNav } from "@/components/bottom-nav";
 import { BrandLogo } from "@/components/brand-logo";
+import { MissionHero, PrototypeLabel, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
-import { T, disp, mono, ui } from "@/constants/theme";
-import { api } from "@/lib/api/client";
-import type { UserProfile, XPSummary } from "@/lib/api/types";
-import { FLAGS } from "@/lib/flags";
+import { Trail, disp, mono, ui } from "@/constants/theme";
+import { TRAIL_MISSION_PREVIEW, daysUntilRace } from "@/lib/trail/mission-preview";
 import { syncConnectedSources } from "@/lib/sync-sources";
-import { useAsync } from "@/lib/use-async";
 
-interface HomeData {
-  profile: UserProfile;
-  xp: XPSummary;
-}
-
-async function loadHome(): Promise<HomeData> {
-  const [profile, xp] = await Promise.all([api.getUserProfile(), api.getXpSummary()]);
-  return { profile, xp };
-}
-
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
-
-export default function HomeScreen() {
+export default function MissionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data, loading, error, reload } = useAsync(loadHome);
+  const mission = TRAIL_MISSION_PREVIEW;
 
-  // Pull fresh Strava/Whoop activity once per session so Forge isn't stale.
   useEffect(() => {
     void syncConnectedSources();
   }, []);
 
   return (
-    <View style={styles.root}>
+    <View style={trailStyles.root}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 12 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={Boolean(loading)} onRefresh={reload} tintColor={T.text} colors={[T.green]} />}
       >
-        {loading && !data ? (
-          <View style={[styles.center, { paddingTop: insets.top + 120 }]}>
-            <ActivityIndicator color={T.green} />
-            <Text style={styles.muted}>Loading your day…</Text>
-          </View>
-        ) : null}
-        {error && !data ? (
-          <View style={[styles.center, { paddingTop: insets.top + 120 }]}>
-            <Text style={styles.errorTitle}>This didn’t load</Text>
-            <Text style={styles.muted}>{error}</Text>
-          </View>
-        ) : null}
-
-        {data ? (
-          <>
-            <CompactHeader data={data} topInset={insets.top} onProfile={() => router.push("/(app)/profile")} />
-            <View style={styles.stack}>
-              <AthleteProfileCard />
-              {FLAGS.forgeAgentMock ? (
-                <>
-                  <ProactiveCheckin />
-                  <TodaysClimb onStart={() => router.push("/(app)/log")} />
-                  <CoachChatTeaser onPress={() => router.push("/(app)/coach")} />
-                </>
-              ) : null}
+        <View style={styles.brandRow}>
+          <View style={styles.brandLockup}>
+            <BrandLogo variant="symbol" style={styles.brandMark} />
+            <View>
+              <Text style={styles.brand}>STREM</Text>
+              <Text style={styles.brandSub}>TRAIL RACE TEAM</Text>
             </View>
-          </>
-        ) : null}
+          </View>
+          <Pressable style={styles.profileButton} onPress={() => router.push("/(app)/profile")}>
+            <Icon name="shield" size={19} color={Trail.textMuted} />
+          </Pressable>
+        </View>
+
+        <PrototypeLabel />
+        <MissionHero days={daysUntilRace()} />
+
+        <View style={styles.phaseBlock}>
+          <View style={trailStyles.between}>
+            <View>
+              <Text style={styles.phaseOverline}>WEEK {mission.phase.week} OF {mission.phase.totalWeeks}</Text>
+              <Text style={styles.phaseTitle}>{mission.phase.name}</Text>
+            </View>
+            <View style={styles.readinessPill}>
+              <Text style={styles.readinessScore}>{mission.readiness.score}</Text>
+              <Text style={styles.readinessLabel}>{mission.readiness.label.toUpperCase()}</Text>
+            </View>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${mission.phase.completion * 100}%` }]} />
+          </View>
+          <Text style={styles.readinessCopy}>{mission.readiness.explanation}</Text>
+        </View>
+
+        <TrailSectionHead title="TODAY'S DECISION" label="AI RACE TEAM" icon="bot" />
+        <TrailPanel accent>
+          <Text style={styles.actionOverline}>{mission.today.overline.toUpperCase()}</Text>
+          <Text style={styles.actionTitle}>{mission.today.title}</Text>
+          <Text style={styles.actionDetail}>{mission.today.detail}</Text>
+          <View style={styles.reasonBox}>
+            <Icon name="sparkles" size={16} color={Trail.lime} />
+            <Text style={styles.reasonText}>{mission.today.reason}</Text>
+          </View>
+          <View style={styles.actionRow}>
+            <Pressable style={styles.primaryButton} onPress={() => router.push("/(app)/plan")}>
+              <Text style={styles.primaryButtonText}>Open session</Text>
+              <Icon name="chevron" size={17} color={Trail.limeInk} />
+            </Pressable>
+            <Pressable style={styles.secondaryButton} onPress={() => router.push("/(app)/coach")}>
+              <Text style={styles.secondaryButtonText}>Ask why</Text>
+            </Pressable>
+          </View>
+        </TrailPanel>
+
+        <TrailSectionHead title="MISSION EVIDENCE" label="NOT VANITY METRICS" icon="target" />
+        <View style={styles.evidenceGrid}>
+          {mission.evidence.map((item) => {
+            const risk = item.status === "Needs proof";
+            return (
+              <TrailPanel key={item.label} style={styles.evidenceCard}>
+                <Text style={styles.evidenceLabel}>{item.label.toUpperCase()}</Text>
+                <Text style={styles.evidenceValue}>{item.value}</Text>
+                <Text style={[styles.evidenceStatus, risk && styles.evidenceRisk]}>{item.status}</Text>
+              </TrailPanel>
+            );
+          })}
+        </View>
+
+        <Pressable style={styles.raceLabLink} onPress={() => router.push("/(app)/race")}>
+          <View style={styles.raceLabIcon}>
+            <Icon name="mountain" size={21} color={Trail.orange} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.raceLabOverline}>UNRESOLVED RACE RISK</Text>
+            <Text style={styles.raceLabTitle}>Fueling has not been proven beyond 90 minutes.</Text>
+          </View>
+          <Icon name="chevron" size={18} color={Trail.textDim} />
+        </Pressable>
       </ScrollView>
       <BottomNav />
     </View>
   );
 }
 
-function CompactHeader({ data, topInset, onProfile }: { data: HomeData; topInset: number; onProfile: () => void }) {
-  const firstName = (data.profile.display_name || "Athlete").split(" ")[0];
-  const identity = data.profile.identity_statement;
-  const streak = data.xp.current_streak_days;
-  return (
-    <View style={[styles.header, { paddingTop: topInset + 16 }]}>
-      <View style={styles.shrink}>
-        <View style={styles.brand}>
-          <BrandLogo variant="symbol" style={styles.brandMark} />
-          <Text style={styles.brandText}>STREM</Text>
-        </View>
-        <Text style={styles.greeting}>
-          {greeting()}, {firstName}.
-        </Text>
-        {identity ? (
-          <Text style={styles.identity} numberOfLines={1}>
-            ◇ {identity}
-          </Text>
-        ) : null}
-      </View>
-      {streak > 0 ? (
-        <Pressable onPress={onProfile} style={styles.streakTile} accessibilityLabel={`${streak} day streak`}>
-          <Icon name="flame" size={18} color={T.green} fill />
-          <Text style={styles.streakText}>{streak}D</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.bg },
-  scroll: { paddingBottom: 120 },
-  center: { alignItems: "center", gap: 10, paddingHorizontal: 24 },
-  muted: { ...ui(13, 500), color: T.mut, textAlign: "center" },
-  errorTitle: { ...disp(20, 800), color: T.text },
-  shrink: { flexShrink: 1 },
-  stack: { gap: 16 },
-
-  header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 18, paddingBottom: 18 },
-  brand: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandMark: { width: 26, height: 26 },
-  brandText: { ...disp(14, 700), letterSpacing: 3.4, color: "#fff" },
-  greeting: { ...ui(13, 600), color: T.mut, marginTop: 10 },
-  identity: { ...mono(10, 600), color: T.green, letterSpacing: 0.6, marginTop: 4 },
-  streakTile: {
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 13,
-    backgroundColor: T.surf,
-    borderWidth: 1,
-    borderColor: T.line2,
-  },
-  streakText: { ...mono(8, 700), letterSpacing: 0.6, color: T.mut },
+  brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  brandLockup: { flexDirection: "row", alignItems: "center", gap: 9 },
+  brandMark: { width: 30, height: 30 },
+  brand: { ...disp(17, 800), letterSpacing: 2.4, color: Trail.text, lineHeight: 18 },
+  brandSub: { ...mono(7, 700), letterSpacing: 1.1, color: Trail.lime, marginTop: 2 },
+  profileButton: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Trail.line, backgroundColor: Trail.panel },
+  phaseBlock: { gap: 11, paddingHorizontal: 2 },
+  phaseOverline: { ...mono(9, 700), letterSpacing: 1, color: Trail.lime },
+  phaseTitle: { ...disp(22, 800), color: Trail.text, marginTop: 2 },
+  readinessPill: { flexDirection: "row", alignItems: "baseline", gap: 6, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 12, backgroundColor: Trail.limeSoft, borderWidth: 1, borderColor: Trail.limeLine },
+  readinessScore: { ...disp(22, 800), color: Trail.lime },
+  readinessLabel: { ...mono(8, 700), letterSpacing: 0.7, color: Trail.textMuted },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: Trail.panelSoft, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 3, backgroundColor: Trail.lime },
+  readinessCopy: { ...ui(12, 500), lineHeight: 18, color: Trail.textMuted },
+  actionOverline: { ...mono(9, 700), letterSpacing: 1.2, color: Trail.lime },
+  actionTitle: { ...disp(28, 800), color: Trail.text, marginTop: 4 },
+  actionDetail: { ...ui(13, 600), color: Trail.textMuted, marginTop: 2 },
+  reasonBox: { flexDirection: "row", alignItems: "flex-start", gap: 9, padding: 12, borderRadius: 13, backgroundColor: Trail.limeSoft, marginTop: 16 },
+  reasonText: { flex: 1, ...ui(12, 500), color: Trail.text, lineHeight: 18 },
+  actionRow: { flexDirection: "row", gap: 10, marginTop: 16 },
+  primaryButton: { flex: 1, minHeight: 47, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, backgroundColor: Trail.lime },
+  primaryButtonText: { ...ui(14, 700), color: Trail.limeInk },
+  secondaryButton: { minHeight: 47, paddingHorizontal: 18, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Trail.lineStrong },
+  secondaryButtonText: { ...ui(13, 700), color: Trail.text },
+  evidenceGrid: { flexDirection: "row", gap: 9 },
+  evidenceCard: { flex: 1, minWidth: 0, padding: 12 },
+  evidenceLabel: { ...mono(7, 700), color: Trail.textDim, letterSpacing: 0.6 },
+  evidenceValue: { ...disp(17, 800), color: Trail.text, marginTop: 8 },
+  evidenceStatus: { ...ui(10, 600), color: Trail.lime, marginTop: 5 },
+  evidenceRisk: { color: Trail.orange },
+  raceLabLink: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 18, backgroundColor: Trail.orangeSoft, borderWidth: 1, borderColor: Trail.orangeLine },
+  raceLabIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,138,76,0.08)" },
+  raceLabOverline: { ...mono(8, 700), letterSpacing: 0.8, color: Trail.orange },
+  raceLabTitle: { ...ui(12, 600), color: Trail.text, lineHeight: 17, marginTop: 2 },
+  flex: { flex: 1 },
 });

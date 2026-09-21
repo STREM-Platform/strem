@@ -3,7 +3,7 @@ import { StyleSheet, Text } from "react-native";
 
 import { OnboardingScaffold } from "@/components/onboarding-scaffold";
 import { MultiOptionSelect, OptionSelect, type Option } from "@/components/select";
-import { Colors, Typography } from "@/constants/theme";
+import { Trail, ui } from "@/constants/theme";
 import type { Modality, TrainingLevel } from "@/lib/api/types";
 import { useOnboardingStep } from "@/lib/use-onboarding-step";
 
@@ -14,10 +14,10 @@ const LEVELS: Option<TrainingLevel>[] = [
 ];
 
 const MODALITIES: Option<Modality>[] = [
-  { value: "strength", label: "Strength" },
   { value: "running", label: "Running" },
+  { value: "strength", label: "Trail strength" },
   { value: "mobility", label: "Mobility" },
-  { value: "nutrition", label: "Nutrition" },
+  { value: "nutrition", label: "Race fueling" },
 ];
 
 /** Screen 3 — starting point. `training_level` required; modalities optional. */
@@ -35,8 +35,8 @@ export default function TrainingBackgroundScreen() {
   return (
     <OnboardingScaffold
       screen="training-background"
-      title="Where are you starting from?"
-      subtitle="This calibrates your first week so it's never too much."
+      title="How much trail experience do you have?"
+      subtitle="This calibrates how cautiously STREM introduces elevation and technical terrain."
       primaryLabel="Continue"
       onPrimary={() => {
         if (level) {
@@ -49,7 +49,7 @@ export default function TrainingBackgroundScreen() {
     >
       <OptionSelect options={LEVELS} selected={level} onSelect={setLevel} />
       <Text style={styles.helper}>
-        Pillars you want to prioritize first (optional)
+        Areas that need the most support (optional)
       </Text>
       <MultiOptionSelect options={MODALITIES} selected={modalities} onToggle={toggle} />
     </OnboardingScaffold>
@@ -58,7 +58,7 @@ export default function TrainingBackgroundScreen() {
 
 const styles = StyleSheet.create({
   helper: {
-    ...Typography.label,
-    color: Colors.textMuted,
+    ...ui(13, 700),
+    color: Trail.textMuted,
   },
 });

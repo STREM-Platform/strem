@@ -10,9 +10,9 @@ export default function WelcomeScreen() {
   return (
     <OnboardingScaffold
       screen="welcome"
-      title="This is where you change."
-      subtitle="The next few questions set the identity your coach builds every week around. It takes about three minutes."
-      primaryLabel="Begin"
+      title="Choose the start line."
+      subtitle="STREM turns one trail race into a complete preparation mission: training, terrain, fueling, gear and race-day decisions."
+      primaryLabel="Build my mission"
       onPrimary={() => router.push(routeForScreen("identity"))}
     />
   );

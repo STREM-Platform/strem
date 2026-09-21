@@ -15,7 +15,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
+import { Trail, mono, ui } from "@/constants/theme";
 
 interface TextFieldProps extends TextInputProps {
   label: string;
@@ -43,7 +43,7 @@ export function TextField({
       </View>
       <TextInput
         accessibilityLabel={label}
-        placeholderTextColor={Colors.textSubtle}
+        placeholderTextColor={Trail.textDim}
         multiline={multiline}
         onFocus={(event) => {
           setFocused(true);
@@ -72,7 +72,6 @@ interface PrimaryButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: "primary" | "secondary" | "ghost" | "danger";
   style?: StyleProp<ViewStyle>;
 }
 
@@ -81,11 +80,9 @@ export function PrimaryButton({
   onPress,
   loading,
   disabled,
-  variant = "primary",
   style,
 }: PrimaryButtonProps) {
   const isDisabled = Boolean(disabled) || Boolean(loading);
-  const textVariant = variant === "primary" ? styles.buttonLabelPrimary : styles.buttonLabelSecondary;
 
   return (
     <Pressable
@@ -94,18 +91,15 @@ export function PrimaryButton({
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.button,
-        styles[variant],
         isDisabled ? styles.buttonDisabled : null,
         pressed && !isDisabled ? styles.buttonPressed : null,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "primary" ? Colors.background : Colors.text} />
+        <ActivityIndicator color={Trail.limeInk} />
       ) : (
-        <Text style={[styles.buttonLabel, textVariant, variant === "danger" ? styles.buttonLabelDanger : null]}>
-          {label}
-        </Text>
+        <Text style={styles.buttonLabel}>{label}</Text>
       )}
     </Pressable>
   );
@@ -121,35 +115,36 @@ export function FormError({ message }: { message: string }) {
 
 const styles = StyleSheet.create({
   fieldGroup: {
-    gap: Spacing.xs,
+    gap: 6,
   },
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: Spacing.sm,
+    gap: 10,
   },
   label: {
-    ...Typography.label,
-    color: Colors.textMuted,
+    ...ui(13, 700),
+    lineHeight: 18,
+    color: Trail.textMuted,
   },
   helper: {
-    ...Typography.caption,
-    color: Colors.textSubtle,
-    fontWeight: "600",
+    ...mono(10, 600),
+    lineHeight: 16,
+    color: Trail.textDim,
   },
   input: {
     alignSelf: "stretch",
     width: "100%",
     minHeight: 54,
-    backgroundColor: Colors.backgroundElevated,
-    borderColor: Colors.border,
+    backgroundColor: Trail.bgRaised,
+    borderColor: Trail.line,
     borderWidth: 1,
-    borderRadius: Radius.lg,
-    color: Colors.text,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    fontSize: 16,
+    borderRadius: 14,
+    color: Trail.text,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    ...ui(16, 500),
     lineHeight: 22,
   },
   inputMultiline: {
@@ -157,44 +152,30 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   inputFocused: {
-    borderColor: Colors.accentGreenBright,
-    backgroundColor: Colors.surface,
+    borderColor: Trail.lime,
+    backgroundColor: Trail.panel,
   },
   inputError: {
-    borderColor: Colors.accentRed,
-    backgroundColor: Colors.accentRedSoft,
+    borderColor: Trail.orange,
+    backgroundColor: Trail.orangeSoft,
   },
   errorText: {
-    color: Colors.accentRed,
+    color: Trail.orange,
     fontSize: 12,
     lineHeight: 16,
   },
   button: {
     alignSelf: "stretch",
     width: "100%",
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 54,
     borderWidth: 1,
-  },
-  primary: {
-    backgroundColor: Colors.surfaceInverse,
-    borderColor: Colors.surfaceInverse,
-  },
-  secondary: {
-    backgroundColor: Colors.surfaceRaised,
-    borderColor: Colors.borderStrong,
-  },
-  ghost: {
-    backgroundColor: "transparent",
-    borderColor: Colors.border,
-  },
-  danger: {
-    backgroundColor: Colors.accentRedSoft,
-    borderColor: Colors.accentRed,
+    backgroundColor: Trail.lime,
+    borderColor: Trail.lime,
   },
   buttonPressed: {
     opacity: 0.82,
@@ -204,30 +185,22 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   buttonLabel: {
+    color: Trail.limeInk,
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "800",
     letterSpacing: 0.4,
   },
-  buttonLabelPrimary: {
-    color: Colors.background,
-  },
-  buttonLabelSecondary: {
-    color: Colors.text,
-  },
-  buttonLabelDanger: {
-    color: Colors.accentRed,
-  },
   formErrorBox: {
-    borderRadius: Radius.md,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.accentRed,
-    backgroundColor: Colors.accentRedSoft,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    borderColor: Trail.orange,
+    backgroundColor: Trail.orangeSoft,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   formError: {
-    color: Colors.text,
+    color: Trail.text,
     fontSize: 13,
     lineHeight: 18,
     textAlign: "center",

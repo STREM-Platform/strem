@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/ui/icon";
 import { policyFor } from "@/constants/legal";
-import { T, disp, mono, ui } from "@/constants/theme";
+import { Trail, disp, mono, ui } from "@/constants/theme";
 import type { LegalDocumentType } from "@/lib/api/types";
 
 const VALID: LegalDocumentType[] = ["terms", "privacy", "medical"];
@@ -33,7 +33,7 @@ export default function LegalDocumentScreen() {
           style={styles.back}
           accessibilityRole="button"
         >
-          <Icon name="chevronL" size={20} color={T.mut} />
+          <Icon name="chevronL" size={20} color={Trail.textMuted} />
           <Text style={styles.backText}>Back</Text>
         </Pressable>
 
@@ -46,11 +46,11 @@ export default function LegalDocumentScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: T.bg },
+  root: { flex: 1, backgroundColor: Trail.bg },
   scroll: { paddingHorizontal: 20 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
-  backText: { ...ui(13, 600), color: T.mut },
-  eyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: T.green },
-  title: { ...disp(26, 800), color: "#fff", marginTop: 5, lineHeight: 28 },
-  body: { ...ui(13.5, 500), color: T.mut, marginTop: 16, lineHeight: 21 },
+  backText: { ...ui(13, 600), color: Trail.textMuted },
+  eyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: Trail.lime },
+  title: { ...disp(26, 800), color: Trail.text, marginTop: 5, lineHeight: 28 },
+  body: { ...ui(13.5, 500), color: Trail.textMuted, marginTop: 16, lineHeight: 21 },
 });

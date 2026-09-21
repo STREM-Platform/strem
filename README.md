@@ -1,111 +1,73 @@
 # strem-mobile
 
-The primary user-facing STREM app — React Native + Expo + TypeScript, targeting
-iOS and Android (with web support via Expo). See
-`strem-docs/architecture/adr/0003-use-react-native-expo.md`.
+React Native + Expo client for the STREM trail Race Mission.
 
-Authentication and session handling are implemented (`strem-mobile#3`): a typed
-API client, email + password login/register, secure token storage with
-transparent refresh, and an onboarding-aware route guard. The remaining MVP
-screens (onboarding, home/profile/log, tribe, missions) land in later issues.
+## Product
 
-## Run the full local MVP demo (web)
+STREM is the AI race team for self-coached trail runners preparing for a real event. The active mobile navigation is:
 
-The app is backend-driven (no mock data), so it needs the local service stack
-running. Bring up the backend first from the sibling `strem-infra` repo
-(`docker compose ... up -d --build` → `migrate-stack.py` → `smoke-health.py` →
-`seed-demo.py`; see `strem-infra/README.md` → **MVP demo on a laptop**). Then:
+- **Mission** — race countdown, preparation evidence, current risk, and today's decision;
+- **Plan** — purposeful trail weeks, sessions, rehearsals, and adaptation rules;
+- **Race Lab** — course, pacing, fuel, equipment, weather assumptions, logistics, and calendar handoff;
+- **AI** — one cited Race Team, not multiple personas;
+- **Athlete** — baseline, connected sources, consent, action receipts, and account controls.
 
-```bash
-npm install
-npm run web             # opens the Expo web build at http://localhost:8081
-```
+Product authority lives in `../strem-docs/product/trail-running-pivot.md`. Delivery order and validation gates live in `../strem-docs/product/trail-running-delivery-plan.md`.
 
-Sign in with the seeded account — `demo@strem.app` / `NeverSettle123!` — and you
-land on the dashboard (rank, XP, AI missions), with Log, Nutrition, Tribe, Coach
-recap, and Profile all populated from the real services. The app targets the
-gateway at `http://localhost:8000/v1` by default (`EXPO_PUBLIC_API_URL` overrides
-it). If port `8081` is busy Expo offers `8082+` — that works too (the gateway
-allows any localhost origin).
+## Data honesty
 
-## Run it (Expo Go)
+Mission, Plan, and Race Lab currently use one centralized fixture in `lib/trail/mission-preview.ts`. Every screen using it displays a prototype label. Delete the fixture when approved Race Mission contracts land.
 
-```bash
-npm install
-npx expo start          # scan the QR code with Expo Go (iOS/Android)
-```
+Authentication, legal acceptance, athlete profile, consent, AI chat, action history, and integration status use live APIs. If those APIs fail, the app shows unavailable or empty states and never substitutes fictional personal data.
 
-Other targets:
+## Active routes
 
-```bash
-npm run ios             # iOS simulator
-npm run android         # Android emulator
-npm run web             # web browser
-```
-
-## Checks (what CI runs)
-
-```bash
-npx tsc --noEmit        # type check (TypeScript strict mode)
-npm run lint            # eslint (eslint-config-expo)
-npm test -- --passWithNoTests   # jest (no tests yet)
-```
-
-CI runs these on every push and PR to `main` (`.github/workflows/ci.yml`,
-based on `strem-docs/templates/ci/react-native-ci.yml`). There is no test
-runner preset configured yet; `npm test` uses plain `jest --passWithNoTests`
-and stays green until real tests are added.
-
-## Screen structure
-
-Routing is file-based (`expo-router`). Route groups `(auth)` and `(app)`
-organize the two areas of the app without changing the URL path.
-
-```
+```text
 app/
-├── _layout.tsx          # root: AuthProvider + onboarding-aware route guard
-├── index.tsx            # / — loading / splash (shown while the session restores)
-├── (auth)/
-│   ├── login.tsx        # email + password login
-│   └── register.tsx     # account creation
-├── (onboarding)/        # the 7-screen identity flow (welcome … launch) + resume
-└── (app)/
-    ├── home.tsx         # rank/XP/identity + this week's AI missions + CTAs
-    ├── log.tsx          # training/running/mobility logging
-    ├── nutrition.tsx    # daily nutrition logging + recent days
-    ├── tribe.tsx        # tribe state (none/pending/member/admin), join, check-ins
-    ├── coach.tsx        # weekly AI coaching recap (narrative)
-    └── profile.tsx      # rank, XP progress, and medals
+  (auth)/             login and registration
+  (legal)/            policy acceptance and policy reader
+  (onboarding)/       focused trail onboarding
+  (app)/
+    home.tsx          Mission
+    plan.tsx          Plan
+    race.tsx          Race Lab
+    coach.tsx         AI Race Team
+    profile.tsx       Athlete
+    athlete-profile.tsx
+    integrations.tsx
+    privacy.tsx
+    agent.tsx         AI action receipts
 ```
 
-Supporting:
+Generic training, Fuel, Tribe, Crew, XP, medals, biomarker, recap, workout-execution, proof-upload, and mock-agent UI code has been removed. Git history is the recovery path; it is not a parallel product source.
 
-```
-lib/
-├── config.ts            # API base URL (EXPO_PUBLIC_API_URL → gateway)
-├── validation.ts        # email / password validation
-├── api/
-│   ├── types.ts         # auth + onboarding types (mirror the contracts)
-│   └── client.ts        # typed fetch client: bearer + 401 refresh-and-retry
-└── session/
-    ├── tokens.ts        # expo-secure-store token storage
-    └── auth-context.tsx # session state, sign in/up/out, route-guard signals
-components/form.tsx       # shared TextField / PrimaryButton / FormError
-components/ui/            # shared surfaces, headers, status pills, progress, empty states
-components/tribe/         # tribe screen-specific presentation components
-constants/theme.ts        # STREM design tokens (colors, spacing, type, radius, elevation)
-constants/Colors.ts       # compatibility re-export for older imports
+## Run
+
+Start the backend stack described in `../strem-infra/README.md`, then:
+
+```bash
+npm install
+npm run web
 ```
 
-## Auth & session (`strem-mobile#3`)
+The gateway defaults to `http://localhost:8000/v1`. Override it with `EXPO_PUBLIC_API_URL`.
 
-- **Typed client** (`lib/api/client.ts`) — configurable base URL, attaches
-  `Authorization: Bearer`, and on `401` refreshes via `POST /auth/refresh` and
-  retries once; on refresh failure it clears tokens and the session signs out.
-- **Secure storage** — access/refresh tokens live in `expo-secure-store`.
-- **Route guard** (`app/_layout.tsx`) — unauthenticated → `(auth)`; authenticated
-  but onboarding incomplete → `(onboarding)`; complete → `(app)`. Onboarding
-  status comes from `GET /users/onboarding/status`.
+Native development:
 
-Set `EXPO_PUBLIC_API_URL` to point at the API gateway (which routes to the auth
-and user services); it defaults to the local gateway port.
+```bash
+npm run ios
+npm run android
+```
+
+## Checks
+
+```bash
+npx tsc --noEmit
+npm run lint
+npm test -- --runInBand
+npx expo export --platform web
+```
+
+## Review gates
+
+Race Mission contracts, source ingestion, calendar access, privacy behavior, health-adjacent AI behavior, and production deployment require the reviews defined in the workspace `AGENTS.md`.

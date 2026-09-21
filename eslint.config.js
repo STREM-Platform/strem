@@ -6,9 +6,7 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    // design-spec/ is the web reference prototype (globals via window), not RN
-    // app source — exclude it from linting.
-    ignores: ["dist/*", ".expo/*", "node_modules/*", "design-spec/*"],
+    ignores: ["dist/*", ".expo/*", "node_modules/*"],
   },
   {
     // Unit tests lazily `require()` the module under test *after* registering

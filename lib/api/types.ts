@@ -1,8 +1,4 @@
-/**
- * Types mirroring the STREM auth contract
- * (`strem-shared-contracts/contracts/auth/openapi.yml`) and the onboarding
- * status from the user contract. Kept narrow to what the mobile app consumes.
- */
+/** API shapes currently consumed by the trail Race Mission mobile app. */
 
 export interface AuthIdentity {
   user_id: string;
@@ -34,25 +30,17 @@ export interface LoginRequest {
   password: string;
 }
 
-export type OnboardingStatusValue = "not_started" | "in_progress" | "completed";
-
-export type OnboardingScreen =
-  | "welcome"
-  | "identity"
-  | "training-background"
-  | "commitment"
-  | "nutrition"
-  | "tribe"
-  | "launch";
+type OnboardingStatusValue = "not_started" | "in_progress" | "completed";
+export type OnboardingScreen = "welcome" | "identity" | "training-background" | "commitment" | "launch";
+export type LegacyOnboardingScreen = "nutrition" | "tribe";
 
 export interface OnboardingStatus {
   status: OnboardingStatusValue;
   completed: boolean;
-  last_completed_screen?: OnboardingScreen | null;
+  last_completed_screen?: OnboardingScreen | LegacyOnboardingScreen | null;
   completed_at?: string | null;
 }
 
-/** Legal & policy acceptance (mirrors strem-shared-contracts user/openapi.yml). */
 export type LegalDocumentType = "terms" | "privacy" | "medical";
 
 export interface LegalAcceptanceInput {
@@ -60,7 +48,7 @@ export interface LegalAcceptanceInput {
   version: string;
 }
 
-export interface LegalDocumentStatus {
+interface LegalDocumentStatus {
   document_type: LegalDocumentType;
   required_version: string;
   accepted_version?: string | null;
@@ -72,13 +60,11 @@ export interface LegalStatus {
   needs_acceptance: boolean;
 }
 
-// --- Athlete Baseline (issue #61) — mirrors the user contract ---
-
 export type AgeBand = "under_20" | "20_29" | "30_39" | "40_49" | "50_59" | "60_plus";
-export type BiologicalSex = "male" | "female" | "other" | "prefer_not_to_say";
+type BiologicalSex = "male" | "female" | "other" | "prefer_not_to_say";
 export type EquipmentAccess = "full_gym" | "home_gym" | "minimal" | "bodyweight_only";
 
-export interface PersonalRecord {
+interface PersonalRecord {
   exercise: string;
   weight_kg?: number | null;
   reps?: number | null;
@@ -86,7 +72,7 @@ export interface PersonalRecord {
   note?: string | null;
 }
 
-export interface Injury {
+interface Injury {
   area: string;
   note?: string | null;
 }
@@ -106,55 +92,19 @@ export interface AthleteProfile {
 
 export type AthleteProfileUpdate = Partial<Omit<AthleteProfile, "is_started">>;
 
-export type TransformationGoal =
-  | "build_strength"
-  | "build_endurance"
-  | "hybrid_athlete"
-  | "lean_and_strong"
-  | "build_discipline"
-  | "general_health";
-
+export type TransformationGoal = "build_strength" | "build_endurance" | "hybrid_athlete" | "lean_and_strong" | "build_discipline" | "general_health";
 export type TrainingLevel = "beginner" | "intermediate" | "advanced";
-
 export type Modality = "strength" | "running" | "mobility" | "nutrition";
 
-export type NutritionPreference =
-  | "general_consistency"
-  | "high_protein"
-  | "plant_based"
-  | "no_focus";
-
-export type TribePreference = "join_now" | "join_later" | "solo_for_now";
-
-/** Partial per-screen onboarding submission (matches the user contract). */
 export interface OnboardingSubmission {
   identity_statement?: string;
   transformation_goal?: TransformationGoal;
   training_level?: TrainingLevel;
   preferred_modalities?: Modality[];
   weekly_target_days?: number;
-  nutrition_preference?: NutritionPreference;
-  tribe_preference?: TribePreference;
   display_name?: string;
   timezone?: string;
   screen?: OnboardingScreen;
-}
-
-// --- User profile, XP, and medals (user contract) ---
-
-export type UserRank =
-  | "Initiate"
-  | "Builder"
-  | "Forged"
-  | "Hybrid"
-  | "Warrior"
-  | "Titan"
-  | "Ascended";
-
-export interface EarnedMedal {
-  medal_type: string;
-  title: string;
-  earned_at: string;
 }
 
 export interface UserProfile {
@@ -164,341 +114,10 @@ export interface UserProfile {
   transformation_goal?: TransformationGoal | null;
   training_level?: TrainingLevel | null;
   weekly_target_days?: number | null;
-  rank: UserRank;
-  total_xp: number;
-  active_medals: EarnedMedal[];
   onboarding_completed: boolean;
   created_at: string;
 }
 
-export type StreakState = "active" | "at_risk" | "broken" | "none";
-
-export interface XPSummary {
-  user_id: string;
-  total_xp: number;
-  rank: UserRank;
-  next_rank: UserRank | null;
-  rank_xp_floor: number;
-  rank_xp_ceiling: number;
-  xp_into_rank: number;
-  xp_to_next_rank: number;
-  current_streak_days: number;
-  longest_streak_days: number;
-  streak_state: StreakState;
-}
-
-export interface MedalListResponse {
-  items: EarnedMedal[];
-}
-
-// --- Training (training contract) ---
-
-export type SessionType = "strength" | "running" | "mobility";
-
-export interface LogTrainingSessionRequest {
-  session_type: SessionType;
-  duration_minutes: number;
-  distance_km?: number;
-  notes?: string;
-}
-
-export interface TrainingSession {
-  id: string;
-  user_id: string;
-  session_type: SessionType;
-  duration_minutes: number;
-  distance_km?: number | null;
-  /** Elevation gain in metres, when the source provides it (trail/run/bike). */
-  elevation_m?: number | null;
-  notes?: string | null;
-  /** "manual" for in-app logs, else the connected source ("strava", "whoop"). */
-  source?: string;
-  logged_at: string;
-  created_at: string;
-}
-
-export interface TrainingSessionPage {
-  items: TrainingSession[];
-  pagination: Pagination;
-}
-
-export interface Pagination {
-  limit: number;
-  offset: number;
-  total: number;
-}
-
-// --- Nutrition (nutrition contract) ---
-
-export interface LogNutritionDayRequest {
-  date: string;
-  targets_met: boolean;
-  notes?: string;
-}
-
-export interface NutritionDay {
-  id: string;
-  user_id: string;
-  date: string;
-  targets_met: boolean;
-  notes?: string | null;
-  logged_at: string;
-  created_at: string;
-}
-
-export interface NutritionDayPage {
-  items: NutritionDay[];
-  pagination: Pagination;
-}
-
-// --- Supplements (issue #62) ---
-
-export interface Supplement {
-  id: string;
-  name: string;
-  dose?: string | null;
-  timing?: string | null;
-  purpose?: string | null;
-}
-
-export interface SupplementCreate {
-  name: string;
-  dose?: string | null;
-  timing?: string | null;
-  purpose?: string | null;
-}
-
-// --- Community / tribes (community contract) ---
-
-export type MemberRole = "admin" | "member";
-export type MembershipStatus = "pending" | "active";
-export type CompletedAction =
-  | "training"
-  | "running"
-  | "nutrition"
-  | "recovery"
-  | "rest_day"
-  | "nothing";
-
-export interface Tribe {
-  id: string;
-  name: string;
-  mission_statement?: string | null;
-  approval_required: boolean;
-  member_count: number;
-  max_members: number;
-  tribe_power: number;
-  my_role: MemberRole;
-  created_at: string;
-}
-
-export interface Membership {
-  tribe_id: string;
-  user_id: string;
-  role: MemberRole;
-  status: MembershipStatus;
-  joined_at: string;
-  /** Resolved best-effort from the user service (#72); null when unavailable. */
-  display_name?: string | null;
-}
-
-export interface CreateCheckinRequest {
-  completed_action: CompletedAction;
-  status_note?: string;
-}
-
-export interface CheckIn {
-  id: string;
-  tribe_id: string;
-  user_id: string;
-  completed_action: CompletedAction;
-  status_note?: string | null;
-  checked_in_at: string;
-}
-
-export interface CheckInPage {
-  items: CheckIn[];
-  pagination: Pagination;
-}
-
-// --- Tribe collective challenges (community contract) ---
-
-export type ChallengeTargetType = "training_sessions" | "running_distance_km" | "checkins";
-export type ChallengeState = "active" | "completed" | "failed" | "abandoned";
-
-export interface Challenge {
-  id: string;
-  tribe_id: string;
-  title: string;
-  description?: string | null;
-  target_type: ChallengeTargetType;
-  target_value: number;
-  current_value: number;
-  state: ChallengeState;
-  starts_at: string;
-  ends_at: string;
-  completed_at?: string | null;
-}
-
-export interface ChallengePage {
-  items: Challenge[];
-  pagination: Pagination;
-}
-
-export interface CreateChallengeRequest {
-  title: string;
-  description?: string;
-  target_type: ChallengeTargetType;
-  target_value: number;
-  ends_at: string;
-}
-
-export interface ContributionRequest {
-  amount: number;
-}
-
-// --- Tribe-vs-tribe matches (community contract, #65) ---
-
-export type DuelMetric = "training_days" | "sessions" | "consistency" | "total_xp";
-export type MatchState =
-  | "proposed"
-  | "accepted"
-  | "active"
-  | "complete"
-  | "declined"
-  | "expired"
-  | "cancelled";
-
-export interface TribeMatch {
-  id: string;
-  challenger_tribe_id: string;
-  opponent_tribe_id: string;
-  proposed_by: string;
-  metric: DuelMetric;
-  target_value?: number | null;
-  window_start: string;
-  window_end: string;
-  state: MatchState;
-  winner_tribe_id?: string | null;
-  /** Per-member-average scores, live on read. */
-  challenger_score: number;
-  opponent_score: number;
-  challenger_member_count: number;
-  opponent_member_count: number;
-  created_at: string;
-  accepted_at?: string | null;
-  completed_at?: string | null;
-}
-
-export interface MatchPage {
-  items: TribeMatch[];
-  pagination: Pagination;
-}
-
-// --- Biomarkers / lab results (user contract, #63) ---
-
-export type BiomarkerType =
-  | "ferritin"
-  | "vitamin_d"
-  | "b12"
-  | "ldl"
-  | "hdl"
-  | "triglycerides"
-  | "total_cholesterol"
-  | "glucose"
-  | "hba1c"
-  | "testosterone"
-  | "tsh"
-  | "crp"
-  | "magnesium";
-
-export type TrendDirection = "rising" | "falling" | "stable" | "single";
-
-export interface BiomarkerCreate {
-  marker_type: BiomarkerType;
-  value: number;
-  unit: string;
-  taken_at: string;
-  note?: string;
-}
-
-export interface Biomarker {
-  id: string;
-  marker_type: BiomarkerType;
-  value: number;
-  unit: string;
-  taken_at: string;
-  note?: string | null;
-  created_at: string;
-}
-
-export interface BiomarkerTrend {
-  marker_type: BiomarkerType;
-  latest_value: number;
-  unit: string;
-  direction: TrendDirection;
-  reading_count: number;
-  latest_taken_at: string;
-}
-
-export interface BiomarkerList {
-  items: Biomarker[];
-  trends: BiomarkerTrend[];
-}
-
-// --- AI missions + coaching (ai contract) ---
-
-export type MissionType =
-  | "performance"
-  | "recovery"
-  | "tribe"
-  | "discipline"
-  | "nutrition"
-  | "hybrid";
-export type MissionDifficulty = "re-entry" | "maintenance" | "growth" | "challenge";
-export type MissionState = "active" | "completed" | "expired" | "skipped";
-
-export interface Mission {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  duration_days: number;
-  xp_reward: number;
-  type: MissionType;
-  completion_condition: string;
-  difficulty: MissionDifficulty;
-  state: MissionState;
-  generated_at: string;
-  expires_at: string;
-  completed_at?: string | null;
-}
-
-export interface MissionList {
-  items: Mission[];
-}
-
-export interface MissionPage {
-  items: Mission[];
-  pagination: Pagination;
-}
-
-export interface MissionGenerationResult {
-  missions: Mission[];
-  generated_count: number;
-  reason?: string | null;
-}
-
-export interface WeeklyRecap {
-  id: string;
-  user_id: string;
-  week_start: string;
-  week_end: string;
-  narrative: string;
-  generated_at: string;
-}
-
-/** Shape of the shared `Error` response body. */
 export interface ApiErrorBody {
   code: string;
   message: string;

@@ -1,5 +1,5 @@
 /**
- * Best-effort refresh of connected sources (A3) so Forge sees recent activity.
+ * Best-effort refresh of connected sources so the AI Race Team sees recent activity.
  *
  * Without a background sync worker in the local stack, newly-recorded Strava /
  * Whoop activity only lands when a sync is triggered. We do that once per app

@@ -20,7 +20,7 @@ interface WebStorage {
   removeItem: (key: string) => void;
 }
 
-export interface StoredTokens {
+interface StoredTokens {
   accessToken: string;
   refreshToken: string;
 }

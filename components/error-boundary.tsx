@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { PrimaryButton } from "@/components/form";
-import { Colors, Spacing, Typography } from "@/constants/theme";
+import { Trail, disp, ui } from "@/constants/theme";
 import { captureError } from "@/lib/monitoring";
 
 interface ErrorBoundaryState {
@@ -51,29 +51,29 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.background,
-    padding: Spacing.xl,
-    gap: Spacing.md,
+    backgroundColor: Trail.bg,
+    padding: 24,
+    gap: 14,
   },
   logo: {
     width: 64,
     height: 64,
-    marginBottom: Spacing.sm,
+    marginBottom: 10,
   },
   title: {
-    color: Colors.text,
-    fontSize: 22,
+    ...disp(24, 800),
+    color: Trail.text,
     lineHeight: 28,
-    fontWeight: "900",
     textAlign: "center",
   },
   body: {
-    ...Typography.body,
-    color: Colors.textMuted,
+    ...ui(15, 500),
+    lineHeight: 22,
+    color: Trail.textMuted,
     textAlign: "center",
   },
   button: {
-    marginTop: Spacing.md,
+    marginTop: 14,
     maxWidth: 320,
   },
 });

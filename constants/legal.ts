@@ -8,7 +8,7 @@
 import { LEGAL_DOCS } from "@/constants/legal-docs";
 import type { LegalDocumentType } from "@/lib/api/types";
 
-export interface LegalPolicy {
+interface LegalPolicy {
   type: LegalDocumentType;
   title: string;
   blurb: string;
@@ -32,7 +32,7 @@ const META: Record<LegalDocumentType, { title: string; blurb: string }> = {
 };
 
 /** Order shown in the accept gate: the medical disclaimer first (most consequential). */
-export const LEGAL_ORDER: LegalDocumentType[] = ["medical", "terms", "privacy"];
+const LEGAL_ORDER: LegalDocumentType[] = ["medical", "terms", "privacy"];
 
 export const LEGAL_POLICIES: LegalPolicy[] = LEGAL_ORDER.map((type) => ({
   type,
