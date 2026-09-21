@@ -14,6 +14,7 @@ import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { TrailAtmosphere } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
 import { Btn, Panel } from "@/components/ui/primitives";
 import { LEGAL_POLICIES, policyFor } from "@/constants/legal";
@@ -53,6 +54,7 @@ export default function LegalAcceptScreen() {
 
   return (
     <View style={styles.root}>
+      <TrailAtmosphere quiet />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
@@ -121,8 +123,8 @@ function disclaimerSummary(body: string): string {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Trail.bg },
-  scroll: { paddingHorizontal: 20 },
+  root: { flex: 1, backgroundColor: Trail.bg, overflow: "hidden" },
+  scroll: { width: "100%", maxWidth: 760, alignSelf: "center", paddingHorizontal: 20 },
   headRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   eyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: Trail.lime },
   title: { ...disp(28, 800), color: Trail.text, marginTop: 6, lineHeight: 30 },

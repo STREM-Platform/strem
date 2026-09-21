@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { TrailAtmosphere } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
 import { policyFor } from "@/constants/legal";
 import { Trail, disp, mono, ui } from "@/constants/theme";
@@ -24,6 +25,7 @@ export default function LegalDocumentScreen() {
 
   return (
     <View style={styles.root}>
+      <TrailAtmosphere quiet />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 48 }]}
         showsVerticalScrollIndicator={false}
@@ -46,8 +48,8 @@ export default function LegalDocumentScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Trail.bg },
-  scroll: { paddingHorizontal: 20 },
+  root: { flex: 1, backgroundColor: Trail.bg, overflow: "hidden" },
+  scroll: { width: "100%", maxWidth: 760, alignSelf: "center", paddingHorizontal: 20 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
   backText: { ...ui(13, 600), color: Trail.textMuted },
   eyebrow: { ...mono(10, 700), letterSpacing: 1.6, color: Trail.lime },

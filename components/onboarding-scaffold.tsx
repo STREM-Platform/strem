@@ -4,7 +4,6 @@
  * metadata comes from `ONBOARDING_META`.
  */
 
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -12,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Polygon, RadialGradient, Stop } from "react-native-svg";
 
 import { FormError } from "@/components/form";
+import { TrailAtmosphere } from "@/components/trail/trail-ui";
 import { Icon, MountainMark, type IconName } from "@/components/ui/icon";
 import { Btn } from "@/components/ui/primitives";
 import { Trail, disp, mono, ui } from "@/constants/theme";
@@ -88,36 +88,40 @@ export function OnboardingScaffold({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <LinearGradient colors={["#15271D", Trail.bg]} locations={[0, 0.52]} style={StyleSheet.absoluteFill} />
-      <MountainMark size={300} color="#9fb0a8" style={styles.watermark} />
+      <TrailAtmosphere />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.container}>
-        <View style={styles.top}>
-          <View style={styles.brandRow}>
-            <View style={styles.brand}>
-              <MountainMark size={20} />
-              <Text style={styles.brandText}>STREM</Text>
+        <View style={styles.shell}>
+          <View style={styles.top}>
+            <View style={styles.brandRow}>
+              <View style={styles.brand}>
+                <MountainMark size={20} />
+                <View>
+                  <Text style={styles.brandText}>STREM</Text>
+                  <Text style={styles.brandSub}>MISSION CALIBRATION</Text>
+                </View>
+              </View>
+              {onSkip && !last ? (
+                <Pressable accessibilityRole="button" onPress={onSkip} style={styles.skipButton}>
+                  <Text style={styles.skip}>Skip</Text>
+                </Pressable>
+              ) : null}
             </View>
-            {onSkip && !last ? (
-              <Pressable accessibilityRole="button" onPress={onSkip}>
-                <Text style={styles.skip}>Skip</Text>
-              </Pressable>
-            ) : null}
+            <SegProgress step={stepIndex} total={ONBOARDING_ORDER.length} />
           </View>
-          <SegProgress step={stepIndex} total={ONBOARDING_ORDER.length} />
-        </View>
 
-        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Emblem icon={meta.emblem} />
-          <Text style={styles.overline}>{meta.overline.toUpperCase()}</Text>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          {children ? <View style={styles.fields}>{children}</View> : null}
-          {errorText ? <FormError message={errorText} /> : null}
-        </ScrollView>
+          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Emblem icon={meta.emblem} />
+            <Text style={styles.overline}>{meta.overline.toUpperCase()}</Text>
+            <Text style={styles.title}>{title}</Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            {children ? <View style={styles.fields}>{children}</View> : null}
+            {errorText ? <FormError message={errorText} /> : null}
+          </ScrollView>
 
-        <View style={styles.footer}>
-          {stepIndex > 0 ? <Btn kind="ghost" icon="chevronL" label="" onPress={() => router.back()} style={styles.back} /> : null}
-          <Btn kind="primary" full={stepIndex === 0} icon={last ? "star" : "chevron"} label={primaryLabel} onPress={onPrimary} style={stepIndex > 0 ? styles.primary : undefined} disabled={primaryDisabled} loading={submitting} />
+          <View style={styles.footer}>
+            {stepIndex > 0 ? <Btn kind="ghost" icon="chevronL" label="" onPress={() => router.back()} style={styles.back} /> : null}
+            <Btn kind="primary" full={stepIndex === 0} icon={last ? "star" : "chevron"} label={primaryLabel} onPress={onPrimary} style={stepIndex > 0 ? styles.primary : undefined} disabled={primaryDisabled} loading={submitting} />
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -126,19 +130,21 @@ export function OnboardingScaffold({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Trail.bg },
-  watermark: { position: "absolute", top: 90, right: -90, opacity: 0.05 },
   container: { flex: 1 },
-  top: { paddingHorizontal: 18, paddingTop: 6, gap: 14 },
+  shell: { flex: 1, width: "100%", maxWidth: 620, alignSelf: "center" },
+  top: { paddingHorizontal: 22, paddingTop: 10, gap: 17 },
   brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brand: { flexDirection: "row", alignItems: "center", gap: 8 },
-  brandText: { ...disp(12, 700), letterSpacing: 2.9, color: "#fff" },
+  brandText: { ...disp(14, 800), letterSpacing: 3.1, color: "#fff", lineHeight: 15 },
+  brandSub: { ...mono(6, 700), letterSpacing: 1.2, color: Trail.lime, marginTop: 2 },
+  skipButton: { paddingVertical: 7, paddingHorizontal: 10, borderRadius: 10, backgroundColor: Trail.panelSoft },
   skip: { ...ui(12, 600), color: Trail.textDim },
   segRow: { flexDirection: "row", gap: 5 },
   seg: { flex: 1, height: 4, borderRadius: 4 },
   segOn: { backgroundColor: Trail.lime, boxShadow: "0px 0px 8px rgba(183,237,98,0.35)" },
   segOff: { backgroundColor: "rgba(255,255,255,0.1)" },
 
-  body: { paddingHorizontal: 22, paddingTop: 26, paddingBottom: 32 },
+  body: { paddingHorizontal: 22, paddingTop: 34, paddingBottom: 32 },
   emblem: { width: 92, height: 102, alignItems: "center", justifyContent: "center" },
   emblemIcon: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" },
   overline: { ...mono(10, 700), letterSpacing: 1.6, color: Trail.lime, marginTop: 22 },
@@ -146,7 +152,7 @@ const styles = StyleSheet.create({
   subtitle: { ...ui(15, 500), color: Trail.textMuted, marginTop: 10, lineHeight: 22 },
   fields: { marginTop: 22, gap: 14 },
 
-  footer: { flexDirection: "row", gap: 12, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 8 },
+  footer: { flexDirection: "row", gap: 12, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 10, borderTopWidth: 1, borderTopColor: Trail.line },
   back: { width: 52 },
   primary: { flex: 1 },
 });

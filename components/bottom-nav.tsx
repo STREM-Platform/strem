@@ -34,9 +34,8 @@ export function BottomNav() {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => router.replace(tab.path)}
-              style={styles.tab}
+              style={[styles.tab, active && styles.tabActive]}
             >
-              {active ? <View style={styles.marker} /> : null}
               <Icon name={tab.icon} size={21} color={active ? Trail.lime : Trail.textDim} sw={active ? 2.4 : 2} />
               <Text style={[styles.label, { color: active ? Trail.text : Trail.textDim }]} numberOfLines={1}>
                 {tab.label}
@@ -52,38 +51,40 @@ export function BottomNav() {
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    left: 12,
-    right: 12,
+    left: 0,
+    right: 0,
+    alignItems: "center",
     zIndex: 50,
   },
   bar: {
+    width: "94%",
+    maxWidth: 670,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 9,
-    paddingHorizontal: 8,
-    borderRadius: 22,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: Trail.lineStrong,
     overflow: "hidden",
     // BlurView is translucent; a fallback tint keeps it legible where blur is weak.
     backgroundColor: Platform.OS === "android" ? "rgba(10,21,16,0.96)" : "rgba(10,21,16,0.78)",
-    boxShadow: "0px 14px 34px rgba(0,0,0,0.55)",
+    boxShadow: "0px 20px 48px rgba(0,0,0,0.62)",
   },
   tab: {
     flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
-    paddingVertical: 5,
+    minHeight: 54,
+    paddingVertical: 6,
+    borderRadius: 21,
   },
-  marker: {
-    position: "absolute",
-    top: -9,
-    width: 22,
-    height: 3,
-    borderRadius: 3,
-    backgroundColor: Trail.lime,
-    boxShadow: "0px 0px 10px rgba(183,237,98,0.6)",
+  tabActive: {
+    backgroundColor: Trail.limeSoft,
+    borderWidth: 1,
+    borderColor: Trail.limeLine,
   },
   label: {
     ...ui(9, 700),

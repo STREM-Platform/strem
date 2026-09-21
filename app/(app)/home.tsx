@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
 import { BrandLogo } from "@/components/brand-logo";
-import { MissionHero, PrototypeLabel, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { MissionHero, PrototypeLabel, TrailAtmosphere, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
 import { Trail, disp, mono, ui } from "@/constants/theme";
 import { TRAIL_MISSION_PREVIEW, daysUntilRace } from "@/lib/trail/mission-preview";
@@ -22,6 +22,7 @@ export default function MissionScreen() {
 
   return (
     <View style={trailStyles.root}>
+      <TrailAtmosphere />
       <ScrollView
         contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 12 }]}
         showsVerticalScrollIndicator={false}

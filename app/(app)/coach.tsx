@@ -3,7 +3,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
-import { PrototypeLabel, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { PrototypeLabel, TrailAtmosphere, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
 import { Trail, disp, mono, ui } from "@/constants/theme";
 import { agentApi, type CoachReply } from "@/lib/api/agent";
@@ -52,6 +52,7 @@ export default function RaceTeamScreen() {
 
   return (
     <KeyboardAvoidingView style={trailStyles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <TrailAtmosphere />
       <ScrollView
         contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]}
         showsVerticalScrollIndicator={false}

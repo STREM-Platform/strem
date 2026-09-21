@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { TrailAtmosphere, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Trail, disp, mono, ui } from "@/constants/theme";
 import { agentApi, type IntegrationSource } from "@/lib/api/agent";
@@ -93,6 +93,7 @@ export default function ConnectedSourcesScreen() {
 
   return (
     <View style={trailStyles.root}>
+      <TrailAtmosphere quiet />
       <ScrollView contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.back} onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/profile"))}>
           <Icon name="chevronL" size={18} color={Trail.textMuted} /><Text style={styles.backText}>Athlete</Text>

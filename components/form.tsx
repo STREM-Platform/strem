@@ -134,6 +134,7 @@ const styles = StyleSheet.create({
     color: Trail.textDim,
   },
   input: {
+    boxSizing: "border-box",
     alignSelf: "stretch",
     width: "100%",
     minHeight: 54,
@@ -165,6 +166,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   button: {
+    boxSizing: "border-box",
     alignSelf: "stretch",
     width: "100%",
     borderRadius: 14,

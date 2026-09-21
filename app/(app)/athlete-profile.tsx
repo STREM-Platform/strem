@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, Text
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OptionSelect, type Option } from "@/components/select";
-import { TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { TrailAtmosphere, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
 import { Trail, disp, mono, ui } from "@/constants/theme";
 import { api } from "@/lib/api/client";
@@ -93,6 +93,7 @@ export default function TrailAthleteProfileScreen() {
 
   return (
     <View style={trailStyles.root}>
+      <TrailAtmosphere quiet />
       <ScrollView contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Pressable style={styles.back} onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/profile"))}>
           <Icon name="chevronL" size={18} color={Trail.textMuted} />

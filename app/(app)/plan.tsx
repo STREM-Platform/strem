@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
-import { PrototypeLabel, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { PrototypeLabel, TrailAtmosphere, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
 import { Trail, disp, mono, ui } from "@/constants/theme";
 import { TRAIL_MISSION_PREVIEW, type TrailSessionPreview } from "@/lib/trail/mission-preview";
@@ -22,6 +22,7 @@ export default function PlanScreen() {
 
   return (
     <View style={trailStyles.root}>
+      <TrailAtmosphere quiet />
       <ScrollView contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false}>
         <PrototypeLabel />
         <View>

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { TrailAtmosphere, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon } from "@/components/ui/icon";
 import { Trail, disp, mono, ui } from "@/constants/theme";
 import { agentApi, type AgentAction } from "@/lib/api/agent";
@@ -30,6 +30,7 @@ export default function AIActionHistoryScreen() {
 
   return (
     <View style={trailStyles.root}>
+      <TrailAtmosphere quiet />
       <ScrollView contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false}>
         <Pressable style={styles.back} onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/privacy"))}>
           <Icon name="chevronL" size={18} color={Trail.textMuted} />

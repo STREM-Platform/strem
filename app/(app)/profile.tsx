@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "@/components/bottom-nav";
-import { TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
+import { TrailAtmosphere, TrailPanel, TrailSectionHead, trailStyles } from "@/components/trail/trail-ui";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Trail, disp, mono, ui } from "@/constants/theme";
 import { agentApi, type IntegrationSource } from "@/lib/api/agent";
@@ -33,6 +33,7 @@ export default function AthleteScreen() {
 
   return (
     <View style={trailStyles.root}>
+      <TrailAtmosphere quiet />
       <ScrollView contentContainerStyle={[trailStyles.scroll, { paddingTop: insets.top + 14 }]} showsVerticalScrollIndicator={false}>
         <View>
           <Text style={trailStyles.pageOverline}>ATHLETE CONTEXT</Text>
