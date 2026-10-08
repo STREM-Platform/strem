@@ -36,6 +36,14 @@ Before broad backend implementation:
 
 ## Stage 1 — Race Mission Foundation
 
+Founder-approved first increment (2026-10-08, `strem-user-service#24`):
+private manually entered event and goal, one active mission, authenticated
+create/read/edit/archive, immutable revisions and mission-only export/delete in
+the existing user-service database. The additive contract/migration scope was
+explicitly approved; no legacy-data deletion, AI health advice or new integrations.
+This increment precedes GPX, broader constraints and preparation decisions below;
+those remain separate reviewed issues, not implied approval of draft contract #39.
+
 Build only the smallest real vertical slice:
 
 - create one active Race Mission from a manually entered event;

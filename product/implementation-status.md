@@ -4,7 +4,7 @@ _Last updated: 2026-10-08._
 
 ## Current product
 
-STREM is in trail-running pivot validation. The current mobile app is a product-direction prototype around one Race Mission; it is not yet a production Race Pass.
+STREM is in trail-running pivot validation. Founder-approved issue `strem-user-service#24` now has a locally implemented real Race Mission foundation across user-service, shared-contracts, gateway and mobile. This is not a completed or deployed production Race Pass. Main still contains the older prototype until the coordinated PRs merge.
 
 | Capability | Status | Evidence |
 |---|---|---|
@@ -17,7 +17,7 @@ STREM is in trail-running pivot validation. The current mobile app is a product-
 | Trail visual system, responsive auth, onboarding, legal, and atmospheric race UI | Merged to `strem-mobile/main`; visually reviewed, not the final advanced experience | `f7b867d` and `strem-mobile#103` |
 | Live authentication, legal acceptance, user profile, athlete baseline, consent, AI chat, action receipts, and Strava/Whoop source status | Existing live paths retained | mobile API clients and existing services |
 | Race Mission, event facts/media, GPX/course, constraints, evidence, risk, rehearsal, decision, calendar-intent, and debrief contracts | Review draft open; not merged | `strem-shared-contracts#38`, PR `strem-shared-contracts#39`, human review required |
-| Real mission intake and persistence | Scoped; implementation not started | `strem-user-service#23`, `strem-mobile#104` |
+| Private mission create/read/edit/archive, one active mission, revisions, export/delete | Implemented locally; approval recorded for this narrow foundation, release checks pending | `strem-user-service#24`; partial delivery of `strem-user-service#23`, `strem-mobile#104`, `strem-api-gateway#11` |
 | GPX course intelligence | Scoped; implementation not started | `strem-training-service#10`, `strem-mobile#105` |
 | Real adaptive trail plan and preparation evidence | Scoped; implementation not started | `strem-training-service#11`, `strem-mobile#106` |
 | Cited, reversible AI Race Team decisions | Scoped; implementation not started | `strem-ai-orchestrator#33`, `strem-mobile#108` |
@@ -29,11 +29,13 @@ STREM is in trail-running pivot validation. The current mobile app is a product-
 | Paid 10-athlete concierge pilot | Scoped; recruitment and payment not started | `strem-docs#16` |
 | Pilot release environment and observability | Scoped; gated on a deployable vertical slice | `strem-infra#17` |
 
-## Prototype honesty
+## Real foundation and prototype removal
 
-The mobile Mission, Plan, and Race Lab currently use one centralized, visibly labelled sample Race Mission. The fixture is not returned as personal data and must be deleted when approved race-specific contracts land.
+On the foundation branch, mobile creates and reloads authenticated server-owned mission records. Event details and goal are athlete-entered, never official facts. Elevation and cutoff can remain unknown. Dates are calendar dates in the entered event timezone; no race-start time is invented. Editing uses versions; create/archive retries use idempotency receipts. Archive retains history; explicit mission-only deletion removes owned missions, revisions and receipts without touching legacy data.
 
-The Mission workspace uses a fixed, visible 24 September 2026 demo snapshot so its countdown cannot imply that old sample sessions are current. Its course illustration is not official GPX or an event photograph. Expandable evidence and reasoning remain synthetic. The unexplained sample readiness score was removed in merged mobile PR #110.
+The runtime sample mission, course explorer/profile, fabricated preparation sessions and sample advice have been deleted on this branch. Plan, course intelligence and race-specific AI now show honest unavailable states. Generic coach chat is no longer presented as a mission-aware Race Team. Unsaved form drafts are not yet resumable across closing the form. No new AI/data-source consent is implied by mission creation.
+
+The founder explicitly approved existing user-service ownership and additive migration `0008_race_missions` on 2026-10-08. No existing rows are migrated or deleted. Keep the additive tables if rolling application code back; downgrading populated tables is destructive and requires separate approval/backup. No real database was migrated during this increment. The narrow user contract takes precedence over overlapping, unmerged draft PR #39 foundation operations; course/proposal contracts still need their own review.
 
 The existing backend still has legacy coaching paths. Audit found that its keyless/error fallback could claim personal analysis and attach context chips. AI PR #38 fixes those fallback paths; until reviewed and merged, do not describe the backend as fully honest or production-ready. Successful response chips are still context summaries, not validated claim-level citations; that work belongs to #33/#35/#37.
 
@@ -58,13 +60,13 @@ The pre-pivot mobile issues for Fuel, Tribe, Crew, Forge personas, generic captu
 
 On 2026-10-08, seven superseded PRs were closed without merging: mobile #92/#94/#95, shared-contracts #37, infra #16, gateway #10 and community #16. Branches and commits remain recoverable. The inherited proof-media changes were also removed from contract PR #39 in `62c5c8c`; that PR now remains focused on Race Mission contracts.
 
-The STREM-Platform Core Platform project board (project 1; organization sign-in required) contains 24 trail-delivery issues. Ninety-two historical completed/superseded items were archived, not deleted. `Ready` is a queued-work status, not permission to bypass dependencies. The `Delivery gate` field distinguishes contract approval, upstream implementation, human review, UX validation and pilot validation.
+The STREM-Platform Core Platform project board (project 1; organization sign-in required) includes the scoped foundation issue #24. Ninety-two historical completed/superseded items were archived, not deleted. `Ready` is a queued-work status, not permission to bypass dependencies. The `Delivery gate` field distinguishes contract approval, upstream implementation, human review, UX validation and pilot validation.
 
 ### Verification for this increment
 
-- Mobile: TypeScript, ESLint, 20 unit tests and production web export passed. Browser/physical-device screenshots, keyboard/screen-reader interaction and responsive visual acceptance remain unverified because no browser was connected to the available UI tool. Do not close #103 or #109 on this evidence alone.
+- Foundation: 101 user-service tests, 17 gateway tests and 22 mobile tests pass, alongside Python lint/strict types and mobile TypeScript/ESLint. Tests include disposable SQLite upgrade/restart/downgrade, separate-connection concurrent create/edit, owner isolation, replay and delete. Production web export passed. PostgreSQL smoke tests and full browser/device interaction are still release gates. No browser was connected to the UI tool; do not close #103 or #109 on this evidence alone.
 - AI: 121 tests, ruff and strict mypy across 63 files passed in an isolated Python 3.12 environment. No paid/live model call was performed; scripted-provider tests do not establish real-provider quality or coaching safety.
-- Contracts: eight OpenAPI specs, eighteen existing event schemas and seven positive/negative examples passed after scope cleanup. This is schema validation, not semantic or safety approval.
+- Foundation contracts: seven main-branch OpenAPI specs and eighteen existing event schemas validate with the additive user contract. The broader PR #39 has separate draft-only validation evidence; do not confuse it with approved implemented operations.
 - Real-event photography rights and the five-athlete comprehension test remain unfulfilled; `strem-docs#21` makes these explicit deliverables.
 
 ## Next irreversible decision
