@@ -31,10 +31,11 @@ export function BottomNav() {
           return (
             <Pressable
               key={tab.path}
-              accessibilityRole="button"
+              accessibilityRole="tab"
+              accessibilityLabel={tab.label === "AI" ? "AI race decisions" : tab.label}
               accessibilityState={{ selected: active }}
               onPress={() => router.replace(tab.path)}
-              style={[styles.tab, active && styles.tabActive]}
+              style={({ pressed }) => [styles.tab, active && styles.tabActive, pressed && styles.pressed]}
             >
               <Icon name={tab.icon} size={21} color={active ? Trail.lime : Trail.textDim} sw={active ? 2.4 : 2} />
               <Text style={[styles.label, { color: active ? Trail.text : Trail.textDim }]} numberOfLines={1}>
@@ -86,8 +87,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Trail.limeLine,
   },
+  pressed: { opacity: 0.75 },
   label: {
-    ...ui(9, 700),
+    ...ui(11, 700),
     letterSpacing: 0.4,
     textTransform: "uppercase",
   },

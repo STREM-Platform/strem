@@ -9,6 +9,8 @@ export interface TrailSessionPreview {
 }
 
 interface CourseSectionPreview {
+  startKm: number;
+  endKm: number;
   km: string;
   name: string;
   note: string;
@@ -22,6 +24,8 @@ interface CourseSectionPreview {
  */
 export const TRAIL_MISSION_PREVIEW = {
   preview: true,
+  asOf: "2026-09-24T07:00:00+03:00",
+  asOfLabel: "24 SEP 2026",
   race: {
     name: "Rila Ridge 32K",
     location: "Borovets, Bulgaria",
@@ -34,7 +38,6 @@ export const TRAIL_MISSION_PREVIEW = {
   },
   phase: { name: "Specific preparation", week: 5, totalWeeks: 8, completion: 0.61 },
   readiness: {
-    score: 68,
     label: "Building",
     explanation: "Climbing load is on target. Descending durability and long-run fueling still need proof.",
   },
@@ -45,9 +48,9 @@ export const TRAIL_MISSION_PREVIEW = {
     reason: "Your recent work covers climbing, but the race loses 620 m after kilometre 21. Today closes that gap without adding a hard aerobic load.",
   },
   evidence: [
-    { label: "Long trail", value: "18 / 24 km", status: "Building" },
-    { label: "Vertical", value: "1,120 / 1,500 m", status: "On course" },
-    { label: "Fuel test", value: "90 / 180 min", status: "Needs proof" },
+    { label: "Long trail", value: "18 / 24 km", status: "Building", detail: "Sample activity: 18 km on 20 September. The 24 km target is a prototype planning assumption, not a validated prescription." },
+    { label: "Vertical", value: "1,120 / 1,500 m", status: "On course", detail: "Sample weekly ascent: 1,120 m. The 1,500 m target is illustrative. No connected activity source supports this value." },
+    { label: "Fuel test", value: "90 / 180 min", status: "Needs proof", detail: "Sample athlete statement: fueling tolerated for 90 minutes. Longer-duration tolerance is unknown; this is not evidence of race readiness." },
   ],
   week: [
     { day: "MON", date: "21", title: "Recovery", detail: "Walk + mobility · 30 min", state: "done" },
@@ -59,9 +62,9 @@ export const TRAIL_MISSION_PREVIEW = {
   course: {
     profile: [0.12, 0.18, 0.28, 0.48, 0.74, 0.62, 0.83, 0.92, 0.66, 0.58, 0.42, 0.25, 0.31, 0.2],
     sections: [
-      { km: "0–9", name: "Hold back", note: "850 m of early climbing. Hike before the effort spikes.", tone: "climb" },
-      { km: "9–21", name: "Settle", note: "Runnable ridge. Eat, drink, and protect the legs.", tone: "control" },
-      { km: "21–32", name: "Commit", note: "Long technical descent followed by the final 280 m climb.", tone: "commit" },
+      { startKm: 0, endKm: 9, km: "0–9", name: "Hold back", note: "850 m of early climbing. Hike before the effort spikes.", tone: "climb" },
+      { startKm: 9, endKm: 21, km: "9–21", name: "Settle", note: "Runnable ridge. Eat, drink, and protect the legs.", tone: "control" },
+      { startKm: 21, endKm: 32, km: "21–32", name: "Commit", note: "Long technical descent followed by the final 280 m climb.", tone: "commit" },
     ] as CourseSectionPreview[],
   },
   raceLab: {
@@ -76,7 +79,8 @@ export const TRAIL_MISSION_PREVIEW = {
   ],
 } as const;
 
-export function daysUntilRace(now = new Date()): number {
+// The entire demo uses one fixed snapshot, not a live countdown over stale sessions.
+export function daysUntilRace(now = new Date(TRAIL_MISSION_PREVIEW.asOf)): number {
   const race = new Date(TRAIL_MISSION_PREVIEW.race.dateIso);
   return Math.max(0, Math.ceil((race.getTime() - now.getTime()) / 86_400_000));
 }
