@@ -58,7 +58,7 @@ The pre-pivot mobile issues for Fuel, Tribe, Crew, Forge personas, generic captu
 
 On 2026-10-08, seven superseded PRs were closed without merging: mobile #92/#94/#95, shared-contracts #37, infra #16, gateway #10 and community #16. Branches and commits remain recoverable. The inherited proof-media changes were also removed from contract PR #39 in `62c5c8c`; that PR now remains focused on Race Mission contracts.
 
-The [Core Platform board](https://github.com/orgs/STREM-Platform/projects/1) now contains 24 active trail issues. Ninety-two historical completed/superseded items were archived, not deleted. `Ready` is a queued-work status, not permission to bypass dependencies. The `Delivery gate` field distinguishes contract approval, upstream implementation, human review, UX validation and pilot validation.
+The STREM-Platform Core Platform project board (project 1; organization sign-in required) contains 24 trail-delivery issues. Ninety-two historical completed/superseded items were archived, not deleted. `Ready` is a queued-work status, not permission to bypass dependencies. The `Delivery gate` field distinguishes contract approval, upstream implementation, human review, UX validation and pilot validation.
 
 ### Verification for this increment
 

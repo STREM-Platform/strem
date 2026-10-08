@@ -92,7 +92,7 @@ Nutrition and community services are not first-wave owners. Race fueling can beg
 
 ## Current Execution Order (2026-10-08)
 
-The existing cross-repository master issue is [docs #20](https://github.com/STREM-Platform/strem-docs/issues/20); use its linked issues, not a second roadmap.
+The existing cross-repository master issue is `STREM-Platform/strem-docs#20` (organization sign-in required); use its linked issues, not a second roadmap.
 
 1. Resolve and review shared-contracts #38 / PR #39. Scope is cleaned of inherited proof media, but provenance trust, typed/concurrent plan diffs and reversal semantics are not yet approved.
 2. Review AI #34 / PR #38 for honest unavailable responses. This is a correctness repair, not the Race Mission AI engine.
