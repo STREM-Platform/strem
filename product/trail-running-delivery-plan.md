@@ -90,9 +90,7 @@ Every package needs a scoped GitHub issue before implementation. Contract, servi
 
 Nutrition and community services are not first-wave owners. Race fueling can begin as a mission rehearsal object; same-event support remains optional until the solo product retains.
 
-## First Contract Vocabulary
-
-### Current execution order (2026-10-08)
+## Current Execution Order (2026-10-08)
 
 The existing cross-repository master issue is [docs #20](https://github.com/STREM-Platform/strem-docs/issues/20); use its linked issues, not a second roadmap.
 
@@ -105,7 +103,7 @@ The existing cross-repository master issue is [docs #20](https://github.com/STRE
 
 The AI reads the minimum useful, consented evidence for each decision. It does not observe every part of a person's life. Revocation, missing/stale data, manual-only use and conflicts are first-class cases. More integrations are justified by improved race decisions, not by the number of connected apps.
 
-### Vocabulary
+## First Contract Vocabulary
 
 - `RaceMission`: lifecycle, athlete goal, event reference, dates, phase, state.
 - `EventFacts`: official versus athlete-entered facts with provenance and freshness.

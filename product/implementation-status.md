@@ -10,7 +10,7 @@ STREM is in trail-running pivot validation. The current mobile app is a product-
 |---|---|---|
 | Product thesis, first customer, boundaries, and commercial hypothesis | Documented | `trail-running-pivot.md` |
 | Paid pilot gate and repository delivery sequence | Documented | `trail-running-delivery-plan.md` |
-| Advanced race-command experience, responsive flows, motion, accessibility, and component rules | Documented; Mission workspace implementation in PR #110; full visual acceptance outstanding | `race-experience-blueprint.md`, `strem-mobile#103`, `strem-docs#21` |
+| Advanced race-command experience, responsive flows, motion, accessibility, and component rules | Mission workspace merged to mobile/main in PR #110 (`0d8cd22`); full visual acceptance outstanding | `race-experience-blueprint.md`, `strem-mobile#103`, `strem-docs#21` |
 | Licensed event-media acquisition, attribution, fallback, takedown, and `EventMedia` proposal | Documented; contract implementation not started | `race-media-policy.md` |
 | Five-athlete comprehension and usability gate | Documented; test not run | `race-experience-usability.md` |
 | Mobile navigation: Mission, Plan, Race Lab, AI, Athlete | Merged to `strem-mobile/main`; prototype data remains | `88468e6` |
@@ -33,7 +33,7 @@ STREM is in trail-running pivot validation. The current mobile app is a product-
 
 The mobile Mission, Plan, and Race Lab currently use one centralized, visibly labelled sample Race Mission. The fixture is not returned as personal data and must be deleted when approved race-specific contracts land.
 
-The Mission workspace uses a fixed, visible 24 September 2026 demo snapshot so its countdown cannot imply that old sample sessions are current. Its course illustration is not official GPX or an event photograph. Expandable evidence and reasoning remain synthetic. The unexplained sample readiness score is removed in mobile PR #110.
+The Mission workspace uses a fixed, visible 24 September 2026 demo snapshot so its countdown cannot imply that old sample sessions are current. Its course illustration is not official GPX or an event photograph. Expandable evidence and reasoning remain synthetic. The unexplained sample readiness score was removed in merged mobile PR #110.
 
 The existing backend still has legacy coaching paths. Audit found that its keyless/error fallback could claim personal analysis and attach context chips. AI PR #38 fixes those fallback paths; until reviewed and merged, do not describe the backend as fully honest or production-ready. Successful response chips are still context summaries, not validated claim-level citations; that work belongs to #33/#35/#37.
 
