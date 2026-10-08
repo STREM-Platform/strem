@@ -10,7 +10,7 @@ from app.schemas import ContextSignals, ContextSource, MemoryItem
 from tests.support import ai_app, auth_header
 
 
-def _signals(acwr: float, load28: float = 388) -> ContextSignals:
+def _signals(acwr: float, load28: int = 388) -> ContextSignals:
     return ContextSignals(
         readiness=62,
         readiness_label="Moderate",

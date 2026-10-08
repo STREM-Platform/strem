@@ -2,7 +2,7 @@
 
 Claude (langchain-anthropic) when an API key is configured; otherwise a
 deterministic ``FallbackChatModel`` so local dev, tests, and an LLM outage all
-degrade to a safe grounded reply instead of failing. Both satisfy the LangGraph
+degrade to an explicit unavailable reply instead of failing. Both satisfy the LangGraph
 agent node's ``BaseChatModel`` + ``bind_tools`` contract.
 """
 
@@ -19,14 +19,13 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from app.config import Settings, get_settings
 
 SAFE_FALLBACK = (
-    "I've read everything I can see — your training load, recovery, and what you've "
-    "told me. Tell me what you want to focus on and I'll ground the plan in your own "
-    "numbers."
+    "AI analysis is unavailable for this request. I can't provide a verified "
+    "personal recommendation right now. Please try again later."
 )
 
 
 class FallbackChatModel(BaseChatModel):
-    """Keyless, deterministic model. Never calls tools; returns a safe grounded line."""
+    """Keyless, deterministic model. Never claims to have analyzed personal data."""
 
     @property
     def _llm_type(self) -> str:
