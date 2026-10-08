@@ -88,6 +88,7 @@ export default function DataControlsScreen() {
 
         <TrailSectionHead title="SOURCE & ACTION RECEIPTS" label="VERIFY THE AI" icon="bot" />
         <View style={styles.menuList}>
+          <MenuRow icon="lock" title="Race Mission data" detail="Export your saved race records or permanently delete mission data" onPress={() => router.push("/(app)/mission-data")} />
           <MenuRow icon="route" title="Connected sources" detail="Connect, sync or disconnect external providers" onPress={() => router.push("/(app)/integrations")} />
           <MenuRow icon="bolt" title="AI action history" detail="Reasoning, cited data, approvals and undo" onPress={() => router.push("/(app)/agent")} />
         </View>
@@ -101,7 +102,7 @@ export default function DataControlsScreen() {
 
         <TrailPanel style={styles.dataPanel}>
           <Text style={styles.dataTitle}>Your data must remain portable.</Text>
-          <Text style={styles.dataBody}>Export and account deletion require verified backend workflows. The old UI-only alerts have been removed until those operations are genuinely connected.</Text>
+          <Text style={styles.dataBody}>Race Mission export and deletion are available above. They affect mission records only. Account-wide export and deletion are not connected here yet.</Text>
         </TrailPanel>
       </ScrollView>
     </View>

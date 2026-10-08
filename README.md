@@ -16,9 +16,19 @@ Product authority lives in `../strem-docs/product/trail-running-pivot.md`. Deliv
 
 ## Data honesty
 
-Mission, Plan, and Race Lab currently use one centralized fixture in `lib/trail/mission-preview.ts`. Every screen using it displays a prototype label. Delete the fixture when approved Race Mission contracts land.
+The Race Mission foundation uses authenticated user-service APIs: create a race,
+reload it, correct facts with version protection, archive it, and export/delete
+mission records and revisions. It contains no runtime sample race. Empty,
+unavailable and conflict states do not substitute fixture data. Optional elevation
+and cutoff remain unknown when omitted; entered facts are not organizer-verified.
 
-Authentication, legal acceptance, athlete profile, consent, AI chat, action history, and integration status use live APIs. If those APIs fail, the app shows unavailable or empty states and never substitutes fictional personal data.
+Plan, course analysis and race-specific AI decisions are explicitly unavailable
+until their reviewed backends exist. Generic chat was removed from the Race Team
+screen because it does not know the saved mission. No AI use or new integration
+permission is implied by saving a race. The navigation describes the product
+direction, not a claim that every capability is complete.
+
+Authentication, legal acceptance, athlete profile, consent, action history, and integration status retain their existing API paths.
 
 ## Active routes
 
@@ -29,6 +39,8 @@ app/
   (onboarding)/       focused trail onboarding
   (app)/
     home.tsx          Mission
+    mission-setup.tsx  Create/edit real race facts and goal
+    mission-data.tsx   Mission-only export, history and permanent deletion
     plan.tsx          Plan
     race.tsx          Race Lab
     coach.tsx         AI Race Team
@@ -51,6 +63,12 @@ npm run web
 ```
 
 The gateway defaults to `http://localhost:8000/v1`. Override it with `EXPO_PUBLIC_API_URL`.
+
+Requires the foundation in user-service issue #24: migration `0008_race_missions`
+and the gateway `/race-missions` mapping. An older backend shows an unavailable
+API state, not an empty account. See the user-service README for safe migration
+and rollback. Form drafts exist only while the form is open; saved facts live on
+the server. This increment is not a completed Race Pass or production deployment.
 
 Native development:
 

@@ -51,6 +51,8 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   auth?: boolean;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
 }
 
 async function parseError(response: Response): Promise<ApiError> {
@@ -83,15 +85,22 @@ async function refreshAccessToken(): Promise<string> {
 }
 
 async function send(path: string, options: RequestOptions, accessToken?: string): Promise<Response> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = { "Content-Type": "application/json", ...options.headers };
   if (options.auth && accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
-  return fetch(`${API_BASE_URL}${path}`, {
+  const controller = new AbortController();
+  const timer = options.timeoutMs ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
+  try {
+    return await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+    signal: controller.signal,
+    });
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
