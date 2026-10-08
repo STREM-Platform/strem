@@ -92,6 +92,21 @@ Nutrition and community services are not first-wave owners. Race fueling can beg
 
 ## First Contract Vocabulary
 
+### Current execution order (2026-10-08)
+
+The existing cross-repository master issue is [docs #20](https://github.com/STREM-Platform/strem-docs/issues/20); use its linked issues, not a second roadmap.
+
+1. Resolve and review shared-contracts #38 / PR #39. Scope is cleaned of inherited proof media, but provenance trust, typed/concurrent plan diffs and reversal semantics are not yet approved.
+2. Review AI #34 / PR #38 for honest unavailable responses. This is a correctness repair, not the Race Mission AI engine.
+3. Implement user #23, training #10/#11 and gateway #11 against the approved contract. Connect mobile #104 to a real persisted mission and delete the fixture from runtime.
+4. Under AI #33, execute #35 (consented evidence snapshots) before #36 (proactive proposals). Build the #37 evaluation harness alongside these, including an explicit opt-in real-provider test. Do not call scripted tests proof of live AI.
+5. Continue mobile #103 and #105–#109 on the same real slice. Docs #21 supplies rights-cleared event media and responsive/athlete acceptance evidence. A stronger synthetic screen does not close functional tickets.
+6. Run docs #16 paid validation in parallel. Race Pass pricing/entitlement (#19), calendar decisions (#18) and pilot deployment (infra #17) keep their existing gates.
+
+The AI reads the minimum useful, consented evidence for each decision. It does not observe every part of a person's life. Revocation, missing/stale data, manual-only use and conflicts are first-class cases. More integrations are justified by improved race decisions, not by the number of connected apps.
+
+### Vocabulary
+
 - `RaceMission`: lifecycle, athlete goal, event reference, dates, phase, state.
 - `EventFacts`: official versus athlete-entered facts with provenance and freshness.
 - `CourseModel`: GPX, sections, distance, elevation, terrain, aid stations, cutoffs.
