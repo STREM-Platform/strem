@@ -65,6 +65,7 @@ def upstream_for(settings: Settings, first_segment: str) -> str | None:
     routes: dict[str, str] = {
         "auth": settings.auth_base_url,
         "users": settings.user_base_url,
+        "race-missions": settings.user_base_url,  # Athlete-owned mission foundation (#24).
         "training": settings.training_base_url,
         "integrations": settings.training_base_url,  # A3 — lives in training-service
         "nutrition": settings.nutrition_base_url,

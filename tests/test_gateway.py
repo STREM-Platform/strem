@@ -39,6 +39,8 @@ def test_routes_each_service_to_its_upstream() -> None:
         cases = {
             "/v1/auth/login": "http://localhost:8001/v1/auth/login",
             "/v1/users/me": "http://localhost:8002/v1/users/me",
+            "/v1/race-missions/active": "http://localhost:8002/v1/race-missions/active",
+            "/v1/race-missions/data": "http://localhost:8002/v1/race-missions/data",
             "/v1/training/sessions": "http://localhost:8003/v1/training/sessions",
             "/v1/integrations/sources": "http://localhost:8003/v1/integrations/sources",
             "/v1/nutrition/days": "http://localhost:8004/v1/nutrition/days",
