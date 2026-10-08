@@ -1,6 +1,6 @@
 # strem-user-service
 
-User profiles, onboarding state, and the XP / rank / medal progression module
+Private Race Missions, user profiles, onboarding state, and retained legacy progression
 for STREM. This service is the source of truth for personalization data that is
 not authentication (see `strem-docs/architecture/service-map.md`).
 
@@ -9,6 +9,38 @@ implement `strem-shared-contracts/contracts/user/openapi.yml`. Progression
 events are published to Redis Streams per `event-driven-strategy.md`.
 
 ## Endpoints
+
+### Race Mission foundation (#24)
+
+Founder approved on 2026-10-08: authenticated private create/read/edit/archive,
+one active mission per account, additive storage, and mission-only export/delete.
+This does not authorize AI advice, activity integrations or migration of legacy data.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/v1/race-missions` | Create; Idempotency-Key required. |
+| GET | `/v1/race-missions/active` | Load current account's active mission. |
+| GET/PATCH | `/v1/race-missions/{id}` | Owned read/edit; edits require If-Match version and correction reason. |
+| POST | `/v1/race-missions/{id}/archive` | Archive, preserving history; If-Match and Idempotency-Key required. |
+| GET/DELETE | `/v1/race-missions/data` | Export all owned missions/revisions, or permanently remove mission data with exact confirmation. |
+
+Contract: `strem-shared-contracts/contracts/user/openapi.yml`. Missing optional
+course facts stay null; source is always athlete_entry. No readiness, official
+verification or plan is inferred. Archive is not deletion. Mission deletion removes
+revisions and idempotency receipts too, but does not delete account/activity data.
+
+Migration `0008_race_missions` adds three tables without changing existing rows.
+Back up the target DB, verify DATABASE_URL, then run `alembic upgrade head` before
+starting the new API. Deploy user API and gateway before the mobile consumer.
+On rollback keep the additive tables and revert application code; do not downgrade
+a populated database unless separately approved and backed up (downgrade deletes
+the new tables). No real database migration is performed by the test suite.
+
+Tests cover isolated SQLite migration/restart, separate-connection concurrent
+creation/editing, JWT owner isolation, replay, history and deletion. PostgreSQL
+deployment smoke tests and device/browser interaction QA remain release gates.
+
+### Existing profile and legacy progression APIs
 
 All routes are served under the `/v1` base path (the health probe is unversioned).
 Every `/v1` route is authenticated with the access token issued by
