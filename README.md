@@ -34,11 +34,44 @@ Back up the target DB, verify DATABASE_URL, then run `alembic upgrade head` befo
 starting the new API. Deploy user API and gateway before the mobile consumer.
 On rollback keep the additive tables and revert application code; do not downgrade
 a populated database unless separately approved and backed up (downgrade deletes
-the new tables). No real database migration is performed by the test suite.
+the new tables). Tests never migrate your configured development/production DB.
 
-Tests cover isolated SQLite migration/restart, separate-connection concurrent
-creation/editing, JWT owner isolation, replay, history and deletion. PostgreSQL
-deployment smoke tests and device/browser interaction QA remain release gates.
+Tests cover isolated SQLite migration/restart, concurrent creation/editing,
+JWT owner isolation, replay, history and deletion. Opt-in PostgreSQL 16 tests also
+verify the migration and the same API lifecycle. A separate real-HTTP test starts
+the gateway/user API, stops/restarts the user process, and verifies persisted
+state, headers, ownership, outage errors and export/delete through the gateway.
+These use synthetic test JWTs, not auth-service registration or mobile UI.
+
+Mission writes and export acquire a namespaced, per-owner PostgreSQL transaction
+advisory lock. This prevents a concurrent creation from leaving an orphaned
+receipt during deletion and keeps exports consistent across their two queries.
+The partial unique index and optimistic versions remain enforced. Deletion is
+not an account ban: a create ordered after deletion may save a new mission.
+
+### Optional release tests
+
+Use a new, disposable PostgreSQL container with no project-data mounts. Bind it
+to loopback only. The database name must be `strem_mission_test`. Set
+`STREM_TEST_POSTGRES_URL` to its `postgresql+asyncpg://...` URL (never your normal
+`DATABASE_URL`). The migration test refuses non-local targets or existing tables;
+recreate the disposable database before rerunning it.
+
+```text
+python -m pytest tests/test_race_mission_postgres.py
+```
+
+Then set `STREM_TEST_GATEWAY_REPO` to the local `strem-api-gateway` checkout and,
+with gateway dependencies installed in the test Python environment, run:
+
+```text
+python -m pytest tests/test_race_mission_gateway_smoke.py
+```
+
+Both are skipped in ordinary CI unless explicitly configured. They leave only
+synthetic rows in the disposable database; the HTTP test always stops its child
+API processes. Remove the dedicated test container after verification. Browser,
+device, registration and deployed-environment acceptance are separate checks.
 
 ### Existing profile and legacy progression APIs
 

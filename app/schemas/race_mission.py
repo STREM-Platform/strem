@@ -1,5 +1,6 @@
 """Athlete-entered Race Mission foundation. No inferred personal facts."""
 
+import re
 import uuid
 from datetime import date, datetime
 from typing import Literal, Self
@@ -20,6 +21,15 @@ class RaceEvent(StrictModel):
     distance_km: float = Field(gt=0, le=500, strict=True)
     elevation_gain_m: int | None = Field(default=None, ge=0, le=30000, strict=True)
     cutoff_minutes: int | None = Field(default=None, ge=1, le=4320, strict=True)
+
+    @field_validator("race_date", mode="before")
+    @classmethod
+    def calendar_date_only(cls, value: object) -> object:
+        if type(value) is date:
+            return value
+        if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            raise ValueError("Use a calendar date in YYYY-MM-DD format, not a timestamp")
+        return value
 
     @field_validator("timezone")
     @classmethod

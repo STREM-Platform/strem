@@ -67,6 +67,21 @@ class MissionReceipt(Base):
     snapshot: Mapped[dict[str, object]] = mapped_column(JSON)
 
 
+async def lock_account(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Serialize mission writes/exports for one owner until transaction end.
+
+    Row locks cannot cover an account with no mission yet. A namespaced PostgreSQL
+    transaction advisory lock covers that case and prevents deletion racing with
+    creation/revision/receipt writes. SQLite already serializes write transactions.
+    PostgreSQL releases the lock on transaction end or connection loss; no
+    session-level or process-local lock is used.
+    """
+    if session.get_bind().dialect.name == "postgresql":
+        digest = hashlib.sha256(f"strem:race-missions:{user_id}".encode()).digest()
+        key = int.from_bytes(digest[:8], byteorder="big", signed=True)
+        await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": key})
+
+
 def version_from_header(value: str) -> int:
     if not re.fullmatch(r'"[1-9][0-9]{0,9}"', value):
         raise AppError(400, "invalid_if_match", 'If-Match must be a quoted version, e.g. "1".')
@@ -120,6 +135,7 @@ def add_revision(
 async def create(
     session: AsyncSession, user_id: uuid.UUID, payload: dict[str, object], key: str
 ) -> RaceMission:
+    await lock_account(session, user_id)
     digest = fingerprint("create", payload)
     previous = await replay(session, user_id, key, digest)
     if previous:
@@ -171,6 +187,7 @@ async def change(
     reason: str,
     key: str | None = None,
 ) -> RaceMission:
+    await lock_account(session, user_id)
     digest = fingerprint(f"archive/{mission_id}", {"version": expected, "reason": reason})
     if key:
         previous = await replay(session, user_id, key, digest)
@@ -219,6 +236,7 @@ async def change(
 
 
 async def delete_owned_data(session: AsyncSession, user_id: uuid.UUID) -> None:
+    await lock_account(session, user_id)
     # Explicit ordering also works with foreign-key enforcement on SQLite.
     for model in (MissionReceipt, MissionRevisionRecord, MissionRecord):
         await session.execute(delete(model).where(model.user_id == user_id))

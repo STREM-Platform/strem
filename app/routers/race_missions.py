@@ -64,6 +64,8 @@ async def active_mission(
 async def export_missions(
     current: CurrentUserDep, session: SessionDep, response: Response
 ) -> RaceMissionExport:
+    # Keep the mission and revision queries consistent with concurrent writes.
+    await store.lock_account(session, current.user_id)
     response.headers["Cache-Control"] = "no-store"
     missions = await session.scalars(
         select(store.MissionRecord)

@@ -181,6 +181,8 @@ def test_isolation_and_complete_mission_only_deletion() -> None:
     [
         ("name", " "),
         ("race_date", "2027-02-30"),
+        ("race_date", "2027-06-12T00:00:00Z"),
+        ("race_date", 0),
         ("timezone", "Mars/Olympus"),
         ("distance_km", 0),
         ("distance_km", -1),
