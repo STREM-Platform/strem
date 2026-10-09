@@ -88,4 +88,25 @@ npx expo export --platform web
 
 ## Review gates
 
+### Manual foundation acceptance (still outstanding)
+
+Use a dedicated test account against the updated local backend, not personal race
+records. Record browser/device, viewport and screenshots against mobile #111:
+
+1. Create a mission with blank elevation/cutoff; refresh and sign in again.
+   Saved facts must match, and blank facts must remain Unknown.
+2. Edit from two tabs opened at the same version. After one saves, the stale
+   tab must show a conflict and keep its unsaved entries, not overwrite the save.
+3. Archive, create another mission, then archive that one too. Confirm both are
+   retained in history; retries must not duplicate a save.
+4. Load/export mission JSON. Verify active/archived records and revision reasons.
+   Delete ONLY this test account's mission data using the explicit confirmation;
+   verify the empty state and that another test account remains unaffected.
+5. Stop the local API, then retry loading/saving. Expect unavailable or unconfirmed
+   messages, never fake race facts. Restore it and refresh saved state before retrying.
+6. Check narrow mobile and desktop layouts, keyboard-only operation, screen-reader
+   labels, validation errors, large text, and bottom-navigation visibility.
+
+Automated API/logic tests and web export do not replace these interaction checks.
+
 Race Mission contracts, source ingestion, calendar access, privacy behavior, health-adjacent AI behavior, and production deployment require the reviews defined in the workspace `AGENTS.md`.
