@@ -1,6 +1,6 @@
 # Implementation Status
 
-_Last updated: 2026-10-08._
+_Last updated: 2026-10-09._
 
 ## Current product
 
@@ -64,7 +64,9 @@ The STREM-Platform Core Platform project board (project 1; organization sign-in 
 
 ### Verification for this increment
 
-- Foundation: 101 user-service tests, 17 gateway tests and 22 mobile tests pass, alongside Python lint/strict types and mobile TypeScript/ESLint. Tests include disposable SQLite upgrade/restart/downgrade, separate-connection concurrent create/edit, owner isolation, replay and delete. Production web export passed. PostgreSQL smoke tests and full browser/device interaction are still release gates. No browser was connected to the UI tool; do not close #103 or #109 on this evidence alone.
+- Foundation: 103 standard user-service tests and two separately opted-in release tests pass; mobile has 24 passing tests and a successful production web export. Python lint/strict types and mobile TypeScript/ESLint pass. The PostgreSQL 16 migration/API lifecycle and real-HTTP gateway/user-service restart checks use disposable loopback databases. The HTTP check uses signed test JWTs; it does not verify auth-service registration or mobile interaction. Browser/device acceptance remains outstanding: browser control has no connected browser and the native UI helper is unavailable. The mobile README supplies the manual checklist. Do not close #103 or #109 on this evidence alone.
+- A PostgreSQL regression reproduced concurrent deletion leaving an orphaned idempotency snapshot (`0 missions / 0 revisions / 1 receipt`). Per-owner transaction locking now serializes mission writes and exports; the regression verifies complete new records for a create ordered after deletion. No production schema change or existing-data migration was added.
+- Mobile deadlines now cover response-body reads and token refresh/retry, not just initial response headers. Regression tests cover both stalled-body and stalled-refresh cases. Calendar dates reject timestamps instead of silently coercing them. These are foundation correctness fixes, not new AI or integration capabilities.
 - AI: 121 tests, ruff and strict mypy across 63 files passed in an isolated Python 3.12 environment. No paid/live model call was performed; scripted-provider tests do not establish real-provider quality or coaching safety.
 - Foundation contracts: seven main-branch OpenAPI specs and eighteen existing event schemas validate with the additive user contract. The broader PR #39 has separate draft-only validation evidence; do not confuse it with approved implemented operations.
 - Real-event photography rights and the five-athlete comprehension test remain unfulfilled; `strem-docs#21` makes these explicit deliverables.

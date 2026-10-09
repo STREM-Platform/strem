@@ -102,9 +102,9 @@ Nutrition and community services are not first-wave owners. Race fueling can beg
 
 The existing cross-repository master issue is `STREM-Platform/strem-docs#20` (organization sign-in required); use its linked issues, not a second roadmap.
 
-1. Resolve and review shared-contracts #38 / PR #39. Scope is cleaned of inherited proof media, but provenance trust, typed/concurrent plan diffs and reversal semantics are not yet approved.
+1. Finish the founder-approved foundation (`user-service#24`): contract PR #40, user-service PR #25, gateway PR #12 and mobile PR #111. PostgreSQL migration and real-HTTP restart checks pass; browser/device acceptance remains outstanding. Separately align/review shared-contracts #38 / PR #39: broader course provenance, typed/concurrent plan diffs and reversal semantics are not approved by the foundation decision.
 2. Review AI #34 / PR #38 for honest unavailable responses. This is a correctness repair, not the Race Mission AI engine.
-3. Implement user #23, training #10/#11 and gateway #11 against the approved contract. Connect mobile #104 to a real persisted mission and delete the fixture from runtime.
+3. Continue the remaining scope of user #23, training #10/#11, gateway #11 and mobile #104 against separately approved contracts. Persisted mission intake and fixture removal are implemented in the foundation PRs; GPX, wider athlete constraints and preparation evidence are not.
 4. Under AI #33, execute #35 (consented evidence snapshots) before #36 (proactive proposals). Build the #37 evaluation harness alongside these, including an explicit opt-in real-provider test. Do not call scripted tests proof of live AI.
 5. Continue mobile #103 and #105–#109 on the same real slice. Docs #21 supplies rights-cleared event media and responsive/athlete acceptance evidence. A stronger synthetic screen does not close functional tickets.
 6. Run docs #16 paid validation in parallel. Race Pass pricing/entitlement (#19), calendar decisions (#18) and pilot deployment (infra #17) keep their existing gates.
