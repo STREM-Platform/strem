@@ -98,16 +98,45 @@ Every package needs a scoped GitHub issue before implementation. Contract, servi
 
 Nutrition and community services are not first-wave owners. Race fueling can begin as a mission rehearsal object; same-event support remains optional until the solo product retains.
 
-## Current Execution Order (2026-10-08)
+## Current Execution Order (2026-10-11)
 
 The existing cross-repository master issue is `STREM-Platform/strem-docs#20` (organization sign-in required); use its linked issues, not a second roadmap.
 
 1. Finish the founder-approved foundation (`user-service#24`): contract PR #40, user-service PR #25, gateway PR #12 and mobile PR #111. PostgreSQL migration, real-HTTP restart and compact/wide real-service browser lifecycle checks pass; native/accessibility/athlete acceptance remains outstanding. Triage mobile #112 dependency advisories and review #113 session restoration before pilot release. Separately align/review shared-contracts #38 / PR #39: broader course provenance, typed/concurrent plan diffs and reversal semantics are not approved by the foundation decision.
 2. Review AI #34 / PR #38 for honest unavailable responses. This is a correctness repair, not the Race Mission AI engine.
-3. Continue the remaining scope of user #23, training #10/#11, gateway #11 and mobile #104 against separately approved contracts. Persisted mission intake and fixture removal are implemented in the foundation PRs; GPX, wider athlete constraints and preparation evidence are not.
+3. Deliver the next connected slice under docs #24: source/edition review, authorized GPX, persisted course model, synchronized map/elevation and approved race media when available. Existing owners remain training #10, gateway #11 and mobile #103/#104/#105. Approve the new storage/contracts/privacy boundary first; the foundation approval does not cover it. Persisted mission intake and fixture removal are implemented; course intelligence is not.
 4. Under AI #33, execute #35 (consented evidence snapshots) before #36 (proactive proposals). Build the #37 evaluation harness alongside these, including an explicit opt-in real-provider test. Do not call scripted tests proof of live AI.
 5. Continue mobile #103 and #105–#109 on the same real slice. Docs #21 supplies rights-cleared event media and responsive/athlete acceptance evidence. A stronger synthetic screen does not close functional tickets.
 6. Run docs #16 paid validation in parallel. Race Pass pricing/entitlement (#19), calendar decisions (#18) and pilot deployment (infra #17) keep their existing gates.
+
+### Backend packages behind the remaining screens
+
+These are implementation scopes, not claims that the features exist. Ownership extensions remain proposals until reviewed.
+
+| Package | Owning ticket | Dependencies / consumer |
+|---|---|---|
+| Initial preparation plan, activation and versioned session lifecycle | `strem-training-service#12` | user #23, training #10/#11, reviewed safety protocol; mobile #106 and AI proposals |
+| Mission logistics, sourced requirements and checklists | `strem-user-service#26` | source/edition review docs #24, contracts #38; mobile #107 |
+| Session/course-linked rehearsal records and results | `strem-training-service#13` | reviewed privacy/safety fields, training #11; mobile #106/#107 |
+| Weather provider, forecast horizon, privacy/cost and ownership decision | `strem-docs#25` | Must produce separately approved implementation tickets; mobile #107 and AI #35 |
+
+### Acceptance for the next visible milestone
+
+An athlete can attach an authorized GPX to the chosen event edition, reload the app,
+and inspect the actual route, elevation and derived sections. Selecting a section
+keeps the map, profile and textual inspector synchronized. The Mission hero uses
+approved event photography with readable credits when rights exist; otherwise it
+uses actual course geometry and typography, never a fabricated race photo or route.
+The source panel shows the edition, source links, verification time, conflicts and
+what remains unknown. A map-provider outage leaves course facts and the text/profile
+view usable. Missing GPX or media does not prevent saving a mission.
+
+The first website workflow is curated source review, not an unrestricted importer.
+Docs #24 names all affected repositories and requires a map-provider decision,
+private upload/retention review, additive migration, and coherent export/deletion
+across mission and course owners before runtime implementation. No new bucket,
+paid provider account, automatic crawler or photo hotlink is authorized by the
+visual direction. Photo rights acquisition stays in docs #21.
 
 The AI reads the minimum useful, consented evidence for each decision. It does not observe every part of a person's life. Revocation, missing/stale data, manual-only use and conflicts are first-class cases. More integrations are justified by improved race decisions, not by the number of connected apps.
 

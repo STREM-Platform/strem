@@ -19,11 +19,13 @@ STREM is in trail-running pivot validation. Founder-approved issue `strem-user-s
 | Race Mission, event facts/media, GPX/course, constraints, evidence, risk, rehearsal, decision, calendar-intent, and debrief contracts | Review draft open; not merged | `strem-shared-contracts#38`, PR `strem-shared-contracts#39`, human review required |
 | Private mission create/read/edit/archive, one active mission, revisions, export/delete | Implemented locally; approval recorded for this narrow foundation, release checks pending | `strem-user-service#24`; partial delivery of `strem-user-service#23`, `strem-mobile#104`, `strem-api-gateway#11` |
 | GPX course intelligence | Scoped; implementation not started | `strem-training-service#10`, `strem-mobile#105` |
-| Real adaptive trail plan and preparation evidence | Scoped; implementation not started | `strem-training-service#11`, `strem-mobile#106` |
+| Sourced visual race brief, exact event edition, approved photography and course/map integration | Cross-repository slice scoped; ownership/storage/privacy/map-provider decisions pending | `strem-docs#24`, existing mobile #103/#105 and media acquisition docs #21 |
+| Real adaptive trail plan and preparation evidence | Separate plan backend package now scoped; implementation not started | `strem-training-service#11/#12`, `strem-mobile#106` |
 | Cited, reversible AI Race Team decisions | Scoped; implementation not started | `strem-ai-orchestrator#33`, `strem-mobile#108` |
 | Honest AI-unavailable response without misleading context citations | Implemented in PR #38; not merged, safety-adjacent fallback review required | `strem-ai-orchestrator#34`; 121 tests, ruff and strict mypy pass |
 | Consented evidence snapshots, proactive proposals and real-provider evaluation | Scoped; not implemented | `strem-ai-orchestrator#35`, `#36`, `#37` |
-| Functional Race Lab rehearsals and operations | Scoped; implementation not started | `strem-mobile#107` |
+| Functional Race Lab rehearsals and operations | Backend ownership proposals and implementation packages scoped; not built | `strem-mobile#107`, `strem-user-service#26`, `strem-training-service#13` |
+| Sourced race conditions / weather | Provider, privacy, forecast horizon and owner decision scoped; no integration | `strem-docs#25` |
 | Calendar export and consented free/busy ingestion | Product/privacy decision scoped; implementation not approved | `strem-docs#18` |
 | Race Pass packaging and entitlement | Validation scoped; checkout not approved | `strem-docs#19` |
 | Paid 10-athlete concierge pilot | Scoped; recruitment and payment not started | `strem-docs#16` |
@@ -35,7 +37,7 @@ On the foundation branch, mobile creates and reloads authenticated server-owned 
 
 The runtime sample mission, course explorer/profile, fabricated preparation sessions and sample advice have been deleted on this branch. Plan, course intelligence and race-specific AI now show honest unavailable states. Generic coach chat is no longer presented as a mission-aware Race Team. Unsaved form drafts are not yet resumable across closing the form. No new AI/data-source consent is implied by mission creation.
 
-The founder explicitly approved existing user-service ownership and additive migration `0008_race_missions` on 2026-10-08. No existing rows are migrated or deleted. Keep the additive tables if rolling application code back; downgrading populated tables is destructive and requires separate approval/backup. No real database was migrated during this increment. The narrow user contract takes precedence over overlapping, unmerged draft PR #39 foundation operations; course/proposal contracts still need their own review.
+The founder explicitly approved existing user-service ownership and additive migration `0008_race_missions` on 2026-10-08. No existing rows are migrated or deleted. Keep the additive tables if rolling application code back; downgrading populated tables is destructive and requires separate approval/backup. On 2026-10-11, the approved migration was applied to the existing local review database after a PostgreSQL custom-format backup; no production database was touched. A clearly fictional demo mission was then created in the local demo account at the founder's request; this is a saved review record, not a runtime fallback or official event. The narrow user contract takes precedence over overlapping, unmerged draft PR #39 foundation operations; course/proposal contracts still need their own review.
 
 The existing backend still has legacy coaching paths. Audit found that its keyless/error fallback could claim personal analysis and attach context chips. AI PR #38 fixes those fallback paths; until reviewed and merged, do not describe the backend as fully honest or production-ready. Successful response chips are still context summaries, not validated claim-level citations; that work belongs to #33/#35/#37.
 
