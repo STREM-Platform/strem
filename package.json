@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
@@ -32,6 +33,7 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~56.0.4",

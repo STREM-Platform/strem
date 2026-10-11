@@ -88,7 +88,33 @@ npx expo export --platform web
 
 ## Review gates
 
-### Manual foundation acceptance (still outstanding)
+### Automated real-service browser acceptance
+
+The Playwright suite runs the mission lifecycle at 390px and 1440px using installed
+Chrome, real auth/user/gateway processes and disposable SQLite databases. It creates
+synthetic accounts through the actual API and seeds their returned tokens into the
+browser; it does not test the login/registration UI or mock mission responses.
+
+Prerequisites: sibling auth/user/gateway repositories with the foundation changes,
+Node dependencies installed, Chrome, and a Python 3.12 environment containing all
+three services' requirements (including Alembic, SQLite driver and httpx).
+
+```powershell
+$env:STREM_TEST_BACKEND_PYTHON = 'C:/path/to/test-venv/Scripts/python.exe'
+npm.cmd run test:e2e
+```
+
+Ports 9510–9513 must be free. The fixture refuses existing listeners, overrides only
+child-process environments, disables unrelated upstreams, and removes its temporary
+databases when stopped normally. It never changes project `.env` files or real data.
+The Expo server bundles in production mode. Screenshots are synthetic test artifacts
+under ignored `test-results/`; traces are disabled to avoid retaining tokens.
+
+Coverage: create/reload, optional unknowns, visible/unobscured primary action,
+offline load/retry, stale-version correction with retained entries, archive/create,
+JSON export contents, and explicitly confirmed mission-only deletion.
+
+### Remaining manual/device acceptance
 
 Use a dedicated test account against the updated local backend, not personal race
 records. Record browser/device, viewport and screenshots against mobile #111:
@@ -107,6 +133,7 @@ records. Record browser/device, viewport and screenshots against mobile #111:
 6. Check narrow mobile and desktop layouts, keyboard-only operation, screen-reader
    labels, validation errors, large text, and bottom-navigation visibility.
 
-Automated API/logic tests and web export do not replace these interaction checks.
+Browser automation covers the core lifecycle above, but does not replace native
+device, screen-reader, keyboard/large-text and real-athlete usability checks.
 
 Race Mission contracts, source ingestion, calendar access, privacy behavior, health-adjacent AI behavior, and production deployment require the reviews defined in the workspace `AGENTS.md`.
