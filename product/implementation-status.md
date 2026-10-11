@@ -1,6 +1,6 @@
 # Implementation Status
 
-_Last updated: 2026-10-09._
+_Last updated: 2026-10-11._
 
 ## Current product
 
@@ -64,7 +64,10 @@ The STREM-Platform Core Platform project board (project 1; organization sign-in 
 
 ### Verification for this increment
 
-- Foundation: 103 standard user-service tests and two separately opted-in release tests pass; mobile has 24 passing tests and a successful production web export. Python lint/strict types and mobile TypeScript/ESLint pass. The PostgreSQL 16 migration/API lifecycle and real-HTTP gateway/user-service restart checks use disposable loopback databases. The HTTP check uses signed test JWTs; it does not verify auth-service registration or mobile interaction. Browser/device acceptance remains outstanding: browser control has no connected browser and the native UI helper is unavailable. The mobile README supplies the manual checklist. Do not close #103 or #109 on this evidence alone.
+- Foundation: 103 standard user-service tests and two separately opted-in release tests pass; mobile has 24 passing tests and a successful production web export. Python lint/strict types and mobile TypeScript/ESLint pass. The PostgreSQL 16 migration/API lifecycle and real-HTTP gateway/user-service restart checks use disposable loopback databases. The HTTP check uses signed test JWTs.
+- Browser acceptance now has a local Playwright/Chrome fallback, independent of the unavailable connected-browser helper. Compact (390px) and wide (1440px) runs use real auth/user/gateway services with temporary SQLite databases and synthetic API-registered accounts. They verify create/reload, unknown facts, visible primary action, offline retry, stale-edit retention, archive/recreate, JSON export contents and confirmed deletion. Login UI, native devices, screen readers and athlete usability remain unverified; do not close #103 or #109 on this evidence alone. Setup and remaining manual checks are in the mobile README.
+- Mission UI now brings editing into the primary race panel, improves heading density/navigation contrast and separates event entry from goal/review context on wide layouts. Save/back navigation dismisses to the existing Mission route instead of duplicating it. No event photography, AI assessment or course data was invented.
+- Dependency triage is tracked in mobile #112. Updating compatible transitive `shell-quote` from 1.8.4 to 1.12.0 removed the critical audit finding; 68 findings (13 moderate, 55 high) remain for reachability/SDK-compatible remediation. Mobile #113 records retryable session restoration: existing bootstrap clears tokens on any API failure. One browser run redirected to login; the precise request failure was not captured and is not claimed fixed. Authentication-state changes require review.
 - A PostgreSQL regression reproduced concurrent deletion leaving an orphaned idempotency snapshot (`0 missions / 0 revisions / 1 receipt`). Per-owner transaction locking now serializes mission writes and exports; the regression verifies complete new records for a create ordered after deletion. No production schema change or existing-data migration was added.
 - Mobile deadlines now cover response-body reads and token refresh/retry, not just initial response headers. Regression tests cover both stalled-body and stalled-refresh cases. Calendar dates reject timestamps instead of silently coercing them. These are foundation correctness fixes, not new AI or integration capabilities.
 - AI: 121 tests, ruff and strict mypy across 63 files passed in an isolated Python 3.12 environment. No paid/live model call was performed; scripted-provider tests do not establish real-provider quality or coaching safety.
