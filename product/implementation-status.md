@@ -1,6 +1,6 @@
 # Implementation Status
 
-_Last updated: 2026-10-11._
+_Last updated: 2026-10-22 (GPX processor increment; earlier foundation evidence remains dated 2026-10-11)._
 
 ## Current product
 
@@ -18,7 +18,7 @@ STREM is in trail-running pivot validation. Founder-approved issue `strem-user-s
 | Live authentication, legal acceptance, user profile, athlete baseline, consent, AI chat, action receipts, and Strava/Whoop source status | Existing live paths retained | mobile API clients and existing services |
 | Race Mission, event facts/media, GPX/course, constraints, evidence, risk, rehearsal, decision, calendar-intent, and debrief contracts | Review draft open; not merged | `strem-shared-contracts#38`, PR `strem-shared-contracts#39`, human review required |
 | Private mission create/read/edit/archive, one active mission, revisions, export/delete | Implemented locally; approval recorded for this narrow foundation, release checks pending | `strem-user-service#24`; partial delivery of `strem-user-service#23`, `strem-mobile#104`, `strem-api-gateway#11` |
-| GPX course intelligence | Scoped; implementation not started | `strem-training-service#10`, `strem-mobile#105` |
+| GPX course intelligence | Internal deterministic GPX/ZIP processor implemented locally; persistence, API and mobile map remain unimplemented | `strem-training-service#10`, branch `issue-10-gpx-processing`; `strem-mobile#105` |
 | Sourced visual race brief, exact event edition, approved photography and course/map integration | Cross-repository slice scoped; ownership/storage/privacy/map-provider decisions pending | `strem-docs#24`, existing mobile #103/#105 and media acquisition docs #21 |
 | Real adaptive trail plan and preparation evidence | Separate plan backend package now scoped; implementation not started | `strem-training-service#11/#12`, `strem-mobile#106` |
 | Cited, reversible AI Race Team decisions | Scoped; implementation not started | `strem-ai-orchestrator#33`, `strem-mobile#108` |
@@ -65,6 +65,9 @@ On 2026-10-08, seven superseded PRs were closed without merging: mobile #92/#94/
 The STREM-Platform Core Platform project board (project 1; organization sign-in required) includes the scoped foundation issue #24. Ninety-two historical completed/superseded items were archived, not deleted. `Ready` is a queued-work status, not permission to bypass dependencies. The `Delivery gate` field distinguishes contract approval, upstream implementation, human review, UX validation and pilot validation.
 
 ### Verification for this increment
+
+- GPX processing (2026-10-22): 75 training-service tests, lint and strict type checks pass in an isolated Python 3.12 environment. The internal processor accepts bounded GPX 1.0/1.1 and single-GPX ZIPs, preserves segment breaks, fingerprints the original GPX and computes horizontal distance plus raw elevation. XML DTD/entities/external resolution and unsafe archives are rejected. Missing elevation stays unknown. No upload API, migration, private retention workflow, course sections or map integration was added.
+- Real-course check: the organizer-linked `UTH50_Endurance.zip` downloaded on 2026-10-22 processed as one segment / 1,515 points / 50,154.25 m horizontal distance / 2,214.63 m raw ascent. GPX SHA-256: `d9d7cc9f2a2038680c25f3714fe306ca6fbae1f4f19a3f9c13dd795b1dccda2b`. These calculations are separate from the organizer's published 50.0 km / 2,100 m; the file was used for local verification and was not committed or attached to a mission. The [current course page](https://upthehill.run/strecken/uth50/) and [schedule](https://upthehill.run/infos/programm/) now list a 09:00 start on 24 April 2027 and 19:00 finish closure, superseding the 08:00 research note from 2026-10-11. Source and allowed-use review remain open under docs #24; no photography was acquired.
 
 - Foundation: 103 standard user-service tests and two separately opted-in release tests pass; mobile has 24 passing tests and a successful production web export. Python lint/strict types and mobile TypeScript/ESLint pass. The PostgreSQL 16 migration/API lifecycle and real-HTTP gateway/user-service restart checks use disposable loopback databases. The HTTP check uses signed test JWTs.
 - Browser acceptance now has a local Playwright/Chrome fallback, independent of the unavailable connected-browser helper. Compact (390px) and wide (1440px) runs use real auth/user/gateway services with temporary SQLite databases and synthetic API-registered accounts. They verify create/reload, unknown facts, visible primary action, offline retry, stale-edit retention, archive/recreate, JSON export contents and confirmed deletion. Login UI, native devices, screen readers and athlete usability remain unverified; do not close #103 or #109 on this evidence alone. Setup and remaining manual checks are in the mobile README.
