@@ -26,7 +26,8 @@ and scoped to the token's `user_id`.
 `app/course_processing.py` processes a local GPX 1.0/1.1 file or a ZIP containing
 exactly one GPX. It returns immutable segments, coordinates, cumulative horizontal
 distance and raw elevation totals. This increment has no upload endpoint,
-database storage or mobile connection yet.
+database storage or mobile connection in the initial parser increment. The private
+course flow below now connects it to Race Lab.
 
 ```bash
 python -m app.course_processing /path/to/course.gpx
@@ -81,7 +82,26 @@ climb at a brief flatter stretch. This is an explicit algorithm choice, not an
 organizer climb list, technicality classification, physiological demand estimate
 or pacing recommendation. Raw elevation noise can still affect these results.
 Sections/runs retain distances and segment indexes for a future synchronized
-map/profile inspector; no frontend is connected yet.
+map/profile inspector, now connected by the private course flow below.
+
+## Private course flow (docs #24, approved 2026-10-22)
+
+Apply additive `0005_mission_courses` before new application code; keep tables on
+rollback. PUT/GET `/v1/training/missions/{mission_id}/course` saves/reads one private
+current course. PUT accepts base64 GPX/ZIP and optional HTTPS source, with quoted
+If-Match 0 for first attachment or current version for replacement. Identical
+retries return the existing result; replacement discards the old file/model.
+Limits: 4 MiB file, 6 MiB envelope, 20 MiB originals/account and two concurrent
+upload read/processing slots per process. No source URL is fetched.
+
+Ownership is checked via user-service; failures deny access. Course responses are
+no-store. `GET /v1/training/courses/data` exports models plus original GPX; mission
+export includes it too. Mission deletion uses a durable user intent, a dedicated
+internal purge authorization and a training owner-generation fence. Late uploads
+cannot recreate erased data; purge retries cannot erase newer courses. Do not
+expose the internal purge route via the gateway. See the full protocol/rollout in
+`strem-docs/architecture/adr/0007-private-mission-courses.md`. No production DB or
+infrastructure is changed by this increment. Async status remains future work.
 
 ## Run locally
 

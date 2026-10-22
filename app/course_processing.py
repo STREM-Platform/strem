@@ -72,7 +72,7 @@ def _fail(code: str) -> None:
     raise CourseProcessingError(code)
 
 
-def _unpack(data: bytes) -> bytes:
+def extract_gpx(data: bytes) -> bytes:
     if not data or len(data) > MAX_BYTES:
         _fail("file_size_limit")
     if not data.startswith(b"PK"):
@@ -186,7 +186,7 @@ def process_course(data: bytes) -> ProcessedCourse:
     route. Waypoints and extension geometry are ignored; multiple alternatives
     are rejected. Distances are horizontal metres; no smoothing/interpolation.
     """
-    gpx = _unpack(data)
+    gpx = extract_gpx(data)
     root = _parse(gpx)
     namespace = _NAMESPACES.get(root.get("version", ""))
     if namespace is None or root.tag != f"{{{namespace}}}gpx":
