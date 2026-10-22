@@ -46,7 +46,7 @@ def test_additive_migration_restart_and_disposable_downgrade(tmp_path: Path) -> 
 
     asyncio.run(read_after_restart())
     # Disposable test database only. A populated real DB must NOT be downgraded.
-    migrate("downgrade", "0007_biomarkers")
+    migrate("-x", "allow_course_data_loss=true", "downgrade", "0007_biomarkers")
 
     async def check_tables() -> None:
         engine = create_async_engine(db_url)

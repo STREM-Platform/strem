@@ -136,6 +136,9 @@ async def create(
     session: AsyncSession, user_id: uuid.UUID, payload: dict[str, object], key: str
 ) -> RaceMission:
     await lock_account(session, user_id)
+    from app.course_coordination import ensure_available
+
+    await ensure_available(session, user_id)
     digest = fingerprint("create", payload)
     previous = await replay(session, user_id, key, digest)
     if previous:
@@ -188,6 +191,9 @@ async def change(
     key: str | None = None,
 ) -> RaceMission:
     await lock_account(session, user_id)
+    from app.course_coordination import ensure_available
+
+    await ensure_available(session, user_id)
     digest = fingerprint(f"archive/{mission_id}", {"version": expected, "reason": reason})
     if key:
         previous = await replay(session, user_id, key, digest)

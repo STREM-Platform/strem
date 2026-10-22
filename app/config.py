@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     # Redis Streams broker for publishing progression events (event-driven-strategy.md).
     message_broker_url: str = "redis://localhost:6379/0"
+    # Empty disables first course attachment; existing course state still requires cleanup.
+    course_storage_base_url: str = ""
 
 
 @lru_cache

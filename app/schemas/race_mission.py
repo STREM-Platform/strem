@@ -101,3 +101,4 @@ class RaceMissionExport(StrictModel):
     exported_at: datetime
     missions: list[RaceMission]
     revisions: list[RaceMissionRevision]
+    courses: list[dict[str, object]] = Field(default_factory=list)
