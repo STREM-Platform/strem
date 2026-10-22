@@ -12,7 +12,7 @@ import math
 import stat
 import zipfile
 import zlib
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from io import BytesIO
 from pathlib import Path, PurePosixPath
 from xml.etree.ElementTree import Element, ParseError
@@ -253,10 +253,24 @@ def main() -> None:
     """Local review helper; prints summary only, never raw GPX or coordinates."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", type=Path, help="Local GPX or single-GPX ZIP")
+    parser.add_argument("--analyze", action="store_true", help="Include grade and climb summary")
     args = parser.parse_args()
     try:
         with args.file.open("rb") as stream:
             course = process_course(stream.read(MAX_BYTES + 1))
+        analysis_summary: dict[str, object] = {}
+        if args.analyze:
+            from app.course_analysis import analyze_course
+
+            analysis = analyze_course(course)
+            analysis_summary = {
+                "analysis_version": analysis.analysis_version,
+                "section_count": len(analysis.sections),
+                "grade_bands": [asdict(band) for band in analysis.grade_bands],
+                "unknown_grade_distance_m": analysis.unknown_grade_distance_m,
+                "sustained_runs": [asdict(run) for run in analysis.sustained_runs],
+                "analysis_warnings": analysis.warnings,
+            }
     except (CourseProcessingError, OSError) as error:
         parser.exit(1, f"Course processing failed: {getattr(error, 'code', 'file_unreadable')}\n")
     print(
@@ -273,6 +287,7 @@ def main() -> None:
                 "lowest_elevation_m": course.lowest_elevation_m,
                 "highest_elevation_m": course.highest_elevation_m,
                 "warnings": course.warnings,
+                **analysis_summary,
             },
             indent=2,
             allow_nan=False,

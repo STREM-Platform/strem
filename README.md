@@ -31,6 +31,7 @@ database storage or mobile connection yet.
 ```bash
 python -m app.course_processing /path/to/course.gpx
 python -m app.course_processing /path/to/course.zip
+python -m app.course_processing /path/to/course.zip --analyze
 ```
 
 The command prints a summary without coordinates or file metadata. The supplied
@@ -60,6 +61,27 @@ Local reference verification on 2026-10-22 used the organizer-linked
 from the published 50.0 km / 2,100 m; raw totals must not overwrite organizer facts.
 GPX SHA-256: `d9d7cc9f2a2038680c25f3714fe306ca6fbae1f4f19a3f9c13dd795b1dccda2b`.
 The race file is not a committed test fixture or an approved distribution asset.
+
+`app/course_analysis.py` adds internal geometric course sections and grade/run
+summaries (`--analyze`). Method `course-100m-net-grade-v1` splits each track segment
+into 100 m sections plus its final partial section. Elevation change is distributed
+linearly within recorded edges up to 500 m; missing elevations and longer edges
+make affected sections unknown. Zero-distance elevation jumps are warned and make
+the following affected section unknown; a terminal jump adds no horizontal section.
+Track gaps are never bridged. At most 10,000 sections are allocated; larger output
+is rejected before section construction.
+
+Grade is net elevation change / horizontal distance, not maximum local slope.
+Distance-weighted bands are `<-10%`, `[-10,-3)%`, `[-3,3)%`, `[3,10)%`, `>=10%`;
+unknown distance is reported separately. Candidate ascent/descent runs require
+consecutive sections with at least 3% grade in the same direction, at least 300 m
+distance and 30 m net elevation change. Unknown, rolling, opposite-direction and
+segment boundaries end a run. These conservative geometric runs may split a named
+climb at a brief flatter stretch. This is an explicit algorithm choice, not an
+organizer climb list, technicality classification, physiological demand estimate
+or pacing recommendation. Raw elevation noise can still affect these results.
+Sections/runs retain distances and segment indexes for a future synchronized
+map/profile inspector; no frontend is connected yet.
 
 ## Run locally
 
