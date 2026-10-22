@@ -122,6 +122,14 @@ These are implementation scopes, not claims that the features exist. Ownership e
 
 ### Acceptance for the next visible milestone
 
+On 2026-10-22 the founder approved the narrow private course storage/API and cleanup
+scope in [ADR 0007](../architecture/adr/0007-private-mission-courses.md). It is now
+implemented on dependent review branches: GPX upload/replacement, persisted model,
+route/elevation/section inspection and coordinated export/deletion. This does not
+approve broader draft PR #39, automatic source ingestion, photography, a basemap
+provider or production deployment. Remaining source/media/map acceptance below
+still applies; the initial geometry view explicitly has no basemap.
+
 An athlete can attach an authorized GPX to the chosen event edition, reload the app,
 and inspect the actual route, elevation and derived sections. Selecting a section
 keeps the map, profile and textual inspector synchronized. The Mission hero uses
