@@ -64,6 +64,10 @@ npm run web
 
 The gateway defaults to `http://localhost:8000/v1`. Override it with `EXPO_PUBLIC_API_URL`.
 
+Metro caches are partitioned by `EXPO_PUBLIC_*` settings so local review and
+browser-test servers cannot reuse a bundle compiled with each other's API URL.
+Restart Expo after changing those settings; hard-refresh an already open tab.
+
 Requires the foundation in user-service issue #24: migration `0008_race_missions`
 and the gateway `/race-missions` mapping. An older backend shows an unavailable
 API state, not an empty account. See the user-service README for safe migration

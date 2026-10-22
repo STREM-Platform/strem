@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/session/auth-context";
 import { validateEmail, validatePassword } from "@/lib/validation";
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, phase } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
@@ -60,6 +60,7 @@ export default function LoginScreen() {
     >
       <TextField
         label="Email"
+        editable={phase !== "loading" && !submitting}
         value={email}
         onChangeText={setEmail}
         errorText={emailError}
@@ -71,6 +72,7 @@ export default function LoginScreen() {
       />
       <TextField
         label="Password"
+        editable={phase !== "loading" && !submitting}
         value={password}
         onChangeText={setPassword}
         errorText={passwordError}
@@ -81,7 +83,7 @@ export default function LoginScreen() {
 
       {formError ? <FormError message={formError} /> : null}
 
-      <PrimaryButton label="Log in" onPress={onSubmit} loading={submitting} />
+      <PrimaryButton label="Log in" onPress={onSubmit} loading={submitting} disabled={phase === "loading"} />
     </AuthShell>
   );
 }
