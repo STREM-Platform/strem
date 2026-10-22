@@ -11,3 +11,5 @@ redis>=5.0
 # encrypted at rest using Fernet.
 httpx>=0.27
 cryptography>=42
+# Bounded, untrusted GPX parsing; DTD/entity/network resolution is disabled.
+defusedxml==0.7.1
