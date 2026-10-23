@@ -88,6 +88,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
       MESSAGE_BROKER_URL: redis://redis:6379/0
+      # Private course files and training plans live in training-service behind
+      # one deletion fence (ADR 0007, docs#26): export and purge go through it.
+      COURSE_STORAGE_BASE_URL: http://training:8000
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -127,6 +130,8 @@ services:
       STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:-}
       STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
       STRAVA_REDIRECT_URI: ${STRAVA_REDIRECT_URI:-}
+      # Mission ownership and the deletion-fence generation come from user-service.
+      USER_SERVICE_BASE_URL: http://user:8000/v1
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -199,6 +204,9 @@ services:
       # tracing.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
+      # Race OS race team (docs#26). Without credit or a key the race engine
+      # still builds every layer and the app says the AI is offline.
+      RACE_MODEL: ${RACE_MODEL:-claude-opus-5-5}
       LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
       LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-strem-forge}
     depends_on:
@@ -221,6 +229,8 @@ services:
       AI_BASE_URL: http://ai:8000/v1
       # Shared rate-limit counters (the gateway fails open if Redis is down).
       REDIS_URL: redis://redis:6379/0
+      # AI race-team builds make several model calls; allow up to 3 minutes.
+      UPSTREAM_TIMEOUT_SECONDS: "180"
     depends_on:
       - auth
       - user
