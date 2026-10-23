@@ -1,27 +1,25 @@
 /**
- * Best-effort refresh of connected sources so the AI Race Team sees recent activity.
- *
- * Without a background sync worker in the local stack, newly-recorded Strava /
- * Whoop activity only lands when a sync is triggered. We do that once per app
- * session (on Home load) so the AI's context — and the chat answers grounded in
- * it — reflect what the athlete actually did, not a stale snapshot. Syncs are
- * idempotent server-side (deduped by external id), so this never duplicates data.
+ * Best-effort refresh of connected sources once per app session, so the plan
+ * tracker and the race team see the latest activities. Syncs are idempotent
+ * server-side (deduplicated by provider activity id).
  */
 
-import { agentApi } from "@/lib/api/agent";
+import { sourcesApi } from "@/lib/api/race";
 
 let syncedThisSession = false;
 
-export async function syncConnectedSources(): Promise<void> {
-  if (syncedThisSession) return;
+export async function syncConnectedSources(): Promise<number> {
+  if (syncedThisSession) return 0;
   syncedThisSession = true;
   try {
-    const { items } = await agentApi.listSources();
-    await Promise.all(
-      items.filter((s) => s.on).map((s) => agentApi.syncSource(s.id).catch(() => undefined)),
+    const sources = await sourcesApi.list();
+    const results = await Promise.all(
+      sources.filter((s) => s.on).map((s) => sourcesApi.sync(s.id).catch(() => ({ synced_sessions: 0, synced_recovery: 0 }))),
     );
+    return results.reduce((sum, r) => sum + r.synced_sessions, 0);
   } catch {
-    // Allow a retry on the next mount if even listing the sources failed.
+    // Allow a retry on the next launch if even listing the sources failed.
     syncedThisSession = false;
+    return 0;
   }
 }
