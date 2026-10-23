@@ -1,9 +1,10 @@
-"""ORM models for the AI orchestrator.
+"""ORM models for tables retired with the pre-pivot coach (strem-docs#28).
 
-The orchestrator owns missions, their state history, weekly coaching recaps,
-behavioral trigger state, and AI response metadata. It deliberately stores **no**
-raw training, nutrition, or tribe logs — those are fetched per request from the
-owning services (ai-architecture.md "Context Privacy").
+Missions, their state history, weekly recaps, behavioral trigger state, agent
+memory/actions and AI response metadata. No code reads or writes these tables any
+more; the models stay so Alembic metadata keeps matching the existing schema (no
+drop migration without a separate retention decision). Race OS tables live in
+`app/race/store.py`.
 """
 
 import uuid
