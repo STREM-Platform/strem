@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     # LLM-unavailable fallback). Use the latest model id.
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-4-8"
+    # The Race OS race team (docs#26): personalization, briefs, chat, adaptation.
+    race_model: str = "claude-opus-5-5"
 
     # LangSmith tracing — full per-run agent observability in production. Empty
     # key → tracing off (local/tests). See app/agent/llm.configure_tracing.

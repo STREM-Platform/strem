@@ -14,3 +14,8 @@ exclude = "(^|/)(\\.venv|venv|build|dist|alembic)/"
 addopts = "-q"
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# Prose-heavy content: athlete-facing engine copy and model instructions.
+"app/race/engine/*.py" = ["E501"]
+"app/race/ai/prompts.py" = ["E501"]
