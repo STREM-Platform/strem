@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import jwt
-from sqlalchemy import Boolean, Integer, delete
+from sqlalchemy import Boolean, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
@@ -105,7 +105,6 @@ async def delete_all(
         # A concurrent completion/new deletion must not erase newly created missions.
         await session.rollback()
         return
-    for model in (missions.MissionReceipt, missions.MissionRevisionRecord, missions.MissionRecord):
-        await session.execute(delete(model).where(model.user_id == user_id))
+    await missions.delete_mission_rows(session, user_id)
     state.deletion_pending = False
     await session.commit()  # Retain only owner UUID + generation fence, no course/mission content.

@@ -51,20 +51,32 @@ def test_create_reload_and_idempotent_conflicts() -> None:
         assert first.json()["source"] == "athlete_entry"
         loaded = await h.client.get("/v1/race-missions/active", headers=headers(user))
         assert loaded.json() == first.json()
+        assert first.json()["event"]["sport"] == "trail_running"
+        assert first.json()["event"]["format"] == "single_day"
         duplicate = await h.client.post("/v1/race-missions", headers=headers(user), json=PAYLOAD)
         assert duplicate.status_code == 201 and duplicate.json() == first.json()
-        second = await h.client.post(
-            "/v1/race-missions", headers=headers(user, "another_key"), json=PAYLOAD
-        )
-        assert second.status_code == 409 and second.json()["code"] == "active_mission_exists"
         changed = copy.deepcopy(PAYLOAD)
         changed["event"]["name"] = "Different race"
         reused = await h.client.post("/v1/race-missions", headers=headers(user), json=changed)
         assert reused.status_code == 409 and reused.json()["code"] == "idempotency_key_reused"
+        # A second race with a new key is allowed: athletes prepare for several races.
+        changed["event"]["race_date"] = "2027-04-03"
+        second = await h.client.post(
+            "/v1/race-missions", headers=headers(user, "another_key"), json=changed
+        )
+        assert second.status_code == 201, second.text
+        listed = await h.client.get("/v1/race-missions?state=active", headers=headers(user))
+        assert [m["event"]["name"] for m in listed.json()["items"]] == [
+            "Different race",
+            "Test Mountain 30",
+        ]
+        # The focus mission is the nearest upcoming race.
+        focus = await h.client.get("/v1/race-missions/active", headers=headers(user))
+        assert focus.json()["id"] == second.json()["id"]
         async with h.sessionmaker() as session:
-            assert await session.scalar(select(func.count()).select_from(MissionRecord)) == 1
+            assert await session.scalar(select(func.count()).select_from(MissionRecord)) == 2
             assert (
-                await session.scalar(select(func.count()).select_from(MissionRevisionRecord)) == 1
+                await session.scalar(select(func.count()).select_from(MissionRevisionRecord)) == 2
             )
 
     run(scenario)
