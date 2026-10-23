@@ -26,7 +26,7 @@ async def create_session(
         raise AppError(
             422,
             "unprocessable_entity",
-            "distance_km is only valid for running, trail running, cycling or swimming.",
+            "distance_km is only valid for distance sports (run, ride, swim, hike, row, ski).",
         )
 
     logged_at = body.logged_at or datetime.now(UTC)
@@ -37,6 +37,9 @@ async def create_session(
         distance_km=body.distance_km,
         elevation_m=body.elevation_m,
         notes=body.notes,
+        title=body.title,
+        avg_hr=body.avg_hr,
+        is_race=body.is_race,
         logged_at=logged_at,
     )
     session.add(record)
@@ -62,11 +65,20 @@ async def list_sessions(
     limit: int,
     offset: int,
     session_type: SessionType | None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    races_only: bool = False,
 ) -> tuple[list[TrainingSession], int]:
     """Return a page of the user's sessions (newest first) and the total count."""
     filters = [TrainingSession.user_id == user_id]
     if session_type is not None:
         filters.append(TrainingSession.session_type == session_type.value)
+    if since is not None:
+        filters.append(TrainingSession.logged_at >= since)
+    if until is not None:
+        filters.append(TrainingSession.logged_at < until)
+    if races_only:
+        filters.append(TrainingSession.is_race.is_(True))
 
     total = await session.scalar(
         select(func.count()).select_from(TrainingSession).where(*filters)

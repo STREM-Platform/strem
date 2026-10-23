@@ -13,3 +13,4 @@ httpx>=0.27
 cryptography>=42
 # Bounded, untrusted GPX parsing; DTD/entity/network resolution is disabled.
 defusedxml==0.7.1
+tzdata>=2025.1  # IANA zones for plan dates on images/platforms without a system tz database

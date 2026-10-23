@@ -49,6 +49,12 @@ class NormalizedSession:
     distance_km: float | None = None
     elevation_m: int | None = None
     notes: str | None = None
+    title: str | None = None
+    sport_detail: str | None = None
+    elapsed_minutes: int | None = None
+    avg_hr: int | None = None
+    max_hr: int | None = None
+    is_race: bool = False
 
 
 @dataclass(frozen=True)
@@ -113,14 +119,27 @@ class StravaProvider:
         }
         return _strava_token(await _post_form(self._TOKEN_URL, data))
 
+    # First sync imports deep history (races, long efforts) so the race team knows
+    # the athlete's past; later syncs re-read a 3-day overlap for late uploads.
+    FIRST_SYNC_PAGES = 10
+    INCREMENTAL_PAGES = 3
+    PAGE_SIZE = 100
+
     async def fetch(self, access_token: str, *, since: datetime | None) -> SyncResult:
-        params: dict[str, Any] = {"per_page": 50}
+        headers = {"Authorization": f"Bearer {access_token}"}
+        params: dict[str, Any] = {"per_page": self.PAGE_SIZE}
         if since is not None:
-            params["after"] = int(since.timestamp())
-        rows = await _get_json(
-            self._ACTIVITIES_URL, params, {"Authorization": f"Bearer {access_token}"}
-        )
-        return SyncResult(sessions=[s for r in rows if (s := _strava_session(r))])
+            params["after"] = int((since - timedelta(days=3)).timestamp())
+        pages = self.FIRST_SYNC_PAGES if since is None else self.INCREMENTAL_PAGES
+        sessions: list[NormalizedSession] = []
+        for page in range(1, pages + 1):
+            rows = await _get_json(self._ACTIVITIES_URL, {**params, "page": page}, headers)
+            if not isinstance(rows, list) or not rows:
+                break
+            sessions.extend(s for r in rows if (s := _strava_session(r)))
+            if len(rows) < self.PAGE_SIZE:
+                break
+        return SyncResult(sessions=sessions)
 
 
 class WhoopProvider:
@@ -154,9 +173,7 @@ class WhoopProvider:
         return _oauth_token(await _post_form(self._TOKEN_URL, data))
 
     async def fetch(self, access_token: str, *, since: datetime | None) -> SyncResult:
-        rows = await _get_json(
-            self._RECOVERY_URL, {}, {"Authorization": f"Bearer {access_token}"}
-        )
+        rows = await _get_json(self._RECOVERY_URL, {}, {"Authorization": f"Bearer {access_token}"})
         records = rows.get("records", []) if isinstance(rows, dict) else rows
         return SyncResult(recovery=[r for row in records if (r := _whoop_recovery(row))])
 
@@ -197,25 +214,80 @@ def _strava_token(payload: dict[str, Any]) -> TokenSet:
     )
 
 
-def _strava_session(row: dict[str, Any]) -> NormalizedSession | None:
-    if str(row.get("type", "")).lower() not in ("run", "trailrun", "ride", "swim"):
+# Strava sport_type (preferred) / legacy type -> STREM session type.
+_STRAVA_SPORTS: dict[str, str] = {
+    "run": "running",
+    "virtualrun": "running",
+    "trailrun": "trail_running",
+    "ride": "cycling",
+    "virtualride": "cycling",
+    "gravelride": "cycling",
+    "mountainbikeride": "cycling",
+    "ebikeride": "cycling",
+    "emountainbikeride": "cycling",
+    "velomobile": "cycling",
+    "swim": "swimming",
+    "hike": "hiking",
+    "walk": "hiking",
+    "snowshoe": "hiking",
+    "weighttraining": "strength",
+    "crossfit": "strength",
+    "workout": "hybrid",
+    "hiit": "hybrid",
+    "yoga": "mobility",
+    "pilates": "mobility",
+    "rowing": "rowing",
+    "virtualrow": "rowing",
+    "canoeing": "rowing",
+    "kayaking": "rowing",
+    "nordicski": "skiing",
+    "backcountryski": "skiing",
+    "alpineski": "skiing",
+    "rollerski": "skiing",
+}
+# Strava workout_type values that mean "race" (runs: 1, rides: 11).
+_STRAVA_RACE_WORKOUT_TYPES = {1, 11}
+_NO_DISTANCE = {"strength", "hybrid", "mobility"}
+
+
+def _int_or_none(value: Any) -> int | None:
+    try:
+        return round(float(value)) if value is not None else None
+    except (TypeError, ValueError):
         return None
-    kind = {"run": "running", "trailrun": "trail_running", "ride": "cycling", "swim": "swimming"}
+
+
+def _strava_session(row: dict[str, Any]) -> NormalizedSession | None:
+    sport = str(row.get("sport_type") or row.get("type") or "")
+    kind = _STRAVA_SPORTS.get(sport.lower())
+    if kind is None or row.get("id") is None:
+        return None
     started = row.get("start_date")
-    logged_at = datetime.fromisoformat(started.replace("Z", "+00:00")) if started else datetime.now(
-        UTC
+    logged_at = (
+        datetime.fromisoformat(started.replace("Z", "+00:00")) if started else datetime.now(UTC)
     )
-    moving = int(row.get("moving_time", 0)) or int(row.get("elapsed_time", 0))
+    elapsed = int(row.get("elapsed_time", 0) or 0)
+    moving = int(row.get("moving_time", 0) or 0) or elapsed
     distance_m = float(row.get("distance", 0) or 0)
     elev = row.get("total_elevation_gain")
+    name = row.get("name")
+    title = str(name)[:160] if name else None
     return NormalizedSession(
         external_id=str(row["id"]),
-        session_type=kind[str(row["type"]).lower()],
+        session_type=kind,
         duration_minutes=max(1, round(moving / 60)),
-        distance_km=round(distance_m / 1000, 2) if distance_m else None,
+        distance_km=round(distance_m / 1000, 2)
+        if distance_m and kind not in _NO_DISTANCE
+        else None,
         elevation_m=round(float(elev)) if elev else None,
         logged_at=logged_at,
-        notes=row.get("name"),
+        notes=title,
+        title=title,
+        sport_detail=sport[:40] or None,
+        elapsed_minutes=max(1, round(elapsed / 60)) if elapsed else None,
+        avg_hr=_int_or_none(row.get("average_heartrate")),
+        max_hr=_int_or_none(row.get("max_heartrate")),
+        is_race=row.get("workout_type") in _STRAVA_RACE_WORKOUT_TYPES,
     )
 
 
@@ -223,9 +295,7 @@ def _whoop_recovery(row: dict[str, Any]) -> NormalizedRecovery | None:
     raw_score = row.get("score")
     score: dict[str, Any] = raw_score if isinstance(raw_score, dict) else row
     created = row.get("created_at") or row.get("updated_at")
-    day = (
-        datetime.fromisoformat(created.replace("Z", "+00:00")) if created else datetime.now(UTC)
-    )
+    day = datetime.fromisoformat(created.replace("Z", "+00:00")) if created else datetime.now(UTC)
     return NormalizedRecovery(
         date=day,
         hrv_ms=score.get("hrv_rmssd_milli"),

@@ -39,7 +39,7 @@ async def access(
         if (
             not isinstance(value, dict)
             or type(value.get("generation")) is not int
-            or value.get("state") not in ("active", "archived")
+            or value.get("state") not in ("active", "archived", "completed")
         ):
             raise ValueError
         return value
@@ -168,11 +168,14 @@ async def export_courses(
         .order_by(store.CourseRecord.mission_id)
     )
     response.headers["Cache-Control"] = "no-store"
+    from app.plans import export_plans
+
     return {
         "courses": [
             {**store.document(row), "content_base64": base64.b64encode(row.gpx).decode()}
             for row in records
-        ]
+        ],
+        "plans": await export_plans(session, current.user_id),
     }
 
 

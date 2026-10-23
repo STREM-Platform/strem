@@ -153,6 +153,14 @@ async def _upsert_session(
         )
     )
     if existing is not None:
+        # Re-sync refreshes what the source recorded (renames, race flag, HR);
+        # it never creates a duplicate.
+        existing.title = norm.title
+        existing.sport_detail = norm.sport_detail
+        existing.elapsed_minutes = norm.elapsed_minutes
+        existing.avg_hr = norm.avg_hr
+        existing.max_hr = norm.max_hr
+        existing.is_race = norm.is_race
         return False
     session.add(
         TrainingSession(
@@ -165,6 +173,12 @@ async def _upsert_session(
             source=provider,
             external_id=norm.external_id,
             logged_at=norm.logged_at,
+            title=norm.title,
+            sport_detail=norm.sport_detail,
+            elapsed_minutes=norm.elapsed_minutes,
+            avg_hr=norm.avg_hr,
+            max_hr=norm.max_hr,
+            is_race=norm.is_race,
         )
     )
     return True

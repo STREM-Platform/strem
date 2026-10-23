@@ -1,6 +1,7 @@
 """Training endpoints implementing contracts/training/openapi.yml (`/v1`)."""
 
 import uuid
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Query, status
@@ -46,9 +47,12 @@ async def log_training_session(
 async def list_training_sessions(
     current: CurrentUserDep,
     session: SessionDep,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    limit: Annotated[int, Query(ge=1, le=500)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
     session_type: SessionType | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    races_only: bool = False,
 ) -> TrainingSessionPage:
     rows, total = await list_sessions(
         session,
@@ -56,6 +60,9 @@ async def list_training_sessions(
         limit=limit,
         offset=offset,
         session_type=session_type,
+        since=since,
+        until=until,
+        races_only=races_only,
     )
     return TrainingSessionPage(
         items=[TrainingSessionResponse.model_validate(r, from_attributes=True) for r in rows],

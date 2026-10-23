@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SessionType(StrEnum):
@@ -19,6 +19,9 @@ class SessionType(StrEnum):
     SWIMMING = "swimming"
     MOBILITY = "mobility"
     HYBRID = "hybrid"
+    HIKING = "hiking"
+    ROWING = "rowing"
+    SKIING = "skiing"
 
 
 # Disciplines for which a distance is meaningful.
@@ -27,6 +30,9 @@ DISTANCE_TYPES = {
     SessionType.TRAIL_RUNNING,
     SessionType.CYCLING,
     SessionType.SWIMMING,
+    SessionType.HIKING,
+    SessionType.ROWING,
+    SessionType.SKIING,
 }
 
 
@@ -37,6 +43,9 @@ class LogTrainingSessionRequest(BaseModel):
     elevation_m: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=500)
     logged_at: datetime | None = None
+    title: str | None = Field(default=None, max_length=160)
+    avg_hr: int | None = Field(default=None, ge=30, le=240)
+    is_race: bool = False
 
 
 class TrainingSessionResponse(BaseModel):
@@ -48,8 +57,14 @@ class TrainingSessionResponse(BaseModel):
     elevation_m: int | None = None
     notes: str | None = None
     # Provenance (A3): "manual" for in-app logs, else the connected source
-    # ("strava", "whoop", …). Lets Forge cite where a session came from.
+    # ("strava", "whoop", …). Lets the race team cite where a session came from.
     source: str = "manual"
+    title: str | None = None
+    sport_detail: str | None = None
+    elapsed_minutes: int | None = None
+    avg_hr: int | None = None
+    max_hr: int | None = None
+    is_race: bool = False
     logged_at: datetime
     created_at: datetime
 
@@ -167,3 +182,45 @@ class RecoverySampleResponse(BaseModel):
 
 class RecoverySampleList(BaseModel):
     items: list[RecoverySampleResponse]
+
+
+# ── Wellness check-ins (Race OS, docs#26) ────────────────────────────────────
+class CheckinRequest(BaseModel):
+    """A daily check-in. Scales are 1 (worst) to 5 (best) except soreness and
+    stress, where 5 means the most soreness/stress."""
+
+    day: date
+    sleep_quality: int | None = Field(default=None, ge=1, le=5)
+    sleep_hours: float | None = Field(default=None, ge=0, le=16)
+    energy: int | None = Field(default=None, ge=1, le=5)
+    soreness: int | None = Field(default=None, ge=1, le=5)
+    stress: int | None = Field(default=None, ge=1, le=5)
+    motivation: int | None = Field(default=None, ge=1, le=5)
+    illness: bool = False
+    pain_note: str | None = Field(default=None, max_length=300)
+    note: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def has_signal(self) -> CheckinRequest:
+        fields = (
+            self.sleep_quality,
+            self.sleep_hours,
+            self.energy,
+            self.soreness,
+            self.stress,
+            self.motivation,
+            self.pain_note,
+            self.note,
+        )
+        if all(value is None for value in fields) and not self.illness:
+            raise ValueError("A check-in needs at least one answer")
+        return self
+
+
+class CheckinResponse(CheckinRequest):
+    id: uuid.UUID
+    updated_at: datetime
+
+
+class CheckinList(BaseModel):
+    items: list[CheckinResponse]
