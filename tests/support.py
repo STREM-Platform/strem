@@ -1,4 +1,4 @@
-"""Test harness: a training app on a fresh in-memory DB with a fake publisher."""
+"""Test harness: a training app on a fresh in-memory DB with stub providers."""
 
 import uuid
 from collections.abc import AsyncIterator, Mapping
@@ -15,8 +15,6 @@ from sqlalchemy.pool import StaticPool
 
 from app.config import Settings, get_settings
 from app.db import Base, get_session
-from app.deps import get_pr_baseline
-from app.events import InMemoryPublisher, get_publisher
 from app.integrations.providers import Provider, SyncResult, TokenSet, get_provider_registry
 from app.main import create_app
 
@@ -24,7 +22,6 @@ TEST_SETTINGS = Settings(
     database_url="sqlite+aiosqlite://",
     jwt_secret="test-secret-key-at-least-32-bytes-long!!",
     jwt_algorithm="HS256",
-    message_broker_url="redis://localhost:6379/0",
     integrations_encryption_key=Fernet.generate_key().decode(),
 )
 
@@ -70,7 +67,6 @@ class StubProvider:
 @dataclass
 class Harness:
     client: httpx.AsyncClient
-    publisher: InMemoryPublisher
     providers: dict[str, Provider]
     app: FastAPI
     sessionmaker: async_sessionmaker[AsyncSession]
@@ -79,7 +75,6 @@ class Harness:
 @asynccontextmanager
 async def training_app(
     providers: Mapping[str, Provider] | None = None,
-    pr_baseline: Mapping[str, float] | None = None,
 ) -> AsyncIterator[Harness]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
@@ -90,7 +85,6 @@ async def training_app(
         await conn.run_sync(Base.metadata.create_all)
 
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
-    publisher = InMemoryPublisher()
     registry: dict[str, Provider] = dict(providers) if providers is not None else {}
 
     async def _session() -> AsyncIterator[AsyncSession]:
@@ -100,18 +94,13 @@ async def training_app(
     app = create_app()
     app.dependency_overrides[get_session] = _session
     app.dependency_overrides[get_settings] = lambda: TEST_SETTINGS
-    app.dependency_overrides[get_publisher] = lambda: publisher
     app.dependency_overrides[get_provider_registry] = lambda: registry
-    # Inject the PR baseline directly (no network to user-service in tests).
-    seeded = dict(pr_baseline or {})
-    app.dependency_overrides[get_pr_baseline] = lambda: seeded
 
     transport = httpx.ASGITransport(app=app)
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             yield Harness(
                 client=client,
-                publisher=publisher,
                 providers=registry,
                 app=app,
                 sessionmaker=sessionmaker,

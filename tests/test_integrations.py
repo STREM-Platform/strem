@@ -114,9 +114,7 @@ def test_connect_then_disconnect_clears_source() -> None:
             headers=auth_header(user),
             json={"code": "c"},
         )
-        deleted = await h.client.delete(
-            "/v1/integrations/strava", headers=auth_header(user)
-        )
+        deleted = await h.client.delete("/v1/integrations/strava", headers=auth_header(user))
         assert deleted.status_code == 204
         sources = await h.client.get("/v1/integrations/sources", headers=auth_header(user))
         strava = next(s for s in sources.json()["items"] if s["id"] == "strava")
@@ -154,11 +152,6 @@ def test_sync_strava_creates_run_with_elevation_and_publishes() -> None:
         item = sessions.json()["items"][0]
         assert item["session_type"] == "trail_running"
         assert item["elevation_m"] == 320
-
-        events = h.publisher.of_type("wearable.synced")
-        assert len(events) == 1
-        assert events[0]["provider"] == "strava"
-        assert events[0]["synced_sessions"] == 1
 
     run(scenario, providers={"strava": _strava_with_run()})
 

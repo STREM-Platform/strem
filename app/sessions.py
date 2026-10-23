@@ -1,4 +1,4 @@
-"""Training-session domain logic: persistence and event publishing."""
+"""Training-session domain logic: persistence and listing."""
 
 from __future__ import annotations
 
@@ -9,19 +9,17 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors import AppError
-from app.events import EventPublisher
 from app.models import TrainingSession
 from app.schemas import DISTANCE_TYPES, LogTrainingSessionRequest, SessionType
 
 
 async def create_session(
     session: AsyncSession,
-    publisher: EventPublisher,
     *,
     user_id: uuid.UUID,
     body: LogTrainingSessionRequest,
 ) -> TrainingSession:
-    """Persist a training session and publish `training.session_logged`."""
+    """Persist a training session."""
     if body.distance_km is not None and body.session_type not in DISTANCE_TYPES:
         raise AppError(
             422,
@@ -45,16 +43,6 @@ async def create_session(
     session.add(record)
     await session.flush()
 
-    await publisher.publish(
-        "training.session_logged",
-        {
-            "version": 1,
-            "user_id": str(user_id),
-            "session_type": body.session_type.value,
-            "duration_minutes": body.duration_minutes,
-            "logged_at": logged_at.isoformat(),
-        },
-    )
     return record
 
 
@@ -80,9 +68,7 @@ async def list_sessions(
     if races_only:
         filters.append(TrainingSession.is_race.is_(True))
 
-    total = await session.scalar(
-        select(func.count()).select_from(TrainingSession).where(*filters)
-    )
+    total = await session.scalar(select(func.count()).select_from(TrainingSession).where(*filters))
     rows = (
         await session.scalars(
             select(TrainingSession)
@@ -93,15 +79,3 @@ async def list_sessions(
         )
     ).all()
     return list(rows), int(total or 0)
-
-
-async def get_session_by_id(
-    session: AsyncSession, *, user_id: uuid.UUID, session_id: uuid.UUID
-) -> TrainingSession:
-    """Return one of the user's sessions or raise 404."""
-    record = await session.get(TrainingSession, session_id)
-    if record is None or record.user_id != user_id:
-        raise AppError(
-            404, "session_not_found", "No training session with that id exists for this user."
-        )
-    return record

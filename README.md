@@ -1,12 +1,12 @@
 # strem-training-service
 
-Strength, running, and mobility **session logging** for STREM. Implements
-`strem-shared-contracts/contracts/training/openapi.yml` and publishes
-`training.session_logged` so `strem-user-service` can award XP.
+Training evidence for STREM's Race OS (strem-docs#26): logged and imported
+sessions, connected sources (Strava, Whoop), private mission courses, mission
+training plans, progress and daily check-ins. Implements
+`strem-shared-contracts/contracts/training/openapi.yml`.
 
-Running stays in this service for MVP — there is no separate endurance service
-(see `strem-docs/architecture/service-map.md`). This service does **not** own XP,
-ranks, or medals.
+Strength-set logging, workout finishing, personal records and event publishing
+were retired in strem-docs#28; their tables stay (no drop migration).
 
 ## Endpoints
 
@@ -17,9 +17,13 @@ and scoped to the token's `user_id`.
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET`  | `/health` | Liveness probe → `{"status":"ok","service":"strem-training-service"}`. |
-| `POST` | `/v1/training/sessions` | Log a strength / running / mobility session; publishes `training.session_logged`. |
-| `GET`  | `/v1/training/sessions` | List the caller's sessions (paginated, newest first; optional `session_type` filter). |
-| `GET`  | `/v1/training/sessions/{session_id}` | Get one of the caller's sessions by id. |
+| `POST` | `/v1/training/sessions` | Log a session (any sport, optional heart rate, race flag). |
+| `GET`  | `/v1/training/sessions` | List sessions (newest first; `session_type`, `since`, `until`, `races_only`). |
+| `GET`/`PUT`/`DELETE` | `/v1/training/missions/{id}/course` | Private mission course (GPX/ZIP). |
+| `GET`/`PUT`/`DELETE` | `/v1/training/missions/{id}/plan` · `PATCH …/plan/sessions/{session_id}` | Mission training plan and session status. |
+| `GET`  | `/v1/training/missions/{id}/progress` | Planned vs done, consistency, long sessions, eight weeks of evidence. |
+| `PUT`/`GET` | `/v1/training/checkins` | Daily check-ins. |
+| `GET` · `POST` · `DELETE` | `/v1/integrations/…` | Sources, connect, sync, disconnect, recovery samples. |
 
 ## Course processing (training #10, internal increment)
 
@@ -139,4 +143,4 @@ pytest            # endpoint tests over httpx + in-memory SQLite
 | `DATABASE_URL` | Async PostgreSQL connection string for the training database. |
 | `JWT_SECRET` | Shared secret used to verify access tokens from strem-auth-service. |
 | `JWT_ALGORITHM` | JWT algorithm (default `HS256`); must match strem-auth-service. |
-| `MESSAGE_BROKER_URL` | Redis Streams broker for publishing `training.session_logged`. |
+| `USER_SERVICE_BASE_URL` | User-service API: mission ownership and the deletion-fence generation. |
