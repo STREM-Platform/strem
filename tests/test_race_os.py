@@ -171,6 +171,22 @@ def test_fuel_targets_scale_with_duration_heat_and_weight() -> None:
     )
     assert not any(s["id"] == "race-day" for s in short["sections"])
     assert any("hyponatraemia" in w for w in fuel["warnings"])
+    assert not any(s["id"] == "dietary" for s in fuel["sections"])
+
+
+def test_fuel_turns_dietary_needs_into_explicit_checks() -> None:
+    profile = {
+        "weight_kg": 70,
+        "dietary_constraints": ["Lactose intolerant", " "],
+        "is_started": True,
+    }
+    fuel = build_fuel(ctx_for(mission(), profile=profile))
+    diet = next(s for s in fuel["sections"] if s["id"] == "dietary")
+    titles = [i["title"] for i in diet["items"]]
+    assert titles[0] == "Check every gel, drink and bar: Lactose intolerant"
+    assert diet["items"][0]["id"] == "diet-lactose-intolerant"
+    assert len(titles) == 2  # one check per real need + the aid-station question
+    assert not any("respected" in a for a in fuel["assumptions"])  # no overclaim
 
 
 def test_gear_adds_lights_for_night_and_logistics_respects_today() -> None:
@@ -757,6 +773,31 @@ def test_media_search_ranks_event_first_and_excludes_no_derivatives(
     assert all(i["provider"] != "openverse" for i in items)  # by-nd excluded
     assert items[0]["creator"] == "Photographer"
     assert "/thumb/" in items[0]["thumb_url"] and "utm_source" not in items[0]["url"]
+    # Commons only serves its standard thumbnail widths
+    assert "/500px-" in items[0]["thumb_url"] and "/1280px-" in items[0]["url"]
+
+
+def test_slow_openverse_is_paused_after_one_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def fake_get(url: str, params: dict[str, Any] | None = None, **_: Any) -> Any:
+        calls.append(url)
+        if "openverse" in url:
+            raise httpx.ReadTimeout("slow")
+        return {"query": {"pages": {}}}
+
+    monkeypatch.setattr(media_mod, "get_json", fake_get)
+    monkeypatch.setitem(media_mod._OPENVERSE, "paused_until", 0.0)
+    asyncio.run(media_mod.search_media("Synthetic 50K", None, None))
+    asyncio.run(media_mod.search_media("Synthetic 50K", None, None))
+    assert sum("openverse" in url for url in calls) == 1  # the second search skips it
+
+
+def test_media_ranking_prefers_frames_that_fit_a_hero() -> None:
+    assert media_mod._cover_fit({"width": 3000, "height": 2000}) == 0
+    assert media_mod._cover_fit({"width": 11429, "height": 2400}) == 1  # panorama
+    assert media_mod._cover_fit({"width": 2000, "height": 3000}) == 2
+    assert media_mod._cover_fit({"width": None, "height": None}) == 1
 
 
 def test_seasonal_conditions_average_past_years(monkeypatch: pytest.MonkeyPatch) -> None:

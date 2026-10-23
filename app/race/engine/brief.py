@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from app.race.context import RaceContext
-from app.race.engine.common import hm
+from app.race.engine.common import hm, when
 
 
 def _plan_today(
@@ -74,7 +74,7 @@ def build_brief(ctx: RaceContext) -> dict[str, Any]:
         evidence.append(
             {
                 "label": "This week so far",
-                "value": f"{last.get('hours', 0)} h · {last.get('km', 0)} km · +{last.get('elevation_m', 0)} m",
+                "value": f"{float(last.get('hours') or 0):.1f} h · {float(last.get('km') or 0):.1f} km · +{last.get('elevation_m') or 0} m",
                 "source": "recorded",
             }
         )
@@ -187,7 +187,8 @@ def build_brief(ctx: RaceContext) -> dict[str, Any]:
     elif ctx.plan:
         headline = "Rest day — let the training land"
         message = "Sleep, eat well and keep moving gently. " + (
-            f"Next key session: {upcoming[0]['title']} on {upcoming[0]['date']}."
+            f"Next key session: {upcoming[0]['title']} "
+            f"{when(date.fromisoformat(upcoming[0]['date']), ctx.today)}."
             if upcoming
             else ""
         )

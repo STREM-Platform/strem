@@ -12,7 +12,14 @@ from datetime import timedelta
 from typing import Any
 
 from app.race.context import RaceContext
-from app.race.engine.common import estimate_finish, expected_temperature, family, hm, level
+from app.race.engine.common import (
+    estimate_finish,
+    expected_temperature,
+    family,
+    hm,
+    level,
+    slug,
+)
 
 
 def carb_target(minutes: int, lvl: str, fam: str) -> tuple[int, int]:
@@ -155,9 +162,36 @@ def build_fuel(ctx: RaceContext) -> dict[str, Any]:
         "Drinking far beyond thirst can cause hyponatraemia; stay within the fluid range.",
         "Guidance only, not medical advice. With diabetes, GI conditions or other health conditions, plan fueling with a professional.",
     ]
-    diet = (ctx.profile or {}).get("dietary_constraints") or []
+    diet = [str(d).strip() for d in (ctx.profile or {}).get("dietary_constraints") or []]
+    diet = [d for d in diet if d][:5]
     if diet:
-        assumptions.append("Dietary constraints respected: " + ", ".join(diet))
+        # The engine can't vet products; it makes the check an explicit task.
+        assumptions.append("Your dietary needs (from your profile): " + ", ".join(diet))
+        sections.insert(
+            1 if carbs else 0,
+            {
+                "id": "dietary",
+                "title": "Your dietary needs",
+                "kind": "checklist",
+                "description": "Race food hides ingredients. Check every product before you train with it.",
+                "items": [
+                    {
+                        "id": slug(f"diet-{need}"),
+                        "title": f"Check every gel, drink and bar: {need}",
+                        "detail": "Read the full label, including any recovery drink or caffeine product.",
+                        "priority": "high",
+                    }
+                    for need in diet
+                ]
+                + [
+                    {
+                        "id": "diet-aid-stations",
+                        "title": "Find out exactly what the aid stations serve",
+                        "detail": "If it doesn't fit your needs, carry everything you plan to eat.",
+                    }
+                ],
+            },
+        )
     return {
         "headline": (
             f"{carbs} g carbs, {fluid} ml fluid and ~{sodium} mg sodium per hour"

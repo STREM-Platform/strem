@@ -72,7 +72,24 @@ def hm(minutes: float | int | None) -> str:
         return "unknown"
     total = int(round(minutes))
     hours, mins = divmod(total, 60)
-    return f"{hours} h {mins:02d}" if hours else f"{mins} min"
+    if not hours:
+        return f"{mins} min"
+    return f"{hours} h {mins:02d}" if mins else f"{hours} h"
+
+
+def day_text(day: date) -> str:
+    """'Sat 24 Oct': how dates read in athlete-facing prose."""
+    return f"{day.strftime('%a')} {day.day} {day.strftime('%b')}"
+
+
+def when(day: date, today: date) -> str:
+    """'today', 'tomorrow' or 'on Sat 24 Oct' — never a raw ISO date in prose."""
+    delta = (day - today).days
+    if delta == 0:
+        return "today"
+    if delta == 1:
+        return "tomorrow"
+    return f"on {day_text(day)}"
 
 
 def slug(text: str) -> str:

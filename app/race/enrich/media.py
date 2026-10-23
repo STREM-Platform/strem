@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import html
 import re
+import time
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
@@ -21,6 +22,12 @@ from app.race.enrich.http import get_json
 
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 OPENVERSE_API = "https://api.openverse.org/v1/images/"
+# Commons renders only its standard thumbnail widths; any other width is HTTP 400.
+COMMONS_WIDTHS = (250, 330, 500, 960, 1280, 1920, 3840)
+# Openverse is a bonus source: short time box, then a pause after any failure.
+OPENVERSE_TIMEOUT = 4.0
+OPENVERSE_PAUSE = 600.0
+_OPENVERSE = {"paused_until": 0.0}
 SCENIC = {
     "trail_running": "mountains",
     "hiking": "mountains",
@@ -42,9 +49,10 @@ def _strip_query(url: str) -> str:
 
 
 def _commons_thumb(original: str, width: int, original_width: int) -> str:
-    """Build a Commons thumbnail URL (…/thumb/a/ab/Name.jpg/640px-Name.jpg)."""
+    """Build a Commons thumbnail URL (…/thumb/a/ab/Name.jpg/960px-Name.jpg)."""
     url = _strip_query(original)
     marker = "/wikipedia/commons/"
+    width = next((step for step in COMMONS_WIDTHS if step >= width), COMMONS_WIDTHS[-1])
     if marker not in url or width >= original_width:
         return url
     head, tail = url.split(marker, 1)
@@ -97,8 +105,8 @@ async def search_commons(query: str, depicts: str, limit: int = 12) -> list[dict
         results.append(
             {
                 "id": f"commons:{page.get('pageid')}",
-                "url": _commons_thumb(original, 1600, width),
-                "thumb_url": _commons_thumb(original, 480, width),
+                "url": _commons_thumb(original, 1280, width),
+                "thumb_url": _commons_thumb(original, 500, width),
                 "width": width,
                 "height": height,
                 "title": _clean(
@@ -123,14 +131,18 @@ async def search_commons(query: str, depicts: str, limit: int = 12) -> list[dict
 
 
 async def search_openverse(query: str, depicts: str, limit: int = 10) -> list[dict[str, Any]]:
+    if time.monotonic() < _OPENVERSE["paused_until"]:
+        return []
     try:
         body = await get_json(
             OPENVERSE_API,
             {"q": query, "page_size": limit, "license_type": "commercial", "mature": "false"},
             ttl=6 * 3600,
-            timeout=8,
+            timeout=OPENVERSE_TIMEOUT,
         )
     except (httpx.HTTPError, ValueError):
+        # A slow or failing Openverse must not hold every photo search hostage.
+        _OPENVERSE["paused_until"] = time.monotonic() + OPENVERSE_PAUSE
         return []
     results = []
     for row in body.get("results") or []:
@@ -197,10 +209,16 @@ async def search_media(
             seen.add(key)
             ranked.append(item)
     order = {"event": 0, "location": 1, "atmosphere": 2}
-    ranked.sort(
-        key=lambda item: (
-            order.get(item["depicts"], 3),
-            0 if (item.get("width") or 0) >= (item.get("height") or 0) else 1,
-        )
-    )
+    ranked.sort(key=lambda item: (order.get(item["depicts"], 3), _cover_fit(item)))
     return ranked[:limit]
+
+
+def _cover_fit(item: dict[str, Any]) -> int:
+    """0 for frames that crop well into a hero, 1 for wide panoramas, 2 for portrait."""
+    width, height = item.get("width") or 0, item.get("height") or 0
+    if not width or not height:
+        return 1
+    ratio = width / height
+    if ratio < 1:
+        return 2
+    return 0 if ratio <= 2.2 else 1

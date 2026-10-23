@@ -19,6 +19,7 @@ from app.race.engine.common import (
     WEEKDAYS,
     Family,
     Level,
+    day_text,
     estimate_finish,
     family,
     hm,
@@ -179,16 +180,26 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
         days_racing = (date.fromisoformat(ctx.event["end_date"]) - race).days + 1
     stages = max(int(ctx.event.get("stages") or 1), days_racing)
     day_minutes = finish_min / stages if stages > 1 else finish_min
-    long_peak = long_target_minutes(fam, int(day_minutes), lvl)
+    long_wanted = long_target_minutes(fam, int(day_minutes), lvl)
     back_to_back_event = fam in ("trail", "hike") and (finish_min >= 360 or stages > 1)
-    long_peak = min(long_peak, int(peak * 60 * (0.42 if back_to_back_event else 0.5)))
+    long_peak = min(long_wanted, int(peak * 60 * (0.46 if back_to_back_event else 0.5)))
+    if long_wanted - long_peak >= 20:
+        warnings.append(
+            f"With {peak:g} h a week the long session tops out at {hm(long_peak)}; about "
+            f"{hm(long_wanted)} is typical for this race. More weekly time would let it grow."
+        )
     longest_recent = None
     if prep.get("longest_recent_hours"):
         longest_recent = float(prep["longest_recent_hours"]) * 60
     elif ctx.longest_recent_minutes():
         longest_recent = float(ctx.longest_recent_minutes() or 0)
-    long_start = longest_recent or max(30.0, current * 60 * 0.3)
-    long_start = min(long_start, long_peak)
+    # Start from a regular long session, not the longest effort (often a race),
+    # and never above what the current weekly volume supports.
+    if longest_recent:
+        long_start = min(longest_recent * 0.85, current * 60 * 0.4)
+    else:
+        long_start = current * 60 * 0.3
+    long_start = max(30.0, min(long_start, long_peak))
     assumptions.append(finish.note + f": {hm(finish_min)}")
     assumptions.append(f"Long session builds from {hm(long_start)} toward {hm(long_peak)}")
 
@@ -222,10 +233,19 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
             "The plan prioritizes arriving healthy and rehearsing race day over chasing fitness."
         )
 
-    # Weekly hours: ramp toward the peak with a lighter week every fourth loading week.
+    # Weekly hours: ramp toward the peak with a lighter week every fourth loading
+    # week, spread so the peak arrives with the race-specific block — never
+    # faster than the level's safe weekly increase.
     hours: list[float] = []
-    ramp = RAMP[lvl]
     level_hours = min(current, peak)
+    ramping = [
+        i
+        for i in range(1, min(base_n + build_n, load_weeks))
+        if not (i % 4 == 3 and i < load_weeks - 1)
+    ]
+    ramp = RAMP[lvl]
+    if ramping and level_hours > 0:
+        ramp = min(ramp, max(1.0, (peak / level_hours) ** (1 / len(ramping))))
     for i in range(load_weeks):
         if i % 4 == 3 and i < load_weeks - 1:
             hours.append(round(level_hours * 0.7, 2))
@@ -324,7 +344,7 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
         "headline": f"{len(weeks)} weeks to {title}",
         "summary": (
             f"A {len(weeks)}-week {fam if fam != 'tri' else 'multisport'} build from "
-            f"{plan_start.isoformat()} to race day: {base_n} base, {build_n} build, "
+            f"{day_text(plan_start)} to race day: {base_n} base, {build_n} build, "
             f"{specific_n} race-specific and {taper_n} taper week(s). Weekly load rises "
             f"gradually to about {peak_reached:.1f} h with a lighter week every fourth week; "
             f"the long session grows to {hm(long_peak)}. Most time is easy — the hard work is "
@@ -376,7 +396,7 @@ def _fill_week(
         _tri_week(wk, lvl, phase, endurance, long_min, days, L, race_sim)
     else:
         quality = int(max(35, min(90, endurance * 0.16)))
-        second_long = int(long_min * 0.5) if back_to_back else 0
+        second_long = int(_round(long_min * 0.4, 5)) if back_to_back else 0
         easy_slots = [d for d in order if d not in (L, L - 4)]
         if back_to_back and (L + 1) in easy_slots:
             easy_slots.remove(L + 1)
