@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, date, datetime
 
-from sqlalchemy import JSON, Date, DateTime, String, UniqueConstraint, delete, select
+from sqlalchemy import JSON, Date, DateTime, String, UniqueConstraint, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
@@ -189,8 +189,3 @@ async def record_mission_result(
     else:
         record.snapshot = _snapshot(body)
         record.updated_at = now
-
-
-async def delete_all_results(session: AsyncSession, user_id: uuid.UUID) -> None:
-    await session.execute(delete(RaceResultRecord).where(RaceResultRecord.user_id == user_id))
-    await session.commit()
