@@ -36,7 +36,3 @@ async def get_json(
         _CACHE.pop(next(iter(_CACHE)))
     _CACHE[key] = (now, value)
     return value
-
-
-def clear_cache() -> None:
-    _CACHE.clear()
