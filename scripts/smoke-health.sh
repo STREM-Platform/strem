@@ -10,8 +10,6 @@ services=(
   "auth 8001"
   "user 8002"
   "training 8003"
-  "nutrition 8004"
-  "community 8005"
   "ai 8006"
 )
 
