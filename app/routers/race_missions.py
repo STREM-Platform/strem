@@ -91,7 +91,9 @@ async def export_missions(
     await store.lock_account(session, current.user_id)
     await ensure_available(session, current.user_id)
     state = await session.get(CourseState, current.user_id)
-    course_data = await peer.export() if state is not None else []
+    training_data = (
+        await peer.export_all() if state is not None else {"courses": [], "plans": []}
+    )
     response.headers["Cache-Control"] = "no-store"
     missions = await session.scalars(
         select(store.MissionRecord)
@@ -105,7 +107,8 @@ async def export_missions(
     )
     return RaceMissionExport(
         exported_at=datetime.now(UTC),
-        courses=course_data,
+        courses=training_data["courses"],
+        plans=training_data.get("plans", []),
         layers=await export_layers(session, current.user_id),
         missions=[RaceMission.model_validate(row.snapshot) for row in missions],
         revisions=[

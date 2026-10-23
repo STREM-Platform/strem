@@ -25,6 +25,9 @@ class Peer(CoursePeer):
     async def export(self) -> list[dict[str, object]]:
         return [{"content_base64": "test-export"}]
 
+    async def export_all(self) -> dict[str, list[dict[str, object]]]:
+        return {"courses": await self.export(), "plans": [{"mission_id": "test-plan"}]}
+
 
 def test_durable_retryable_cleanup_blocks_writes_and_exports_until_complete() -> None:
     async def scenario() -> None:
@@ -45,6 +48,7 @@ def test_durable_retryable_cleanup_blocks_writes_and_exports_until_complete() ->
             }
             exported = await h.client.get("/v1/race-missions/data", headers=auth)
             assert exported.json()["courses"] == [{"content_base64": "test-export"}]
+            assert exported.json()["plans"] == [{"mission_id": "test-plan"}]
             deletion = {"confirmation": "DELETE MY RACE MISSIONS"}
             failed = await h.client.request(
                 "DELETE", "/v1/race-missions/data", headers=auth, json=deletion

@@ -272,3 +272,4 @@ class RaceMissionExport(StrictModel):
     revisions: list[RaceMissionRevision]
     layers: list[dict[str, object]] = Field(default_factory=list)
     courses: list[dict[str, object]] = Field(default_factory=list)
+    plans: list[dict[str, object]] = Field(default_factory=list)
