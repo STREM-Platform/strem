@@ -12,8 +12,6 @@ UPSTREAMS = {
     "auth": "http://localhost:8001/v1",
     "users": "http://localhost:8002/v1",
     "training": "http://localhost:8003/v1",
-    "nutrition": "http://localhost:8004/v1",
-    "tribes": "http://localhost:8005/v1",
     "ai": "http://localhost:8006/v1",
 }
 
@@ -43,11 +41,10 @@ def test_routes_each_service_to_its_upstream() -> None:
             "/v1/race-missions/data": "http://localhost:8002/v1/race-missions/data",
             "/v1/training/sessions": "http://localhost:8003/v1/training/sessions",
             "/v1/integrations/sources": "http://localhost:8003/v1/integrations/sources",
-            "/v1/nutrition/days": "http://localhost:8004/v1/nutrition/days",
-            "/v1/tribes/me": "http://localhost:8005/v1/tribes/me",
-            "/v1/duels": "http://localhost:8005/v1/duels",
-            "/v1/matches": "http://localhost:8005/v1/matches",
-            "/v1/ai/missions/active": "http://localhost:8006/v1/ai/missions/active",
+            "/v1/race-missions/m1/layers": "http://localhost:8002/v1/race-missions/m1/layers",
+            "/v1/users/me/races": "http://localhost:8002/v1/users/me/races",
+            "/v1/training/checkins": "http://localhost:8003/v1/training/checkins",
+            "/v1/ai/race/status": "http://localhost:8006/v1/ai/race/status",
         }
         for path, expected in cases.items():
             response = await client.get(path)
@@ -94,6 +91,16 @@ def test_unknown_prefix_is_404() -> None:
         response = await client.get("/v1/payments/charge")
         assert response.status_code == 404
         assert response.json()["code"] == "unknown_route"
+
+    run(scenario)
+
+
+def test_retired_pre_pivot_prefixes_are_404() -> None:
+    async def scenario(client: httpx.AsyncClient) -> None:
+        for path in ("/v1/nutrition/days", "/v1/tribes/me", "/v1/duels", "/v1/matches"):
+            response = await client.get(path)
+            assert response.status_code == 404, path
+            assert response.json()["code"] == "unknown_route"
 
     run(scenario)
 
