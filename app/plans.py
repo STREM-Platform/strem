@@ -324,12 +324,12 @@ def evidence_summary(rows: list[TrainingSession], today: date, zone: ZoneInfo) -
         if week is None:
             continue
         _add(week.volume, row.duration_minutes, row.distance_km, row.elevation_m)
+        if row.session_type in ("strength", "mobility"):
+            continue  # the longest session means endurance, not a gym hour
         if row.duration_minutes > week.longest_minutes:
             week.longest_minutes = row.duration_minutes
             week.longest_km = row.distance_km
-        if row.session_type not in ("strength", "mobility") and (
-            longest is None or row.duration_minutes > longest.duration_minutes
-        ):
+        if longest is None or row.duration_minutes > longest.duration_minutes:
             longest = row
     newest = max(rows, key=lambda r: r.logged_at, default=None)
     return EvidenceSummary(

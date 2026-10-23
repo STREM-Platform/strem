@@ -212,6 +212,10 @@ def test_progress_matches_activities_and_derives_missed_honestly() -> None:
     assert [p.status for p in progress.long_sessions][0] == "missed"
     assert progress.evidence.races_recorded == 1
     assert len(progress.evidence.weeks) == 8
+    # A gym hour counts as volume but never as the week's longest session.
+    gym = compute_progress(plan.mission_id, None, [*rows, activity(LAST_MONDAY, 90, "strength")])
+    last_week = gym.evidence.weeks[-2]
+    assert last_week.volume.sessions == 4 and last_week.longest_minutes == 55
 
     # The athlete's word beats derivation: a manually completed session stays done.
     content = copy.deepcopy(PLAN["content"])
