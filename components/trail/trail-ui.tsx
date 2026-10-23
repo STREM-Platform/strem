@@ -1,10 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
-import type { ReactNode } from "react";
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { Icon, type IconName } from "@/components/ui/icon";
-import { Trail, disp, mono, ui } from "@/constants/theme";
+import { Trail } from "@/constants/theme";
 
 export function TrailAtmosphere({ quiet = false }: { quiet?: boolean }) {
   return (
@@ -28,53 +26,8 @@ export function TrailAtmosphere({ quiet = false }: { quiet?: boolean }) {
   );
 }
 
-export function TrailPanel({ children, style, accent = false }: { children: ReactNode; style?: StyleProp<ViewStyle>; accent?: boolean }) {
-  return (
-    <LinearGradient
-      colors={accent ? ["rgba(30,34,40,0.98)", "rgba(20,23,27,0.98)"] : ["rgba(24,27,32,0.96)", "rgba(20,23,27,0.96)"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.panel, accent && styles.panelAccent, style]}
-    >
-      {children}
-    </LinearGradient>
-  );
-}
-
-export function TrailSectionHead({ title, label, icon }: { title: string; label?: string; icon?: IconName }) {
-  return (
-    <View style={styles.sectionHead}>
-      <View style={styles.sectionTitleRow}>
-        {icon ? <Icon name={icon} size={16} color={Trail.lime} /> : null}
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      {label ? <Text style={styles.sectionLabel}>{label}</Text> : null}
-    </View>
-  );
-}
-
-export const trailStyles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Trail.bg, overflow: "hidden" },
-  scroll: { width: "100%", maxWidth: 760, alignSelf: "center", paddingHorizontal: 18, paddingBottom: 132, gap: 20 },
-  pageOverline: { ...mono(10, 700), letterSpacing: 1.4, color: Trail.lime },
-  pageTitle: { ...disp(34, 800), letterSpacing: 0.4, color: Trail.text, lineHeight: 37 },
-  pageSub: { ...ui(13, 500), color: Trail.textMuted, lineHeight: 19, maxWidth: 330 },
-  row: { flexDirection: "row", alignItems: "center" },
-  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  muted: { ...ui(12, 500), color: Trail.textMuted, lineHeight: 18 },
-  mono: { ...mono(10, 700), color: Trail.textDim, letterSpacing: 0.7 },
-  title: { ...disp(20, 800), color: Trail.text, letterSpacing: 0.3 },
-  body: { ...ui(13, 500), color: Trail.textMuted, lineHeight: 20 },
-});
-
 const styles = StyleSheet.create({
   atmosphereGlow: { position: "absolute", width: 430, height: 430, borderRadius: 215, top: -245, right: -195, backgroundColor: "rgba(255,255,255,0.03)", boxShadow: "0px 0px 110px rgba(255,255,255,0.04)" },
   atmosphereGlowQuiet: { opacity: 0.55 },
   topography: { position: "absolute", inset: 0 },
-  panel: { boxSizing: "border-box", padding: 18, borderRadius: 22, borderWidth: 1, borderColor: Trail.lineStrong, boxShadow: "0px 14px 34px rgba(0,0,0,0.24)" },
-  panelAccent: { borderColor: Trail.limeLine, boxShadow: "0px 18px 40px rgba(0,0,0,0.32)" },
-  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionTitle: { ...disp(18, 800), letterSpacing: 0.5, color: Trail.text },
-  sectionLabel: { ...mono(9, 700), letterSpacing: 0.7, color: Trail.textDim },
 });

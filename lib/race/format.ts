@@ -9,14 +9,6 @@ export function hm(minutes: number | null | undefined): string {
   return m ? `${h} h ${String(m).padStart(2, "0")}` : `${h} h`;
 }
 
-export function hmCompact(minutes: number | null | undefined): string {
-  if (minutes == null) return "–";
-  const total = Math.round(minutes);
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return h ? `${h}:${String(m).padStart(2, "0")}` : `${m}'`;
-}
-
 export function km(value: number | null | undefined, digits = 1): string {
   if (value == null) return "–";
   return Number.isInteger(value) ? String(value) : value.toFixed(digits).replace(/\.0$/, "");

@@ -67,8 +67,6 @@ def main():
                "TRAINING_BASE_URL": "http://127.0.0.1:9514/v1",
                "USER_SERVICE_BASE_URL": "http://127.0.0.1:9513/v1",
                "COURSE_STORAGE_BASE_URL": "http://127.0.0.1:9514",
-               "NUTRITION_BASE_URL": "http://127.0.0.1:1/v1",
-               "COMMUNITY_BASE_URL": "http://127.0.0.1:1/v1",
                "AI_BASE_URL": "http://127.0.0.1:1/v1",
                "CORS_ALLOW_ORIGINS": "http://localhost:9510",
                "UPSTREAM_TIMEOUT_SECONDS": "15", "EXPO_PUBLIC_API_URL": "http://localhost:9511/v1",

@@ -68,10 +68,6 @@ export function Stack({ children, gap = 12, style }: { children: ReactNode; gap?
   return <View style={[{ gap }, style]}>{children}</View>;
 }
 
-export function Spacer({ flex = 1 }: { flex?: number }) {
-  return <View style={{ flex }} />;
-}
-
 /** Scrollable page body with the night canvas, safe-area top and tab-bar room. */
 export function Page({
   children,

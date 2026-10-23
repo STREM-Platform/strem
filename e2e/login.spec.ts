@@ -10,8 +10,8 @@ test("login form reaches the configured API and restores the session after reloa
   const { tokens } = await registration.json();
   const headers = { Authorization: `Bearer ${tokens.access_token}` };
   expect((await request.post(`${api}/users/onboarding`, { headers, data: {
-    identity_statement: "Synthetic login regression", transformation_goal: "build_endurance",
-    training_level: "intermediate", weekly_target_days: 3, timezone: "Europe/Berlin",
+    display_name: "Login Test", identity_statement: "Synthetic login regression", transformation_goal: "build_endurance",
+    training_level: "intermediate", weekly_target_days: 3, timezone: "Europe/Berlin", screen: "identity",
   } })).ok()).toBeTruthy();
   const legal = await (await request.get(`${api}/users/me/legal`, { headers })).json();
   expect((await request.post(`${api}/users/me/legal/accept`, { headers, data: {
@@ -25,7 +25,7 @@ test("login form reaches the configured API and restores the session after reloa
   const response = page.waitForResponse(result => result.url() === `${api}/auth/login` && result.request().method() === "POST");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   expect((await response).status()).toBe(200);
-  await expect(page.getByRole("button", { name: "Create Race Mission", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start a Race Mission", exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: "Create Race Mission", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start a Race Mission", exact: true })).toBeVisible();
 });
