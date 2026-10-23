@@ -1,214 +1,162 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import {
-  MissionButton,
-  MissionGate,
-  MissionShell,
-  missionStyles as s,
-} from "@/components/trail/mission-shell";
-import { TrailPanel } from "@/components/trail/trail-ui";
-import { Trail, disp, ui } from "@/constants/theme";
-import { raceMissions } from "@/lib/api/race-missions";
-import { ApiError } from "@/lib/api/client";
-import { useMission } from "@/lib/trail/mission-context";
-import { raceDays, requestKey } from "@/lib/trail/mission-form";
+import { useCallback, useMemo } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function MissionScreen() {
-  const { mission, reload } = useMission();
-  const router = useRouter();
-  const { width } = useWindowDimensions();
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [archiveKey, setArchiveKey] = useState(requestKey);
-  const days = mission ? raceDays(mission) : 0;
-  const archive = async () => {
-    if (!mission || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await raceMissions.archive(mission, "Archived by athlete", archiveKey);
-      setConfirming(false);
-      await reload();
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Archive was not confirmed. Reload to check saved state before retrying.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <MissionShell
-      title={mission?.event.name ?? "Your next start line."}
-      subtitle={
-        mission
-          ? "Your race workspace · private to your account"
-          : "Every mission starts with a race worth preparing for."
-      }
-    >
-      <MissionGate>
-        {mission && (
-          <>
-            <View style={[styles.workspace, width >= 1024 && styles.wide]}>
-              <TrailPanel accent style={styles.identity}>
-                <Text style={s.label}>THE OBJECTIVE / TRAIL RUNNING</Text>
-                <Text style={styles.date}>{mission.event.race_date}</Text>
-                <Text style={s.body}>
-                  {mission.event.location_name} · {mission.event.timezone}
-                </Text>
-                <Text style={styles.distance}>
-                  {mission.event.distance_km}{" "}
-                  <Text style={styles.unit}>km</Text>
-                </Text>
-                <View style={s.row}>
-                  <Fact
-                    value={
-                      mission.event.elevation_gain_m === null
-                        ? "Unknown"
-                        : `${mission.event.elevation_gain_m} m+`
-                    }
-                    label="Total ascent"
-                  />
-                  <Fact
-                    value={
-                      mission.event.cutoff_minutes === null
-                        ? "Unknown"
-                        : `${mission.event.cutoff_minutes} min`
-                    }
-                    label="Race cutoff"
-                  />
-                </View>
-                <Text style={styles.countdown}>
-                  {days > 0
-                    ? `${days} calendar days to race day`
-                    : days === 0
-                      ? "Race day is today"
-                      : "The entered race date has passed"}
-                </Text>
-                <MissionButton
-                  label="Edit race details"
-                  onPress={() => router.push("/(app)/mission-setup")}
-                />
-                <Text style={styles.caption}>
-                  Entered by you · not organizer verified. Calendar days only;
-                  start time is unknown.
-                </Text>
-              </TrailPanel>
-              <View style={styles.actions}>
-                <TrailPanel style={s.panel}>
-                  <Text style={s.label}>YOUR GOAL</Text>
-                  <Text style={s.heading}>
-                    {mission.goal.outcome === "target_time"
-                      ? `Finish in ${mission.goal.target_finish_minutes} minutes`
-                      : mission.goal.outcome === "finish"
-                        ? "Reach the finish"
-                        : "Finish confidently"}
-                  </Text>
-                  <Text style={s.body}>
-                    Saved to your account · version {mission.version}. This is
-                    your stated goal, not an assessed finish prediction.
-                  </Text>
-                </TrailPanel>
-                <TrailPanel style={s.panel}>
-                  <Text style={s.label}>WHAT IS STILL UNKNOWN</Text>
-                  <Text style={s.heading}>
-                    Preparation is not assessed yet.
-                  </Text>
-                  <Text style={s.body}>
-                    No race-specific course model, evidence assessment or
-                    preparation plan is available. STREM will not substitute
-                    example workouts or an estimated readiness score.
-                  </Text>
-                  <MissionButton
-                    secondary
-                    label="Manage connected sources"
-                    onPress={() => router.push("/(app)/integrations")}
-                  />
-                </TrailPanel>
-              </View>
-            </View>
-            {error && (
-              <Text accessibilityRole="alert" style={s.error}>
-                {error}
-              </Text>
-            )}
-            {confirming ? (
-              <TrailPanel style={s.panel}>
-                <Text style={s.heading}>Archive this mission?</Text>
-                <Text style={s.body}>
-                  It will leave your active workspace. Its saved details and
-                  revisions remain in your mission export. You can then create a
-                  different mission.
-                </Text>
-                <MissionButton
-                  label={busy ? "Archiving…" : "Confirm archive"}
-                  disabled={busy}
-                  onPress={() => void archive()}
-                />
-                <MissionButton
-                  secondary
-                  label="Keep active"
-                  disabled={busy}
-                  onPress={() => setConfirming(false)}
-                />
-              </TrailPanel>
-            ) : (
-              <MissionButton
-                secondary
-                label="Archive mission"
-                onPress={() => {
-                  setArchiveKey(requestKey());
-                  setConfirming(true);
-                }}
-              />
-            )}
-          </>
-        )}
-      </MissionGate>
-      <View style={s.row}>
-        <MissionButton
-          secondary
-          label="Refresh saved state"
-          onPress={() => void reload()}
-        />
-        <MissionButton
-          secondary
-          label="Mission data & history"
-          onPress={() => router.push("/(app)/mission-data")}
-        />
+import { BuildPanel } from "@/components/mission/build-panel";
+import { MissionHero } from "@/components/mission/hero";
+import { BriefCard, ComingUp, ConditionsCard, ReadinessCard, TodayCard, TrackerSection } from "@/components/mission/sections";
+import { Icon } from "@/components/ui/icon";
+import { Body, Button, ErrorBanner, Overline, Skeleton, Title, Wordmark, useLayout } from "@/components/ui/kit";
+import { TopoArt } from "@/components/ui/photo";
+import { C, disp, ui } from "@/constants/theme";
+import { todayIn } from "@/lib/race/format";
+import { useRace } from "@/lib/race/race-context";
+import { layerStatuses } from "@/lib/race/readiness";
+import { SPORTS } from "@/lib/race/sports";
+import { useBuilder } from "@/lib/race/use-builder";
+
+const NEEDS_COURSE = new Set(["trail_running", "hiking", "skimo", "cycling", "gravel", "mountain_biking", "multisport", "custom"]);
+
+export default function MissionHome() {
+  const race = useRace();
+  const { mission, missions, plan, progress, layers, brief, course } = race;
+  const insets = useSafeAreaInsets();
+  const { wide } = useLayout();
+  const refreshAll = useCallback(() => race.refresh(undefined, { briefRefresh: true }), [race]);
+  const builder = useBuilder(refreshAll);
+
+  const rows = useMemo(
+    () =>
+      layerStatuses({
+        plan,
+        progress,
+        layers,
+        hasCourse: course === undefined ? null : Boolean(course),
+        needsCourse: NEEDS_COURSE.has(mission?.event.sport ?? "trail_running"),
+      }),
+    [plan, progress, layers, course, mission?.event.sport],
+  );
+
+  if (race.loading) {
+    return (
+      <View style={[styles.root, { paddingTop: insets.top + 24, paddingHorizontal: 18, gap: 14 }]}>
+        <Skeleton height={380} radius={24} />
+        <Skeleton height={140} radius={22} />
+        <Skeleton height={120} radius={22} />
       </View>
-    </MissionShell>
+    );
+  }
+  if (race.error) {
+    return (
+      <View style={[styles.root, { paddingTop: insets.top + 40, paddingHorizontal: 18 }]}>
+        <ErrorBanner message={race.error} onRetry={() => void race.reloadMissions()} />
+      </View>
+    );
+  }
+  if (!mission) return <StartMission />;
+
+  const today = todayIn(mission.event.timezone);
+  const missing = rows.filter((r) => !r.built && r.key !== "course").map((r) => (r.key === "training" ? "plan" : r.key)) as ("plan" | "fuel" | "gear" | "logistics" | "strategy")[];
+  const buildMissing = () => void builder.build(mission.id, missing.length ? missing : undefined);
+  const raceDayPassed = today > mission.event.race_date;
+
+  return (
+    <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 130 + insets.bottom }} showsVerticalScrollIndicator={false}>
+      <MissionHero mission={mission} plan={plan} missionCount={missions.length} />
+      <View style={[styles.body, { paddingHorizontal: wide ? 32 : 16 }]}>
+        {race.dataError ? <ErrorBanner message={race.dataError} onRetry={() => void race.refresh()} /> : null}
+        {raceDayPassed ? <DebriefPrompt /> : null}
+        <BuildPanel states={builder.states} />
+        <View style={[styles.columns, wide && { flexDirection: "row", alignItems: "flex-start" }]}>
+          <View style={[styles.column, wide && { flex: 1.15 }]}>
+            {race.dataLoading && !plan && !progress ? (
+              <Skeleton height={180} radius={22} />
+            ) : (
+              <TodayCard plan={plan} progress={progress} today={today} onBuild={buildMissing} building={builder.running} />
+            )}
+            <BriefCard brief={brief} loading={race.briefLoading} error={race.briefError} onRefresh={() => void race.refresh(["brief"], { briefRefresh: true })} />
+            <TrackerSection plan={plan} progress={progress} />
+          </View>
+          <View style={[styles.column, wide && { flex: 1 }]}>
+            <ReadinessCard rows={rows} onBuild={buildMissing} building={builder.running} />
+            <ComingUp plan={plan} layers={layers} today={today} />
+            <ConditionsCard conditions={brief?.conditions} />
+          </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
-function Fact({ value, label }: { value: string; label: string }) {
+
+function DebriefPrompt() {
+  const router = useRouter();
   return (
-    <View style={styles.fact}>
-      <Text style={styles.factValue}>{value}</Text>
-      <Text style={s.body}>{label}</Text>
+    <View style={styles.debrief}>
+      <Icon name="trophy" size={22} color={C.accent} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[ui(15, 700), { color: C.text }]}>Race day has passed</Text>
+        <Text style={[ui(13, 500), { color: C.textMuted }]}>Record your result and lessons — they make your next mission smarter.</Text>
+      </View>
+      <Button label="Debrief" size="sm" onPress={() => router.push("/(app)/debrief")} />
     </View>
   );
 }
+
+function StartMission() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { wide } = useLayout();
+  return (
+    <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}>
+      <View style={[styles.startHero, { paddingTop: insets.top + 28, minHeight: wide ? 420 : 460 }]}>
+        <TopoArt seed={7} />
+        <View style={[styles.startInner, { paddingHorizontal: wide ? 40 : 20 }]}>
+          <Wordmark size={14} color={C.textMuted} />
+          <Text accessibilityRole="header" style={[disp(wide ? 72 : 52, 800), { color: C.text, lineHeight: wide ? 74 : 54, marginTop: 24 }]}>
+            What are you preparing for?
+          </Text>
+          <Body muted size={16} style={{ maxWidth: 560, marginTop: 10 }}>
+            Name your race or challenge. STREM builds every layer — training, fueling, gear, logistics and race strategy — and your AI race team keeps it aligned with what you actually do.
+          </Body>
+          <Button label="Start a Race Mission" icon="flag" size="lg" onPress={() => router.push("/(app)/mission-setup")} style={{ alignSelf: "flex-start", marginTop: 22 }} />
+        </View>
+      </View>
+      <View style={[styles.body, { paddingHorizontal: wide ? 40 : 16 }]}>
+        <Overline>Pick your discipline</Overline>
+        <View style={styles.sportGrid}>
+          {SPORTS.map((sport) => (
+            <Pressable
+              key={sport.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Start a ${sport.label} mission`}
+              onPress={() => router.push(`/(app)/mission-setup?sport=${sport.id}`)}
+              style={({ pressed }) => [styles.sportTile, wide && { width: "23.5%" }, pressed && { opacity: 0.8 }]}
+            >
+              <Icon name={sport.icon} size={24} color={C.text} />
+              <Text style={[ui(15, 700), { color: C.text }]}>{sport.label}</Text>
+              <Text style={[ui(12, 500), { color: C.textMuted, lineHeight: 17 }]}>{sport.blurb}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Title size={22} style={{ marginTop: 8 }}>
+          Already raced before?
+        </Title>
+        <Body muted>Add past races and connect Strava — your race team learns from every finish and every DNF.</Body>
+        <Button label="Add race history" kind="secondary" icon="trophy" onPress={() => router.push("/(app)/history")} style={{ alignSelf: "flex-start" }} />
+      </View>
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
-  workspace: { gap: 22 },
-  wide: { flexDirection: "row", alignItems: "flex-start" },
-  identity: { flex: 1.2, gap: 14, padding: 20 },
-  actions: { flex: 1, gap: 20 },
-  date: { ...disp(32, 700), lineHeight: 38, color: Trail.text },
-  distance: { ...disp(64, 700), lineHeight: 72, color: Trail.lime },
-  unit: { ...ui(24, 500), color: Trail.textMuted },
-  countdown: {
-    ...ui(16, 600),
-    lineHeight: 24,
-    color: Trail.text,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: Trail.lineStrong,
-  },
-  caption: { ...ui(12, 500), lineHeight: 18, color: Trail.textMuted },
-  fact: { flex: 1, minWidth: 100, gap: 3 },
-  factValue: { ...disp(26, 700), lineHeight: 32, color: Trail.text },
+  root: { flex: 1, backgroundColor: C.ink },
+  body: { width: "100%", maxWidth: 1180, alignSelf: "center", gap: 18, marginTop: 6 },
+  columns: { gap: 18 },
+  column: { gap: 18 },
+  debrief: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: 20, backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentLine },
+  startHero: { width: "100%", overflow: "hidden", justifyContent: "flex-end", paddingBottom: 28 },
+  startInner: { width: "100%", maxWidth: 1180, alignSelf: "center" },
+  sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  sportTile: { width: "48%", flexGrow: 1, gap: 8, padding: 16, borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, minHeight: 128 },
 });
