@@ -1,10 +1,8 @@
 # STREM local development infrastructure + MVP service stack.
 #
-# Broker decision (see strem-docs/architecture/event-driven-strategy.md):
-# Redis Streams is the MVP message broker. Redis is already required for cache
-# and rate limiting, and Redis Streams can serve double duty as the broker —
-# avoiding a third stateful service (NATS/RabbitMQ). Revisit when event volume
-# or routing complexity justifies a dedicated broker (write an ADR then).
+# Redis backs the gateway's shared rate limiting. No service publishes domain
+# events since strem-docs#28; Redis Streams remains the documented broker choice
+# (strem-docs/architecture/event-driven-strategy.md) when events return.
 #
 # Layout assumption: the service repositories are cloned as siblings of
 # strem-infra under one parent directory, so each service's build context is
@@ -90,13 +88,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_user
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
       # Private course files and training plans live in training-service behind
       # one deletion fence (ADR 0007, docs#26): export and purge go through it.
       COURSE_STORAGE_BASE_URL: http://training:8000
     depends_on:
       postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
     healthcheck:
       <<: [*healthcheck-cmd, *service-health]
     restart: unless-stopped
@@ -109,7 +105,6 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_training
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
       # Connected-source ingestion (A3). Empty key → connecting a source is
       # refused; empty provider creds → that provider can't be connected. The
       # rest of the service runs regardless.
@@ -124,7 +119,6 @@ services:
       USER_SERVICE_BASE_URL: http://user:8000/v1
     depends_on:
       postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
     healthcheck:
       <<: [*healthcheck-cmd, *service-health]
     restart: unless-stopped

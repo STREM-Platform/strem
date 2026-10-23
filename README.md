@@ -166,7 +166,7 @@ Known local-demo limits:
 | Training | `8003` | http://localhost:8003/health |
 | AI orchestrator | `8006` | http://localhost:8006/health |
 | PostgreSQL | `5432` | one database per service |
-| Redis | `6379` | cache + Redis Streams broker |
+| Redis | `6379` | gateway rate limiting (Redis Streams broker when events return) |
 
 Each service listens on `8000` **inside** its container; the gateway and services
 reach each other by container name (e.g. `http://user:8000/v1`). On first boot,
