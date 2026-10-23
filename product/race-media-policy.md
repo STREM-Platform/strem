@@ -130,6 +130,24 @@ Stock is useful for atmosphere, onboarding, and a fallback hero. It is not proof
 - Do not use a generic runner image beside an event name in a way that suggests the person participated in or endorses that event.
 - Follow API-specific terms in addition to the general license. For example, Unsplash API use requires photographer and Unsplash attribution with links; Pexels encourages contributor credit and may require provider/contributor attribution for some API access levels.
 
+### Openly licensed photo search (Race OS, 2026-10-23)
+
+Implemented on the `issue26-race-os` branches ([ADR 0008](../architecture/adr/0008-race-os-layers-and-race-engine.md));
+not released. When an athlete sets up a race, STREM offers photos of the event or its
+location from Wikimedia Commons and Openverse through their public APIs — never by
+scraping a race site or search engine.
+
+- Only openly licensed images (CC0, public domain, CC BY, CC BY-SA); NoDerivatives
+  licences are excluded because hero crops can count as adaptations.
+- The chosen cover stores creator, licence, licence URL, source page and provider,
+  and every display shows the credit.
+- `depicts` defaults to `atmosphere`; only the athlete can mark a photo as showing
+  the race, and STREM never labels it official event media.
+- The athlete can skip the photo; a code-native topographic visual replaces it.
+
+Before release: legal review of ShareAlike and attribution in the app (cropped hero
+display, credits on small screens), and a takedown path for a reported cover.
+
 ### Generated and code-native visuals
 
 Allowed:

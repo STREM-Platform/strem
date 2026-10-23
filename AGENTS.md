@@ -6,12 +6,13 @@ This repository is the canonical product, architecture, workflow, and operating 
 
 Read before contributing:
 
-1. `product/trail-running-pivot.md`
-2. `product/trail-running-delivery-plan.md`
-3. `product/implementation-status.md`
-4. `prompts/global/agent-rules.md`
+1. `product/race-os.md`
+2. `product/trail-running-pivot.md`
+3. `product/trail-running-delivery-plan.md`
+4. `product/implementation-status.md`
+5. `prompts/global/agent-rules.md`
 
-STREM is the AI race team for self-coached trail runners. Older hybrid-athlete, gamification, Tribe, Crew, generic tracker, and cinematic directions have been removed. Do not recreate them from Git history without an explicit new founder decision.
+STREM is the AI race team for self-coached endurance athletes: an athlete names a race or challenge and STREM plans training, fueling, gear, logistics and strategy for it (founder direction 2026-10-23, `strem-docs#26`). Trail running stays the first validation market and the depth benchmark. Older hybrid-athlete, gamification, Tribe, Crew, generic tracker, and cinematic directions have been removed. Do not recreate them from Git history without an explicit new founder decision.
 
 ## Documentation rules
 
@@ -25,14 +26,14 @@ STREM is the AI race team for self-coached trail runners. Older hybrid-athlete, 
 
 ## Product anti-drift
 
-A change belongs only if it improves an event-specific decision, rehearsal, risk, operation, trust control, or paid validation step for the first trail customer.
+A change belongs only if it improves an event-specific decision, rehearsal, risk, operation, trust control, or paid validation step for an athlete preparing for a race or challenge.
 
 Stop or narrow work that becomes:
 
 - a generic tracker or dashboard;
 - a generic AI chat or training plan;
 - social engagement, gamification, or mandatory community;
-- premature multi-sport breadth;
+- a sport without sport-correct engine rules, or breadth that makes trail preparation worse;
 - fabricated certainty or personal data;
 - unreviewed health, privacy, contract, or safety behavior.
 

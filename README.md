@@ -10,7 +10,8 @@ It begins when an athlete commits to a real trail or mountain event and stays wi
 
 ## Start here
 
-- [`product/trail-running-pivot.md`](product/trail-running-pivot.md) — active product authority
+- [`product/race-os.md`](product/race-os.md) — active product direction (any race or challenge, 2026-10-23)
+- [`product/trail-running-pivot.md`](product/trail-running-pivot.md) — thesis, first customer and validation (sport scope superseded)
 - [`product/trail-running-delivery-plan.md`](product/trail-running-delivery-plan.md) — validation and implementation sequence
 - [`product/implementation-status.md`](product/implementation-status.md) — current build truth
 - [`vision/product-philosophy.md`](vision/product-philosophy.md) — durable product and design principles

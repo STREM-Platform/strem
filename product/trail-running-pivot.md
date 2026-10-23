@@ -1,9 +1,9 @@
 # Trail Running Pivot - Active Product Direction
 
-**Status:** Active product authority  
+**Status:** Active for thesis, first customer and validation; sport scope superseded by [`race-os.md`](race-os.md) (2026-10-23)  
 **Decision date:** 2026-09-20  
 **Initial sport:** Trail and mountain running  
-**Expansion rule:** Prove paid value and retention in trail running before adding another sport.
+**Expansion rule:** Replaced on 2026-10-23 by founder direction `strem-docs#26`: any race or self-imposed challenge, with trail as the depth benchmark (see `race-os.md`).
 
 ## Product Thesis
 
