@@ -1,6 +1,8 @@
 import { Stack, usePathname } from "expo-router";
+import { View } from "react-native";
 
 import { AppShell } from "@/components/shell/app-shell";
+import { C } from "@/constants/theme";
 import { RaceProvider } from "@/lib/race/race-context";
 import { useAuth } from "@/lib/session/auth-context";
 
@@ -15,9 +17,12 @@ function Frame() {
 }
 
 export default function AppLayout() {
-  const { user } = useAuth();
+  const { phase, user } = useAuth();
+  // Wait for the restored session: mounting first and re-keying on the user
+  // later would remount every screen (dropping taps) and load all data twice.
+  if (phase !== "signedIn" || !user) return <View style={{ flex: 1, backgroundColor: C.ink }} />;
   return (
-    <RaceProvider key={user?.user_id ?? "signed-out"}>
+    <RaceProvider key={user.user_id}>
       <Frame />
     </RaceProvider>
   );

@@ -106,7 +106,7 @@ test("upload a course GPX in Race Lab and see its stats after reload", async ({ 
     const ele = 900 + Math.round(120 * Math.sin(i / 5));
     return `<trkpt lat="${lat}" lon="23.30000"><ele>${ele}</ele></trkpt>`;
   }).join("");
-  const gpx = `<?xml version="1.0"?><gpx version="1.1" creator="synthetic"><trk><name>Synthetic</name><trkseg>${points}</trkseg></trk></gpx>`;
+  const gpx = `<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="synthetic"><trk><trkseg>${points}</trkseg></trk></gpx>`;
 
   await page.goto("/race?tab=course");
   const chooser = page.waitForEvent("filechooser");
@@ -116,6 +116,8 @@ test("upload a course GPX in Race Lab and see its stats after reload", async ({ 
   await expect(page.getByText("from your GPX")).toBeVisible({ timeout: 30000 });
   await page.reload();
   await expect(page.getByText("from your GPX")).toBeVisible();
+  // File options fold away once a course is saved.
+  await page.getByRole("link", { name: "Course file & source", exact: true }).click();
   await expect(page.getByRole("button", { name: "Replace GPX / ZIP", exact: true })).toBeVisible();
 });
 

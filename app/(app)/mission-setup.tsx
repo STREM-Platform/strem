@@ -96,7 +96,7 @@ export default function MissionSetup() {
       if (editing) {
         await raceMissions.update(editing, toInput(form), "Updated in mission setup");
         await race.reloadMissions(editing.id);
-        router.replace("/(app)/home");
+        router.dismissTo("/(app)/home");
         return;
       }
       const created = await raceMissions.create(toInput(form), key.current);
@@ -146,7 +146,7 @@ export default function MissionSetup() {
               {/* Once committed, the build is the news: progress first, the race card below. */}
               <BuildPanel states={builder.states} />
               {doneBuilding ? (
-                <Button label="Open my Race Mission" iconRight="chevron" size="lg" onPress={() => router.replace("/(app)/home")} />
+                <Button label="Open my Race Mission" iconRight="chevron" size="lg" onPress={() => router.dismissTo("/(app)/home")} />
               ) : null}
               {!wide ? <PreviewCard form={form} /> : null}
               {!createdId ? <ReviewSummary form={form} /> : null}
