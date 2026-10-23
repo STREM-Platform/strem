@@ -10,7 +10,7 @@ export function TrailAtmosphere({ quiet = false }: { quiet?: boolean }) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <LinearGradient
-        colors={[Trail.bg, "#07140E", "#050A08"]}
+        colors={["#121715", Trail.bg, "#060708"]}
         locations={[0, 0.52, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -31,7 +31,7 @@ export function TrailAtmosphere({ quiet = false }: { quiet?: boolean }) {
 export function TrailPanel({ children, style, accent = false }: { children: ReactNode; style?: StyleProp<ViewStyle>; accent?: boolean }) {
   return (
     <LinearGradient
-      colors={accent ? ["rgba(24,46,32,0.98)", "rgba(13,27,19,0.98)"] : ["rgba(18,34,25,0.96)", "rgba(11,22,16,0.96)"]}
+      colors={accent ? ["rgba(30,34,40,0.98)", "rgba(20,23,27,0.98)"] : ["rgba(24,27,32,0.96)", "rgba(20,23,27,0.96)"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.panel, accent && styles.panelAccent, style]}
@@ -68,7 +68,7 @@ export const trailStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  atmosphereGlow: { position: "absolute", width: 430, height: 430, borderRadius: 215, top: -245, right: -195, backgroundColor: "rgba(183,237,98,0.07)", boxShadow: "0px 0px 110px rgba(183,237,98,0.09)" },
+  atmosphereGlow: { position: "absolute", width: 430, height: 430, borderRadius: 215, top: -245, right: -195, backgroundColor: "rgba(255,255,255,0.03)", boxShadow: "0px 0px 110px rgba(255,255,255,0.04)" },
   atmosphereGlowQuiet: { opacity: 0.55 },
   topography: { position: "absolute", inset: 0 },
   panel: { boxSizing: "border-box", padding: 18, borderRadius: 22, borderWidth: 1, borderColor: Trail.lineStrong, boxShadow: "0px 14px 34px rgba(0,0,0,0.24)" },

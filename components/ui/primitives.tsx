@@ -10,7 +10,7 @@ import {
 } from "react-native";
 
 import { Icon, type IconName } from "@/components/ui/icon";
-import { Trail, ui } from "@/constants/theme";
+import { C, Trail, ui } from "@/constants/theme";
 
 type ButtonKind = "primary" | "ghost";
 
@@ -36,7 +36,7 @@ export function Btn({
   style,
 }: ButtonProps) {
   const palette = kind === "primary"
-    ? { background: Trail.lime, foreground: Trail.limeInk, border: Trail.lime }
+    ? { background: C.white, foreground: C.ink, border: C.white }
     : { background: "transparent", foreground: Trail.text, border: Trail.lineStrong };
   const blocked = disabled || loading;
 
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 13,
     paddingHorizontal: 18,
-    borderRadius: 13,
+    borderRadius: 999,
     borderWidth: 1,
   },
   buttonText: {
