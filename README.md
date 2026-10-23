@@ -1,155 +1,76 @@
 # strem-user-service
 
-Private Race Missions, user profiles, onboarding state, and retained legacy progression
-for STREM. This service is the source of truth for personalization data that is
-not authentication (see `strem-docs/architecture/service-map.md`).
-
-Profile, onboarding, and progression (XP ledger, ranks, medals) endpoints
-implement `strem-shared-contracts/contracts/user/openapi.yml`. Progression
-events are published to Redis Streams per `event-driven-strategy.md`.
+Profiles, onboarding, legal acceptance, the athlete profile, and the Race OS
+records — Race Missions, their Race Lab layers and race history — for STREM
+(strem-docs#26, ADR 0008). It is the source of truth for personalization data that
+is not authentication (see `strem-docs/architecture/service-map.md`). Endpoints
+implement `strem-shared-contracts/contracts/user/openapi.yml`.
 
 ## Endpoints
 
-### Race Mission foundation (#24)
-
-Founder approved on 2026-10-08: authenticated private create/read/edit/archive,
-one active mission per account, additive storage, and mission-only export/delete.
-This does not authorize AI advice, activity integrations or migration of legacy data.
+All routes are under `/v1` (the health probe is unversioned), authenticated with
+the access token from `strem-auth-service` and scoped to the token's user.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/v1/race-missions` | Create; Idempotency-Key required. |
-| GET | `/v1/race-missions/active` | Load current account's active mission. |
-| GET/PATCH | `/v1/race-missions/{id}` | Owned read/edit; edits require If-Match version and correction reason. |
-| POST | `/v1/race-missions/{id}/archive` | Archive, preserving history; If-Match and Idempotency-Key required. |
-| GET/DELETE | `/v1/race-missions/data` | Export all owned missions/revisions, or permanently remove mission data with exact confirmation. |
+| `GET` | `/health` | Liveness probe. |
+| `GET`/`PATCH` | `/v1/users/me` | Profile; update display name, identity statement, goal. |
+| `POST` | `/v1/users/onboarding` | Upsert onboarding answers; completes when the required fields are present. |
+| `GET` | `/v1/users/onboarding/status` | Onboarding status and resume point. |
+| `GET` | `/v1/users/me/legal` · `POST …/legal/accept` | Versioned Terms, Privacy and Medical Disclaimer acceptance. |
+| `GET`/`PUT` | `/v1/users/me/athlete-profile` | Weight, injuries, dietary needs, experience — inputs that change decisions. |
+| `POST`/`GET` | `/v1/race-missions` | Create (Idempotency-Key) / list (`?state=`). Up to 12 active missions. |
+| `GET` | `/v1/race-missions/active` | The focus: the nearest upcoming active mission. |
+| `GET`/`PATCH` | `/v1/race-missions/{id}` | Read / edit (If-Match + correction reason). |
+| `POST` | `/v1/race-missions/{id}/complete` · `/archive` | Close with a result (adds it to race history) / archive. |
+| `GET`/`DELETE` | `/v1/race-missions/data` | Export everything (incl. layers, plans, courses) / permanently delete mission data. |
+| `GET` | `/v1/race-missions/{id}/course-access` | Training-service's ownership + deletion-fence check. |
+| `GET`/`PUT`/`DELETE` | `/v1/race-missions/{id}/layers[/{kind}]` | Race Lab layers (fuel, gear, logistics, strategy), If-Match versions. |
+| `PATCH` | `/v1/race-missions/{id}/layers/{kind}/items/{item_id}` | One item's status and note. |
+| `GET`/`POST`/`PUT`/`DELETE` | `/v1/users/me/races[/{id}]` | Race history; `POST /import` adds source-flagged races. |
 
-Contract: `strem-shared-contracts/contracts/user/openapi.yml`. Missing optional
-course facts stay null; source is always athlete_entry. No readiness, official
-verification or plan is inferred. Archive is not deletion. Mission deletion removes
-revisions and idempotency receipts too, but does not delete account/activity data.
+## Behaviour worth knowing
 
-Migration `0008_race_missions` adds three tables without changing existing rows.
-Back up the target DB, verify DATABASE_URL, then run `alembic upgrade head` before
-starting the new API. Deploy user API and gateway before the mobile consumer.
-On rollback keep the additive tables and revert application code; do not downgrade
-a populated database unless separately approved and backed up (downgrade deletes
-the new tables). Tests never migrate your configured development/production DB.
+- **Layers keep progress.** Replacing a layer (e.g. a rebuild by the race team)
+  keeps each item's status and note by item id. Layers are writable only while the
+  mission is active.
+- **Deletion is coordinated.** Mission data deletion advances a per-owner
+  generation and purges training-service courses and plans through its internal
+  endpoint before erasing missions (ADR 0007). A failed purge keeps the intent;
+  retry DELETE to finish.
+- **Onboarding** persists per screen and is idempotent; profiles are created on
+  first access and fall back to the email local-part for a display name.
+- **Retired features** (strem-docs#28): XP, ranks, medals, streaks, biomarkers,
+  agent consent/autonomy and the XP event worker were removed. Their tables stay
+  (models kept in `app/models.py`) — no drop migration without a retention decision.
 
-Tests cover isolated SQLite migration/restart, concurrent creation/editing,
-JWT owner isolation, replay, history and deletion. Opt-in PostgreSQL 16 tests also
-verify the migration and the same API lifecycle. A separate real-HTTP test starts
-the gateway/user API, stops/restarts the user process, and verifies persisted
-state, headers, ownership, outage errors and export/delete through the gateway.
-These use synthetic test JWTs, not auth-service registration or mobile UI.
+## Migrations
 
-Mission writes and export acquire a namespaced, per-owner PostgreSQL transaction
-advisory lock. This prevents a concurrent creation from leaving an orphaned
-receipt during deletion and keeps exports consistent across their two queries.
-The partial unique index and optimistic versions remain enforced. Deletion is
-not an account ban: a create ordered after deletion may save a new mission.
+`alembic upgrade head`. Race OS adds `0010_race_os` (several active missions,
+`mission_layers`, `race_results`); its downgrade requires
+`-x allow_race_os_data_loss=true`. Back up before migrating a populated database.
 
-### Optional release tests
+## Optional release tests
 
-Use a new, disposable PostgreSQL container with no project-data mounts. Bind it
-to loopback only. The database name must be `strem_mission_test`. Set
-`STREM_TEST_POSTGRES_URL` to its `postgresql+asyncpg://...` URL (never your normal
-`DATABASE_URL`). The migration test refuses non-local targets or existing tables;
-recreate the disposable database before rerunning it.
+Use a new, disposable PostgreSQL container bound to loopback, with database name
+`strem_mission_test`, and set `STREM_TEST_POSTGRES_URL` to its
+`postgresql+asyncpg://...` URL (never your normal `DATABASE_URL`):
 
 ```text
 python -m pytest tests/test_race_mission_postgres.py
 ```
 
-Then set `STREM_TEST_GATEWAY_REPO` to the local `strem-api-gateway` checkout and,
-with gateway dependencies installed in the test Python environment, run:
+With `STREM_TEST_GATEWAY_REPO` pointing at a local `strem-api-gateway` checkout:
 
 ```text
 python -m pytest tests/test_race_mission_gateway_smoke.py
 ```
 
-Both are skipped in ordinary CI unless explicitly configured. They leave only
-synthetic rows in the disposable database; the HTTP test always stops its child
-API processes. Remove the dedicated test container after verification. Browser,
-device, registration and deployed-environment acceptance are separate checks.
-
-### Existing profile and legacy progression APIs
-
-All routes are served under the `/v1` base path (the health probe is unversioned).
-Every `/v1` route is authenticated with the access token issued by
-`strem-auth-service` and scoped to the token's `user_id` ("me").
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET`  | `/health` | Liveness probe → `{"status":"ok","service":"strem-user-service"}`. |
-| `GET`  | `/v1/users/me` | Full profile + game state (rank, total XP, medals). |
-| `PATCH`| `/v1/users/me` | Update `display_name`, `identity_statement`, `transformation_goal`. |
-| `POST` | `/v1/users/onboarding` | Upsert onboarding answers (per-screen); completes when all required fields are present. |
-| `GET`  | `/v1/users/onboarding/status` | `not_started` / `in_progress` / `completed` + resume point. |
-| `GET`  | `/v1/users/me/xp` | XP total, current rank, and progress to the next rank. |
-| `GET`  | `/v1/users/me/xp/history` | Paginated XP ledger, newest first. |
-| `GET`  | `/v1/users/me/medals` | Earned medals. |
-
-## Onboarding model
-
-Onboarding answers persist per screen (`onboarding-flow.md` recovery path), so
-`POST /users/onboarding` accepts a partial payload plus an optional `screen`
-marker and is idempotent. Onboarding is marked **completed** only when all five
-required fields are present: `identity_statement`, `transformation_goal`,
-`training_level`, `weekly_target_days`, `timezone`. `last_completed_screen`
-drives the resume point so an abandoned flow continues at the next incomplete
-screen.
-
-Profiles are created lazily on first access, keyed by the auth `user_id`. Until
-onboarding sets a display name, the profile falls back to the email local-part.
-
-## Progression (XP, ranks, medals)
-
-The append-only `xp_ledger` is the source of truth for total XP; XP never
-decreases. `app/progression.py::award_xp` is the single internal entry point
-(consumed by the domain-event consumers in strem-user-service#5): it appends to
-the ledger, recomputes the total, derives the rank (`app/ranks.py`), unlocks
-medals (`app/medals.py`), and publishes `user.xp_earned`, `user.rank_achieved`,
-and `user.medal_earned` to Redis Streams (exact payloads per the shared event
-schemas). Rank bands, the nine MVP XP sources, and the ten MVP medal conditions
-mirror `strem-docs/product/game-systems.md` and the user contract — never
-redefined independently.
-
-Medal conditions that reference signals outside this service use the closest
-faithful ledger proxy (documented in `app/medals.py`): e.g. the first
-`tribe_checkin` implies tribe membership for `tribe_member`.
-
-### Event consumers (the loop closer)
-
-A separate worker (`python -m app.worker`) consumes the progression streams via a
-Redis Streams consumer group and awards XP through `award_xp`. So logging an
-action — or completing a mission or challenge — visibly produces XP:
-
-- `training.session_logged` / `nutrition.day_logged` / `tribe.checkin_completed` → log XP.
-- `ai.mission_completed` → `mission_complete` XP (the event's `xp_reward`, 75-150).
-- `tribe.challenge_completed` → `challenge_complete` XP, the tribe collective pool distributed across participating members.
-- After any award, **7-day (200) and 30-day (1000) consistency streak bonuses** are detected from the ledger and awarded once per user.
-
-Per `event-driven-strategy.md`:
-
-- **Idempotent** — dedupe by broker message id in `processed_events`; a
-  redelivered event is a no-op (the ledger entry's `source_reference` is
-  `"<stream>:<message_id>"`).
-- **Retry** — a handler failure leaves the message un-acked; it is reclaimed and
-  retried on the next pass.
-- **Dead-letter** — malformed events, or ones exceeding `MAX_DELIVERIES`, move to
-  `<stream>.dead`.
-
-The `tribe.checkin_completed` consumer is wired now and stays idle until the
-community service (Wave 2) starts publishing.
-
-```bash
-python -m app.worker   # run alongside the API (separate process)
-```
+Both are skipped in ordinary CI unless configured.
 
 ## Run locally
 
-Bring up Postgres via `strem-infra` (`docker compose up postgres`), then:
+Bring up Postgres via `strem-infra`, then:
 
 ```bash
 python -m venv .venv
@@ -159,13 +80,6 @@ cp .env.example .env
 
 alembic upgrade head            # create the schema
 uvicorn app.main:app --reload   # http://localhost:8002/health
-```
-
-## Run with Docker
-
-```bash
-docker build -t strem-user-service .
-docker run -p 8002:8000 --env-file .env strem-user-service
 ```
 
 ## Checks (what CI runs)
@@ -181,31 +95,5 @@ pytest            # endpoint tests over httpx + in-memory SQLite
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | Async PostgreSQL connection string for the user database. |
-| `JWT_SECRET` | Shared secret used to verify access tokens from strem-auth-service. |
-| `JWT_ALGORITHM` | JWT algorithm (default `HS256`); must match strem-auth-service. |
-
-## Structure
-
-```
-strem-user-service/
-├── app/
-│   ├── main.py            # FastAPI app factory + /health
-│   ├── config.py          # env-backed Settings
-│   ├── db.py              # async engine + session dependency
-│   ├── deps.py            # JWT auth dependency + DI aliases
-│   ├── security.py        # access-token verification
-│   ├── errors.py          # contract-aligned Error responses
-│   ├── models.py          # UserProfile ORM
-│   ├── ranks.py           # rank derivation from total XP
-│   ├── profiles.py        # profile + onboarding domain logic
-│   ├── routers/           # profile + onboarding endpoints
-│   └── schemas/           # enums, profile, onboarding, game, xp
-├── alembic/               # migrations (0001_user_profiles)
-├── tests/                 # endpoint tests over the ASGI app
-├── Dockerfile
-├── alembic.ini
-├── .env.example
-├── requirements.txt / requirements-dev.txt
-├── pyproject.toml
-└── README.md
-```
+| `JWT_SECRET` / `JWT_ALGORITHM` | Verify access tokens from strem-auth-service. |
+| `COURSE_STORAGE_BASE_URL` | Internal training-service root (no `/v1`) for course/plan export and purge. |

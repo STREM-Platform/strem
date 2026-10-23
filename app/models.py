@@ -3,8 +3,12 @@
 `UserProfile.id` equals the auth `user_id` (the JWT subject); it is not
 generated here. Enum-valued columns are stored as strings and validated by the
 Pydantic schemas at the API boundary, so the same models work on PostgreSQL and
-the SQLite test database. The XP ledger and medals tables are added in
-strem-user-service#4.
+the SQLite test database.
+
+The XP ledger, medals, agent consent/autonomy, biomarker and processed-event
+tables belong to features retired in strem-docs#28. No code reads or writes them
+any more; their models stay so Alembic metadata keeps matching the existing
+schema (no drop migration without a separate retention decision).
 """
 
 import uuid

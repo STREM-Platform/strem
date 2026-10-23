@@ -25,10 +25,8 @@ def test_get_me_creates_default_profile() -> None:
         body = response.json()
         assert body["user_id"] == str(user_id)
         assert body["display_name"] == "alex"  # email local-part fallback
-        assert body["rank"] == "Initiate"
-        assert body["total_xp"] == 0
-        assert body["active_medals"] == []
         assert body["onboarding_completed"] is False
+        assert "total_xp" not in body and "rank" not in body  # game state retired (docs#28)
 
     run(scenario)
 

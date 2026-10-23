@@ -32,7 +32,6 @@ TEST_SETTINGS = Settings(
     database_url="sqlite+aiosqlite://",
     jwt_secret="test-secret-key-at-least-32-bytes-long!!",
     jwt_algorithm="HS256",
-    message_broker_url="redis://localhost:6379/0",
 )
 
 
