@@ -118,7 +118,12 @@ class OpenAIRaceAI:
         log.warning("openai error %s %s: %s", response.status_code, code, message[:300])
         if response.status_code == 401:
             return self._disable("The OpenAI API key was rejected.")
-        if code == "insufficient_quota":
+        billing = code in (
+            "insufficient_quota",
+            "credit_balance_exhausted",
+            "billing_hard_limit_reached",
+        )
+        if billing or (response.status_code == 429 and "credit" in message.lower()):
             return self._disable(
                 "The OpenAI account has no credit left — add credit to re-enable the AI race team."
             )

@@ -121,6 +121,12 @@ def test_text_chat_and_models_without_reasoning() -> None:
     [
         (401, {"message": "bad key", "code": "invalid_api_key"}, "key was rejected", True),
         (429, {"message": "quota", "code": "insufficient_quota"}, "no credit left", True),
+        (
+            429,
+            {"message": "You have no credits remaining.", "code": "credit_balance_exhausted"},
+            "no credit left",
+            True,
+        ),
         (429, {"message": "slow down", "code": "rate_limit_exceeded"}, "rate limited", False),
         (404, {"message": "no model", "code": "model_not_found"}, "cannot use the model", True),
         (500, {"message": "boom"}, "provider had an error", False),
