@@ -50,7 +50,7 @@ SessionKind = Literal[
 ]
 Intensity = Literal["rest", "very_easy", "easy", "moderate", "steady", "threshold", "hard", "race"]
 SessionStatus = Literal["planned", "done", "partial", "skipped", "moved"]
-Phase = Literal["base", "build", "specific", "peak", "taper", "race", "recovery"]
+Phase = Literal["general", "base", "build", "specific", "peak", "taper", "race", "recovery"]
 Origin = Literal["engine", "ai", "athlete"]
 
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
