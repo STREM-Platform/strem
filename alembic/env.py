@@ -12,6 +12,7 @@ from alembic import context
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.db import Base
+from app.race import store as race_store  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
