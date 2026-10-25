@@ -23,6 +23,7 @@ import {
   Title,
 } from "@/components/ui/kit";
 import { BuildPanel } from "@/components/mission/build-panel";
+import { RaceSwitcher } from "@/components/mission/race-switcher";
 import { SessionRow, sessionStatus } from "@/components/plan/session-row";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { addDays, capitalize, dayLabel, km, mondayOf, todayIn, weekdayShort } from "@/lib/race/format";
@@ -99,7 +100,7 @@ export default function PlanScreen() {
     <Page>
       <Row align="flex-start">
         <View style={{ flex: 1, gap: 6 }}>
-          <Overline>Training plan · {mission.event.name}</Overline>
+          <RaceSwitcher />
           <Title size={38}>{plan.content.headline}</Title>
         </View>
       </Row>

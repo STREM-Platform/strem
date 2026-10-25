@@ -1,11 +1,11 @@
 /** The mission hero: race identity over its photography, countdown and phase. */
 
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Icon } from "@/components/ui/icon";
 import { Chip, IconButton, Overline, Row, useLayout } from "@/components/ui/kit";
+import { RaceSwitcher } from "@/components/mission/race-switcher";
 import { HeroMedia } from "@/components/ui/photo";
 import { C, disp, ui } from "@/constants/theme";
 import type { MissionPlan } from "@/lib/api/race";
@@ -46,18 +46,7 @@ export function MissionHero({ mission, plan, missionCount }: { mission: RaceMiss
       seed={seed}
       overlayTop={
         <Row style={{ paddingTop: insets.top + 12, paddingHorizontal: wide ? 32 : 16 }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Switch race. Current: ${event.name}`}
-            onPress={() => router.push("/(app)/missions")}
-            style={({ pressed }) => [styles.switcher, pressed && { opacity: 0.8 }]}
-          >
-            <Icon name={sport.icon} size={16} color={C.text} />
-            <Text style={[ui(13, 700), { color: C.text, maxWidth: 190 }]} numberOfLines={1}>
-              {missionCount > 1 ? `${missionCount} races` : "My races"}
-            </Text>
-            <Icon name="chevronDown" size={16} color={C.textMuted} />
-          </Pressable>
+          <RaceSwitcher tone="glass" label={missionCount > 1 ? `${missionCount} races` : "My races"} />
           <View style={{ flex: 1 }} />
           <IconButton icon="heart" label="Daily check-in" onPress={() => router.push("/(app)/checkin")} />
         </Row>
@@ -104,17 +93,6 @@ export function MissionHero({ mission, plan, missionCount }: { mission: RaceMiss
 }
 
 const styles = StyleSheet.create({
-  switcher: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 44,
-    paddingHorizontal: 14,
-    borderRadius: 22,
-    backgroundColor: C.glass,
-    borderWidth: 1,
-    borderColor: C.lineStrong,
-  },
   content: { width: "100%", alignSelf: "center", gap: 12, paddingBottom: 18 },
   name: { color: C.text, letterSpacing: 0.3, textShadowColor: "rgba(0,0,0,0.45)", textShadowRadius: 12 },
   kicker: { textShadowColor: "rgba(0,0,0,0.7)", textShadowRadius: 8 },

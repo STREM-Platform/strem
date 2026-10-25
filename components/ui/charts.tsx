@@ -48,6 +48,22 @@ export function Meter({ value, color, height = 6, label }: { value: number | nul
   );
 }
 
+/** A progress ring: track = lighter step of the hue, arc = progress; children sit inside. */
+export function Ring({ value, size = 56, stroke = 5, color, children, label }: { value: number | null; size?: number; stroke?: number; color: string; children?: React.ReactNode; label?: string }) {
+  const pct = value == null ? 0 : Math.max(0, Math.min(1, value));
+  const r = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * r;
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }} accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{ min: 0, max: 100, now: Math.round(pct * 100) }}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={`${color}33`} strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeDasharray={`${circumference * pct} ${circumference}`} strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      </Svg>
+      {children}
+    </View>
+  );
+}
+
 export interface VolumePoint {
   label: string;
   planned: number | null;

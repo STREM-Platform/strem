@@ -162,4 +162,22 @@ test("import my own plan from pasted text, review it and train from it", async (
   const plan = await (await request.get(`${api}/training/missions/${saved.items[0].id}/plan`, { headers })).json();
   expect(plan.origin).toBe("athlete");
   expect(plan.content.weeks.flatMap((w: { sessions: { title: string }[] }) => w.sessions).some((s: { title: string }) => /tempo/i.test(s.title))).toBe(false);
+
+});
+
+test("switch to another race from inside Race Lab", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic First Race");
+  await createMissionViaApi(request, "Synthetic Second Race");
+  await page.goto("/race");
+  const switcher = page.getByRole("button", { name: /^Switch race\. Current:/ });
+  await expect(switcher).toBeVisible();
+  const current = ((await switcher.getAttribute("aria-label")) ?? "").replace("Switch race. Current: ", "");
+  const other = current === "Synthetic First Race" ? "Synthetic Second Race" : "Synthetic First Race";
+  await switcher.click();
+  await page.getByRole("radio", { name: new RegExp(`^${other},`) }).click();
+  await expect(page.getByRole("button", { name: `Switch race. Current: ${other}` })).toBeVisible();
+  // Still in Race Lab, and the choice holds across tabs.
+  await expect(page.getByRole("heading", { name: "Execute race day" })).toBeVisible();
+  await page.goto("/plan");
+  await expect(page.getByRole("button", { name: `Switch race. Current: ${other}` }).or(page.getByText(other).first())).toBeVisible();
 });
