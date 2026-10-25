@@ -179,6 +179,11 @@ def create_app() -> FastAPI:
             content=upstream_response.content,
             status_code=upstream_response.status_code,
             media_type=media_type,
+            headers={
+                name: upstream_response.headers[name]
+                for name in ("etag", "cache-control")
+                if name in upstream_response.headers
+            },
         )
 
     return application
