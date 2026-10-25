@@ -1,6 +1,6 @@
 # STREM Engineering Operating System
 
-STREM is the **AI race team for self-coached trail runners**.
+STREM is the **AI race team for self-coached endurance athletes**: name a race or challenge and STREM plans training, fueling, gear, logistics and strategy for it. Trail running is the first validation market.
 
 It begins when an athlete commits to a real trail or mountain event and stays with them through preparation, rehearsals, race-week execution, finish, and debrief. Existing devices record what happened. STREM explains what it means for this athlete and this race.
 
@@ -35,7 +35,7 @@ A working adult preparing mostly alone for a first serious 20–50 km trail or m
 
 ## Explicit exclusions
 
-The active product does not include generic tracker dashboards, calorie counting, XP, ranks, medals, streak rewards, Tribe, Crew personas, follower mechanics, leaderboards, biomarkers, supplements, marketplaces, cinematic recaps, or broad multi-sport support.
+The active product does not include generic tracker dashboards, calorie counting, XP, ranks, medals, streak rewards, Tribe, Crew personas, follower mechanics, leaderboards, biomarkers, supplements, marketplaces, or cinematic recaps. Other sports are supported only with sport-correct engine rules (`product/race-os.md`).
 
 Those directions were removed on 2026-09-20. Git history is the archive; they are not parallel roadmaps.
 

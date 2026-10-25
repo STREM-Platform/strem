@@ -63,11 +63,9 @@ Deferred to V2+ when RAG is introduced. PostgreSQL's `pgvector` extension is the
 | Service | Recommended Approach | Rationale |
 |---------|---------------------|-----------|
 | `strem-auth-service` | Relational (PostgreSQL) | Sessions, tokens, identity — relational integrity required |
-| `strem-user-service` | Relational (PostgreSQL) | Profiles, onboarding, XP ledger — structured, transactional |
+| `strem-user-service` | Relational (PostgreSQL) | Profiles, onboarding, Race Missions, layers (JSON documents), race history |
 | `strem-training-service` | Relational (PostgreSQL); evaluate TimescaleDB if log volume warrants | Training and running logs are time-stamped but not yet high-volume |
-| `strem-nutrition-service` | Relational (PostgreSQL) | Meal logs are structured with clear schema |
-| `strem-community-service` | Relational (PostgreSQL) | Tribe membership, check-ins, Tribe Power — relational fits well |
-| `strem-ai-orchestrator` | Flexible — consider document store or relational + JSONB for mission objects and conversation metadata | Mission objects and coach session state may benefit from document flexibility |
+| `strem-ai-orchestrator` | Relational (PostgreSQL) + JSON columns | Race-team chat history, cached briefs and adaptation proposals |
 | Cache / rate limits | Redis or equivalent | Ephemeral, not durable |
 
 These are starting recommendations. Each service team (or agent) must evaluate the actual access pattern before selecting a database. If a different choice is better, document the decision in an ADR.

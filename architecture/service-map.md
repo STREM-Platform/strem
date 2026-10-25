@@ -1,59 +1,56 @@
 # Service Map
 
-This map defines ownership for the active trail pivot while acknowledging existing legacy storage. Product status does not transfer ownership or authorize deletion of user data.
+Ownership for the Race OS platform as it runs on `main` (2026-10-25). Product status does not transfer ownership or authorize deletion of user data.
 
 ## Active request path
 
 `strem-mobile → strem-api-gateway → owning service → service-owned store`
 
-The AI orchestrator reads through approved APIs. It never shares domain databases.
+The AI orchestrator reads and writes through the owning services' APIs with the athlete's token. It never shares domain databases. No service publishes domain events today (see `event-driven-strategy.md`).
 
-## Repositories
+## Running services
 
 ### `strem-mobile`
 
-Owns Race Mission presentation, onboarding, manual input, source authorization, athlete controls, proposal review, and field-ready mobile interaction.
+Race Mission presentation: race setup, Mission home, Plan, Race Lab, the race team, the athlete hub, source connections, check-ins, data controls and onboarding (welcome + one "about you" step).
 
 ### `strem-api-gateway`
 
-Owns external routing, authentication handoff, rate limiting, request correlation, and mobile-facing aggregation where justified. It owns no domain records.
+External routing (`auth`, `users`, `race-missions`, `training`, `integrations`, `ai`), bearer-token handoff, rate limiting (Redis), request-size limits and CORS. It owns no domain records.
 
 ### `strem-auth-service`
 
-Owns account identity, credentials, sessions, tokens, and authentication audit events.
+Account identity, credentials, sessions and tokens (register, login, refresh, logout, me).
 
 ### `strem-user-service`
 
-Owns athlete profile, onboarding, constraints that are not event-specific, legal acceptance, consent, and preferences. Existing XP, rank, and medal records remain legacy data until a reviewed retention or migration issue removes them.
+Profile, onboarding, legal acceptance, the athlete profile (weight, injuries, dietary needs), Race Missions (several active, completion into history), Race Lab layers (fuel, gear, logistics, strategy) and race history. Coordinates mission-data export and deletion with training-service (ADR 0007).
 
 ### `strem-training-service`
 
-Owns activity history, Strava/Whoop connection state, normalized sessions, recovery samples, and future course/activity evidence derivation. GPX and terrain responsibilities require an approved Race Mission contract before implementation.
+Logged and imported sessions, Strava/Whoop connection state and recovery samples, private mission courses (GPX), mission training plans, progress and evidence, and daily check-ins.
 
 ### `strem-ai-orchestrator`
 
-Owns consent-filtered context assembly, evidence interpretation, cited AI responses, safety middleware, decision proposals, and action receipts. It owns no athlete, event, activity, or calendar source of truth.
-
-### `strem-nutrition-service`
-
-Owns existing nutrition records. It has no active standalone mobile surface. Race fueling should begin as a Race Mission rehearsal contract; do not expand this service until ownership is reviewed.
-
-### `strem-community-service`
-
-Owns existing tribe and challenge records. Community is dormant in the active product. Do not add new social behavior or delete retained data without a reviewed deprecation and privacy plan.
+The race team (ADR 0008): the deterministic race engine, guarded AI personalization (Claude), daily briefs, chat, adaptation proposals and enrichment (places, conditions, openly licensed photos). It stores only chat history, cached briefs and proposals; it owns no athlete, race or activity source of truth.
 
 ### `strem-shared-contracts`
 
-Owns reviewed OpenAPI, event schemas, DTO definitions, contract tests, and schema history. The next product contract is the Race Mission vertical slice.
+Reviewed OpenAPI for auth, user, training, integrations and ai; the event catalogue (empty since strem-docs#28).
 
 ### `strem-infra`
 
-Owns local orchestration, CI/CD, environment templates, observability configuration, and deployment assets.
+Docker Compose for local development, the demo seed, migration and health scripts, CI templates.
 
 ### `strem-docs`
 
-Owns product authority, architecture decisions, workflows, prompts, runbooks, and implementation status.
+Product authority, architecture decisions, workflows, prompts, runbooks and implementation status.
+
+## Retired (strem-docs#28)
+
+- `strem-nutrition-service` and `strem-community-service`: no longer part of the stack or the contracts. Their repositories and databases still exist; archiving the repositories and dropping `strem_nutrition`/`strem_community` need a founder retention decision.
+- User-service XP, ranks, medals, streaks, biomarkers and agent consent/autonomy; training-service strength sets and personal records; the pre-pivot AI coach. Their tables remain (models kept for Alembic) until a retention decision.
 
 ## Not approved
 
-Do not create separate race, calendar, weather, payments, marketplace, coach, recovery, or endurance services until a scoped issue and ADR show why an existing owner cannot hold the capability.
+Do not create separate race, calendar, weather, payments, marketplace, coach, recovery, season or endurance services until a scoped issue and ADR show why an existing owner cannot hold the capability. Seasons (strem-training-service#18) belong in training-service.

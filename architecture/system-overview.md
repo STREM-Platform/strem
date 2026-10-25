@@ -61,11 +61,10 @@ Supporting systems (technology to be evaluated at implementation time):
 | Service | Runtime ownership | Product status |
 |---------|-------------------|----------------|
 | `strem-auth-service` | identity, sessions, auth primitives | active |
-| `strem-user-service` | profile, onboarding, athlete baseline, consent; legacy XP/rank/medal data | active core; progression dormant |
-| `strem-training-service` | activity history, connected sources, recovery samples, future course/evidence derivation | active input layer |
-| `strem-nutrition-service` | existing nutrition records | retained; no active standalone mobile surface |
-| `strem-community-service` | existing tribe and challenge records | retained; dormant in active product |
-| `strem-ai-orchestrator` | context assembly, cited chat/actions, future Race Mission decisions and proposals | active foundation; race contracts pending |
+| `strem-user-service` | profile, onboarding, legal, athlete profile, Race Missions, Race Lab layers, race history | active |
+| `strem-training-service` | sessions, connected sources, recovery samples, courses, mission plans, progress, check-ins | active |
+| `strem-ai-orchestrator` | the race team: race engine, guarded AI layers, briefs, chat, adaptation proposals, enrichment | active (ADR 0008) |
+| `strem-nutrition-service`, `strem-community-service` | pre-pivot records | retired from the stack (strem-docs#28); data retained |
 
 These are ownership boundaries first. Physical repositories are created in implementation order — not as empty placeholders.
 
@@ -76,7 +75,7 @@ These are ownership boundaries first. Physical repositories are created in imple
 - Choose the right technology for each service's access patterns — document deviations from default guidance in ADRs.
 - Keep running logs inside training service for MVP.
 - Keep AI in a separate orchestrator so it can evolve without contaminating domain services.
-- Prefer event-driven integration for cross-service reactions over synchronous coupling.
+- Prefer event-driven integration for cross-service reactions over synchronous coupling once a reaction is needed (no events are published today).
 - Prefer fewer active services until the MVP loop proves user pull.
 - Prefer operational simplicity over theoretical performance until scale demands otherwise.
 

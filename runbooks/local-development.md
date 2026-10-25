@@ -21,14 +21,20 @@ Each repository owns its own Git history.
 4. Check repository status.
 5. Avoid touching unrelated files.
 
-## Future Local Stack
+## Local Stack
 
-`strem-infra` will eventually provide Docker Compose for:
+`strem-infra` runs the whole platform with Docker Compose: PostgreSQL, Redis, auth,
+user, training, the AI orchestrator and the gateway on `http://localhost:8000/v1`.
 
-- PostgreSQL
-- Redis
-- RabbitMQ
-- local service dependencies
+```bash
+cd strem-infra
+docker compose --env-file .env -f docker/docker-compose.yml up -d --build
+python scripts/migrate-stack.py
+python scripts/seed-demo.py          # demo athlete: race-demo@strem.app
+```
+
+Then start the app from `strem-mobile` with `npm run web`. See the infra and mobile
+READMEs for details.
 
 ## Environment Files
 
@@ -44,6 +50,6 @@ Each repository should document:
 - lint command
 - build command if applicable
 
-## Current Phase
+## This Repository
 
-For the documentation foundation, local development means Markdown edits only.
+In `strem-docs`, local development means Markdown edits only.
