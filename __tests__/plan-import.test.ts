@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import type { PlanContent, PlanSession } from "@/lib/api/race";
-import { removeSession, shiftDraft, weekHours } from "@/lib/race/plan-import";
+import { planEnd, removeSession, repeatBlock, shiftDraft, weekHours } from "@/lib/race/plan-import";
 
 const session = (id: string, date: string, kind: PlanSession["kind"], minutes: number): PlanSession => ({
   id,
@@ -55,5 +55,20 @@ describe("imported plan review", () => {
 
   it("counts hours without rest days", () => {
     expect(weekHours(draft.weeks[0].sessions)).toBe(0.75);
+  });
+
+  it("repeats a weekly template up to race week, with fresh ids", () => {
+    const template = removeSession(draft, "c"); // one week: Mon rest, Tue easy
+    const once = repeatBlock(template, 1);
+    expect(once.weeks.map((w) => w.start_date)).toEqual(["2026-11-02", "2026-11-09"]);
+    expect(once.weeks[1].sessions.map((s) => s.date)).toEqual(["2026-11-09", "2026-11-10"]);
+    const filled = repeatBlock(template, "race");
+    // Race Sat 17 Apr 2027 → race week starts Mon 12 Apr; the last copy starts 5 Apr.
+    expect(filled.weeks[filled.weeks.length - 1].start_date).toBe("2027-04-05");
+    expect(planEnd(filled)).toBe("2027-04-11");
+    const ids = filled.weeks.flatMap((w) => w.sessions.map((s) => s.id));
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(filled.phases).toEqual([{ phase: "base", start_date: "2026-11-02", end_date: "2027-04-11", goal: "As written in your plan" }]);
+    expect(filled.assumptions.at(-1)).toMatch(/1-week block repeats through 23 weeks/);
   });
 });

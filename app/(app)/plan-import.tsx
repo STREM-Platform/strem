@@ -10,8 +10,8 @@ import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
 import { raceAi, type ImportSource, type PlanImportDraft, type PlanSession } from "@/lib/api/race";
 import { readBase64, readImage, readText } from "@/lib/files";
-import { addDays, capitalize, dayLabel, hm, km, mondayOf, todayIn, weekdayShort } from "@/lib/race/format";
-import { removeSession, shiftDraft, weekHours } from "@/lib/race/plan-import";
+import { addDays, capitalize, dayLabel, daysBetween, hm, km, mondayOf, todayIn, weekdayShort } from "@/lib/race/format";
+import { planEnd, removeSession, repeatBlock, shiftDraft, weekHours } from "@/lib/race/plan-import";
 import { useRace } from "@/lib/race/race-context";
 import { SESSION_ICON } from "@/lib/race/sports";
 
@@ -199,6 +199,17 @@ function SourceTile({ icon, title, body, onPress }: { icon: IconName; title: str
 function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDraft; today: string; hasPlan: boolean; onChange: (content: PlanImportDraft["content"]) => void }) {
   const { content } = draft;
   const [moving, setMoving] = useState(false);
+  const [beforeRepeat, setBeforeRepeat] = useState<PlanImportDraft["content"] | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const gap = daysBetween(planEnd(content), content.race_date);
+  const repeat = (times: number | "race") => {
+    setBeforeRepeat((b) => b ?? content);
+    onChange(repeatBlock(content, times));
+  };
+  // Server checks were made on the draft as read; drop the "ends before race day" one once filled.
+  const warnings = draft.warnings.filter((w) => !(gap <= 21 && /before race day/.test(w)));
+  const notes = [...warnings, ...content.assumptions.filter((a) => !warnings.includes(a))];
+  const visibleWeeks = showAll || content.weeks.length <= 4 ? content.weeks : content.weeks.slice(0, 2);
   const totals = useMemo(() => {
     const sessions = content.weeks.flatMap((w) => w.sessions).filter((s) => s.kind !== "rest");
     return {
@@ -240,9 +251,36 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
       {draft.parser === "text" ? (
         <Notice icon="info" title="Read without the AI race team" body={`The text reader transcribed this plan; no AI review this time.${draft.ai_reason ? ` ${draft.ai_reason}` : ""}`} />
       ) : null}
-      {[...draft.warnings, ...content.assumptions.filter((a) => !draft.warnings.includes(a))].length ? (
-        <Notice icon="alert" tone="attention" title="Check before saving" body={[...draft.warnings, ...content.assumptions.filter((a) => !draft.warnings.includes(a))].join("\n")} />
+      {gap > 21 ? (
+        <Card pad={16} style={{ gap: 10 }}>
+          <Row gap={8}>
+            <Icon name="refresh" size={18} color={LAYER_COLOR.training} />
+            <Text style={[ui(14, 800), { color: C.text, flex: 1 }]}>
+              {content.weeks.length === 1 ? "A weekly template?" : `Repeat this ${content.weeks.length}-week block?`}
+            </Text>
+          </Row>
+          <Body muted size={13}>
+            It ends {dayLabel(planEnd(content))}, {gap} days before race day. Repeat it to fill the weeks up to race week — the race team can adapt the build and taper later.
+          </Body>
+          <Row gap={8} wrap>
+            <Button label="Repeat until race week" icon="refresh" size="sm" onPress={() => repeat("race")} />
+            <Button label="Repeat once" kind="secondary" size="sm" onPress={() => repeat(1)} />
+          </Row>
+        </Card>
       ) : null}
+      {beforeRepeat ? (
+        <Button
+          label="Undo repeat"
+          kind="ghost"
+          size="sm"
+          icon="chevronL"
+          onPress={() => {
+            onChange(beforeRepeat);
+            setBeforeRepeat(null);
+          }}
+        />
+      ) : null}
+      {notes.length ? <Notice icon="alert" tone="attention" title="Check before saving" body={notes.join("\n")} /> : null}
       {draft.unparsed.length ? <Notice icon="info" title="Not imported" body={draft.unparsed.map((u) => `“${u}”`).join("\n")} /> : null}
       <Card pad={14} style={{ gap: 10 }}>
         <Row>
@@ -253,7 +291,7 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
         {moving ? <DatePicker label="Move week 1 to" value={first} min={addDays(today, -28)} onChange={(iso) => onChange(shiftDraft(content, iso))} /> : null}
       </Card>
       {hasPlan ? <Notice icon="refresh" title="Replaces your current plan" body="Saving makes this your plan for the race; logged sessions stay in your history." /> : null}
-      {content.weeks.map((week) => (
+      {visibleWeeks.map((week) => (
         <Card key={week.index} pad={14} style={{ gap: 8 }}>
           <Row>
             <View style={{ flex: 1 }}>
@@ -261,7 +299,7 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
                 Week {week.index} · {capitalize(week.phase)}
               </Text>
               <Text style={[ui(12, 600), { color: C.textMuted }]} numberOfLines={1}>
-                {dayLabel(week.start_date, false)} · {km(weekHours(week.sessions))} h{week.focus && week.focus !== `${capitalize(week.phase)} week` ? ` · ${week.focus}` : ""}
+                {dayLabel(week.start_date, false)} · {weekHours(week.sessions) ? `${km(weekHours(week.sessions))} h` : `${week.sessions.filter((s) => s.kind !== "rest").length} sessions`}{week.focus && week.focus !== `${capitalize(week.phase)} week` ? ` · ${week.focus}` : ""}
               </Text>
             </View>
           </Row>
@@ -270,6 +308,9 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
           ))}
         </Card>
       ))}
+      {visibleWeeks.length < content.weeks.length ? (
+        <Button label={`Show all ${content.weeks.length} weeks`} kind="secondary" icon="chevronDown" onPress={() => setShowAll(true)} />
+      ) : null}
     </View>
   );
 }
