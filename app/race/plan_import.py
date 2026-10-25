@@ -305,7 +305,6 @@ def _session_from(
     title = _title(cleaned) or kind.replace("_", " ").capitalize()
     return RawSession(
         title=title,
-        details=cleaned if title.lower() != cleaned.lower() else "",
         sport=sport,
         kind=kind,
         intensity=intensity,
@@ -590,12 +589,16 @@ def normalize(
             key=lambda x: x["duration_minutes"] or 0,
             default=None,
         )
+        week_phase = phase or phase_from(label) or "general"
+        # A bare "Week 3 – build" heading says no more than the phase does.
+        bare = (label or "").strip().lower() in ("", week_phase)
+        focus = f"{week_phase.capitalize()} week" if bare else (label or "").strip()
         weeks.append(
             {
                 "index": index,
                 "start_date": start.isoformat(),
-                "phase": phase or phase_from(label) or "general",
-                "focus": (label or f"Week {index}")[:240],
+                "phase": week_phase,
+                "focus": focus[:240],
                 "target_hours": round(hours, 1) if hours else None,
                 "target_km": round(km, 1) if km else None,
                 "long_session": f"{longest['title'][:60]} · {hm(longest['duration_minutes'])}"
@@ -616,7 +619,7 @@ def normalize(
         "timezone": timezone,
         "start_date": min(first, race_date).isoformat(),
         "race_date": race_date.isoformat(),
-        "phases": [],
+        "phases": phase_spans(weeks, race_date),
         "weeks": weeks,
         "principles": [],
         "assumptions": assumptions[:16],
@@ -625,6 +628,22 @@ def normalize(
     warnings = sanity_warnings(weeks, race_date)
     content["warnings"] = warnings[:12]
     return content, warnings
+
+
+def phase_spans(weeks: list[dict[str, Any]], race_date: date) -> list[dict[str, str]]:
+    """Consecutive weeks of one phase form a block on the road-to-race-day bar."""
+    spans: list[dict[str, str]] = []
+    for w in weeks:
+        end = min(date.fromisoformat(w["start_date"]) + timedelta(days=6), race_date).isoformat()
+        if spans and spans[-1]["phase"] == w["phase"]:
+            spans[-1]["end_date"] = end
+        else:
+            bare = w["focus"] == f"{w['phase'].capitalize()} week"
+            goal = "As written in your plan" if bare else w["focus"]
+            spans.append(
+                {"phase": w["phase"], "start_date": w["start_date"], "end_date": end, "goal": goal}
+            )
+    return spans
 
 
 def sanity_warnings(weeks: list[dict[str, Any]], race_date: date) -> list[str]:

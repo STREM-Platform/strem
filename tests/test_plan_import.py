@@ -91,6 +91,11 @@ def test_normalize_dates_weeks_ids_and_warnings() -> None:
     weeks = content["weeks"]
     assert [w["start_date"] for w in weeks] == ["2026-11-02", "2026-11-09"]
     assert weeks[0]["phase"] == "base" and weeks[1]["phase"] == "general"
+    assert [w["focus"] for w in weeks] == ["Base week", "General week"]
+    assert [(p["phase"], p["start_date"], p["end_date"]) for p in content["phases"]] == [
+        ("base", "2026-11-02", "2026-11-08"),
+        ("general", "2026-11-09", "2026-11-15"),
+    ]
     first = weeks[0]["sessions"]
     assert (
         first[0]["date"] == "2026-11-02"
