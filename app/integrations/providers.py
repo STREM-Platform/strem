@@ -16,6 +16,7 @@ from typing import Any, Protocol
 import httpx
 
 from app.config import Settings
+from app.errors import AppError
 
 
 class ProviderId(StrEnum):
@@ -181,18 +182,49 @@ class WhoopProvider:
 # ── HTTP helpers (small, so providers stay declarative) ──────────────────────
 
 
+def _name(url: str) -> str:
+    return "Strava" if "strava" in url else "WHOOP" if "whoop" in url else "The provider"
+
+
+def _checked(resp: httpx.Response, url: str) -> httpx.Response:
+    """Provider answers the app can explain, instead of a bare 500."""
+    if resp.status_code in (400, 401, 403):
+        raise AppError(
+            400,
+            "provider_rejected",
+            f"{_name(url)} did not accept the connection — connect again.",
+        )
+    if resp.status_code == 429:
+        raise AppError(
+            503, "provider_rate_limited", f"{_name(url)} is busy right now — try again shortly."
+        )
+    if resp.status_code >= 400:
+        raise AppError(
+            503, "provider_unavailable", f"{_name(url)} had an error — try again shortly."
+        )
+    return resp
+
+
 async def _post_form(url: str, data: dict[str, Any]) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(url, data=data)
-    resp.raise_for_status()
-    return dict(resp.json())
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(url, data=data)
+    except httpx.HTTPError as exc:
+        raise AppError(
+            503, "provider_unreachable", f"{_name(url)} could not be reached — try again."
+        ) from exc
+    return dict(_checked(resp, url).json())
 
 
 async def _get_json(url: str, params: dict[str, Any], headers: dict[str, str]) -> Any:
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(url, params=params, headers=headers)
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url, params=params, headers=headers)
+    except httpx.HTTPError as exc:
+        raise AppError(
+            503, "provider_unreachable", f"{_name(url)} could not be reached — try again."
+        ) from exc
+    return _checked(resp, url).json()
 
 
 def _oauth_token(payload: dict[str, Any]) -> TokenSet:
