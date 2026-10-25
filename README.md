@@ -1,85 +1,64 @@
 # strem-mobile
 
-React Native + Expo client for the STREM trail Race Mission.
+React Native + Expo app for STREM's Race OS: name a race or challenge, and the race
+team plans training, fueling, gear, logistics and strategy for it
+(`../strem-docs/product/race-os.md`).
 
-## Product
+## Navigation
 
-STREM is the AI race team for self-coached trail runners preparing for a real event. The active mobile navigation is:
+- **Mission** — photo hero with countdown and phase, today's session, the race-team
+  brief with its evidence, readiness by layer, the training tracker (including the
+  weeks before the plan), what's coming up and race-day conditions. Several races,
+  with a switcher.
+- **Plan** — periodized weeks to race day, session detail and status, the adapt sheet
+  (tell the race team what changed → a proposal you accept or reject), why this plan.
+- **Race Lab** — course (map, elevation, climbs), fuel, gear, logistics, strategy.
+  Every layer shows whether the race engine or the AI made it.
+- **Team** — ask the race team; what it knows and what's missing.
+- **You** — body & health basics, race history, connected sources, check-ins, races,
+  mission data export/delete, debrief.
 
-- **Mission** — race countdown, preparation evidence, current risk, and today's decision;
-- **Plan** — purposeful trail weeks, sessions, rehearsals, and adaptation rules;
-- **Race Lab** — course, pacing, fuel, equipment, weather assumptions, logistics, and calendar handoff;
-- **AI** — one cited Race Team, not multiple personas;
-- **Athlete** — baseline, connected sources, consent, action receipts, and account controls.
-
-Product authority lives in `../strem-docs/product/trail-running-pivot.md`. Delivery order and validation gates live in `../strem-docs/product/trail-running-delivery-plan.md`.
+Race setup is seven steps: sport → race (place search, month-jump calendar) →
+demands → goal → cover photo (openly licensed, credited) → starting point → commit.
 
 ## Data honesty
 
-The Race Mission foundation uses authenticated user-service APIs: create a race,
-reload it, correct facts with version protection, archive it, and export/delete
-mission records and revisions. It contains no runtime sample race. Empty,
-unavailable and conflict states do not substitute fixture data. Optional elevation
-and cutoff remain unknown when omitted; entered facts are not organizer-verified.
+Everything comes from the backend APIs; there is no sample race or fixture data at
+runtime. Unknown facts stay unknown. When the AI race team is unavailable (no key or
+no credit) the race engine builds every layer and the app says why.
 
-Plan, course analysis and race-specific AI decisions are explicitly unavailable
-until their reviewed backends exist. Generic chat was removed from the Race Team
-screen because it does not know the saved mission. No AI use or new integration
-permission is implied by saving a race. The navigation describes the product
-direction, not a claim that every capability is complete.
-
-Authentication, legal acceptance, athlete profile, consent, action history, and integration status retain their existing API paths.
-
-## Active routes
+## Code layout
 
 ```text
 app/
-  (auth)/             login and registration
-  (legal)/            policy acceptance and policy reader
-  (onboarding)/       focused trail onboarding
-  (app)/
-    home.tsx          Mission
-    mission-setup.tsx  Create/edit real race facts and goal
-    mission-data.tsx   Mission-only export, history and permanent deletion
-    plan.tsx          Plan
-    race.tsx          Race Lab
-    coach.tsx         AI Race Team
-    profile.tsx       Athlete
-    athlete-profile.tsx
-    integrations.tsx
-    privacy.tsx
-    agent.tsx         AI action receipts
+  (auth)/ (legal)/ (onboarding)/   sign-in, policy acceptance, two-step onboarding
+  (app)/                            the five tabs plus setup, session, history, check-in,
+                                    integrations, missions, mission-data, debrief
+components/
+  ui/        design system: kit, charts, fields, photo hero, sheet, icon
+  mission/   hero and Mission sections        plan/   session rows, adapt sheet
+  lab/       layer view, course               team/   rich text
+  shell/     tab bar / side rail
+lib/
+  api/       typed clients (auth, user, race missions, layers, plans, AI, enrichment)
+  race/      race context, readiness, tracker series, formats, sports, builder
+e2e/         Playwright browser tests against real services
 ```
-
-Generic training, Fuel, Tribe, Crew, XP, medals, biomarker, recap, workout-execution, proof-upload, and mock-agent UI code has been removed. Git history is the recovery path; it is not a parallel product source.
 
 ## Run
 
-Start the backend stack described in `../strem-infra/README.md`, then:
+Start the backend stack (`../strem-infra/README.md`, then
+`python scripts/seed-demo.py` for the demo athlete), then:
 
 ```bash
 npm install
-npm run web
+npm run web          # Expo web
 ```
 
-The gateway defaults to `http://localhost:8000/v1`. Override it with `EXPO_PUBLIC_API_URL`.
+The API defaults to `http://localhost:8000/v1`; override with
+`EXPO_PUBLIC_API_URL`. Restart Expo after changing `EXPO_PUBLIC_*` settings.
 
-Metro caches are partitioned by `EXPO_PUBLIC_*` settings so local review and
-browser-test servers cannot reuse a bundle compiled with each other's API URL.
-Restart Expo after changing those settings; hard-refresh an already open tab.
-
-Requires the foundation in user-service issue #24: migration `0008_race_missions`
-and the gateway `/race-missions` mapping. An older backend shows an unavailable
-API state, not an empty account. See the user-service README for safe migration
-and rollback. Form drafts exist only while the form is open; saved facts live on
-the server. This increment is not a completed Race Pass or production deployment.
-
-Native development:
-
-```bash
-npm run ios
-npm run android
-```
+Native development: `npm run ios` / `npm run android`.
 
 ## Checks
 
@@ -87,64 +66,25 @@ npm run android
 npx tsc --noEmit
 npm run lint
 npm test -- --runInBand
-npx expo export --platform web
 ```
 
-## Review gates
+## Browser tests
 
-### Automated real-service browser acceptance
-
-The Playwright suite runs the mission lifecycle at 390px and 1440px using installed
-Chrome, real auth/user/training/gateway processes and disposable SQLite databases. It creates
-synthetic accounts through the actual API and seeds their returned tokens into the
-browser; it does not test the login/registration UI or mock mission responses.
-
-Prerequisites: sibling auth/user/training/gateway repositories with the course changes,
-Node dependencies installed, Chrome, and a Python 3.12 environment containing all
-four services' requirements (including Alembic, SQLite driver and httpx).
+`e2e/` runs real auth, user, training and gateway processes on disposable SQLite
+databases (no AI service) and a production-mode Expo bundle, at 390 px and 1440 px:
+login, the seven-step race setup through commit, course GPX upload with reload, and
+export + permanent delete.
 
 ```powershell
-$env:STREM_TEST_BACKEND_PYTHON = 'C:/path/to/test-venv/Scripts/python.exe'
+$env:STREM_TEST_BACKEND_PYTHON = 'C:/path/to/venv/Scripts/python.exe'  # with all four services' requirements
 npm.cmd run test:e2e
 ```
 
-Ports 9510–9514 must be free. The fixture refuses existing listeners, overrides only
-child-process environments, disables unrelated upstreams, and removes its temporary
-databases when stopped normally. It never changes project `.env` files or real data.
-The Expo server bundles in production mode. Screenshots are synthetic test artifacts
-under ignored `test-results/`; traces are disabled to avoid retaining tokens.
+Ports 9510–9514 must be free. Screenshots land in ignored `test-results/`; traces are
+off so tokens are never retained.
 
-Coverage: create/reload, optional unknowns, visible/unobscured primary action,
-offline load/retry, stale-version correction with retained entries, archive/create,
-JSON export contents, and explicitly confirmed mission-only deletion.
+## Review gates
 
-The course flow additionally verifies file-picker upload, saved geometry/elevation
-sections, reload, versioned replacement, original GPX in mission export and erasure
-through real user/training coordination. Configure user `COURSE_STORAGE_BASE_URL`
-with the internal training root and apply both course migrations before local use.
-Race Lab draws real course geometry without a basemap; map-provider selection and
-event-photo permission remain separate work. No event asset is bundled.
-
-### Remaining manual/device acceptance
-
-Use a dedicated test account against the updated local backend, not personal race
-records. Record browser/device, viewport and screenshots against mobile #111:
-
-1. Create a mission with blank elevation/cutoff; refresh and sign in again.
-   Saved facts must match, and blank facts must remain Unknown.
-2. Edit from two tabs opened at the same version. After one saves, the stale
-   tab must show a conflict and keep its unsaved entries, not overwrite the save.
-3. Archive, create another mission, then archive that one too. Confirm both are
-   retained in history; retries must not duplicate a save.
-4. Load/export mission JSON. Verify active/archived records and revision reasons.
-   Delete ONLY this test account's mission data using the explicit confirmation;
-   verify the empty state and that another test account remains unaffected.
-5. Stop the local API, then retry loading/saving. Expect unavailable or unconfirmed
-   messages, never fake race facts. Restore it and refresh saved state before retrying.
-6. Check narrow mobile and desktop layouts, keyboard-only operation, screen-reader
-   labels, validation errors, large text, and bottom-navigation visibility.
-
-Browser automation covers the core lifecycle above, but does not replace native
-device, screen-reader, keyboard/large-text and real-athlete usability checks.
-
-Race Mission contracts, source ingestion, calendar access, privacy behavior, health-adjacent AI behavior, and production deployment require the reviews defined in the workspace `AGENTS.md`.
+Contracts, source ingestion, privacy, health-adjacent AI behaviour and deployment
+need the reviews defined in the workspace `AGENTS.md`. Browser tests don't replace
+native-device, screen-reader and real-athlete usability checks.
