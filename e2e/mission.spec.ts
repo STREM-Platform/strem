@@ -137,3 +137,20 @@ test("export and permanently delete all mission data", async ({ page, request })
   const remaining = await (await request.get(`${api}/race-missions`, { headers })).json();
   expect(remaining.items).toHaveLength(0);
 });
+
+test("switch to another race from inside Race Lab", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic First Race");
+  await createMissionViaApi(request, "Synthetic Second Race");
+  await page.goto("/race");
+  const switcher = page.getByRole("button", { name: /^Switch race\. Current:/ });
+  await expect(switcher).toBeVisible();
+  const current = ((await switcher.getAttribute("aria-label")) ?? "").replace("Switch race. Current: ", "");
+  const other = current === "Synthetic First Race" ? "Synthetic Second Race" : "Synthetic First Race";
+  await switcher.click();
+  await page.getByRole("radio", { name: new RegExp(`^${other},`) }).click();
+  await expect(page.getByRole("button", { name: `Switch race. Current: ${other}` })).toBeVisible();
+  // Still in Race Lab, and the choice holds across tabs.
+  await expect(page.getByRole("heading", { name: "Execute race day" })).toBeVisible();
+  await page.goto("/plan");
+  await expect(page.getByRole("button", { name: `Switch race. Current: ${other}` }).or(page.getByText(other).first())).toBeVisible();
+});
