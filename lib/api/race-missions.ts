@@ -28,6 +28,7 @@ export interface MissionExport {
   exported_at: string;
   missions: RaceMission[];
   revisions: { mission: RaceMission; reason: string }[];
+  courses?: { mission_id: string; version: number; content_base64: string }[];
 }
 const options = { auth: true, timeoutMs: 15000 };
 export const raceMissions = {

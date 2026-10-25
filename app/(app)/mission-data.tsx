@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Platform, Share, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Share, Text, TextInput, View } from "react-native";
 import { MissionButton, MissionShell, missionStyles as s } from "@/components/trail/mission-shell";
 import { TrailPanel } from "@/components/trail/trail-ui";
 import { Trail } from "@/constants/theme";
 import { raceMissions, type MissionExport } from "@/lib/api/race-missions";
 import { useMission } from "@/lib/trail/mission-context";
+import { useAuth } from "@/lib/session/auth-context";
 
 export default function MissionDataScreen() {
-  const { reload } = useMission();
+  const { reload, loading: missionLoading } = useMission();
+  const { phase } = useAuth();
   const [data, setData] = useState<MissionExport | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,15 +32,16 @@ export default function MissionDataScreen() {
   const erase = async () => {
     if (busy || confirmation !== "DELETE MY RACE MISSIONS") return;
     setBusy(true); setMessage(null);
-    try { await raceMissions.deleteData(); setData(null); setConfirmation(""); await reload(); setMessage("Your Race Missions, revision history and request receipts were deleted. Other account data was not changed."); }
-    catch { setMessage("Deletion was not confirmed. Reload the export to check the saved state before retrying."); }
+    try { await raceMissions.deleteData(); setData(null); setConfirmation(""); await reload(); setMessage("Your Race Missions, saved course files, course models, revision history and request receipts were deleted. Other account data was not changed."); }
+    catch { setData(null); setMessage("Deletion was not confirmed. Retry deletion to finish cleanup; uploads and mission edits may be paused until it completes."); }
     finally { setBusy(false); }
   };
-  return <MissionShell title="Your mission data." subtitle="Private race records and revision history. These controls affect Race Missions only.">
+  if (phase !== "signedIn" || missionLoading) return <MissionShell title="Your mission data." subtitle="Loading your private records…"><ActivityIndicator color={Trail.lime} /></MissionShell>;
+  return <MissionShell title="Your mission data." subtitle="Private race records, course files and revision history. These controls affect Race Missions only.">
     <TrailPanel style={s.panel}><Text style={s.heading}>Saved and archived missions</Text><MissionButton label={busy ? "Working…" : "Load my mission records"} disabled={busy} onPress={() => void load()} />
-      {data && <><Text style={s.body}>{data.missions.length} missions · {data.revisions.length} revisions · exported {new Date(data.exported_at).toLocaleString()}</Text>{data.missions.map((mission) => <View key={mission.id}><Text style={s.heading}>{mission.event.name}</Text><Text style={s.body}>{mission.event.race_date} · {mission.state} · version {mission.version}</Text></View>)}<MissionButton secondary label="Export JSON" onPress={() => void exportData().catch(() => setMessage("Export could not be saved or shared. Try again."))} /></>}
+      {data && <><Text style={s.body}>{data.missions.length} missions · {data.revisions.length} revisions · {data.courses?.length ?? 0} courses · exported {new Date(data.exported_at).toLocaleString()}</Text>{data.missions.map((mission) => <View key={mission.id}><Text style={s.heading}>{mission.event.name}</Text><Text style={s.body}>{mission.event.race_date} · {mission.state} · version {mission.version}</Text></View>)}<MissionButton secondary label="Export JSON" onPress={() => void exportData().catch(() => setMessage("Export could not be saved or shared. Try again."))} /></>}
     </TrailPanel>
-    <TrailPanel style={s.panel}><Text style={s.heading}>Delete my Race Mission data</Text><Text style={s.body}>Permanently deletes all your active and archived missions, revisions and replay receipts. This cannot be undone. It does not delete your account, training records, connected sources or AI history. Download your export first if you need a copy.</Text><Text style={s.body}>Type DELETE MY RACE MISSIONS to confirm.</Text><TextInput accessibilityLabel="Deletion confirmation" value={confirmation} onChangeText={setConfirmation} autoCapitalize="characters" style={{ minHeight: 48, color: Trail.text, borderColor: Trail.lineStrong, borderWidth: 1, padding: 12, borderRadius: 8 }} /><MissionButton secondary label="Permanently delete mission data" disabled={busy || confirmation !== "DELETE MY RACE MISSIONS"} onPress={() => void erase()} /></TrailPanel>
+    <TrailPanel style={s.panel}><Text style={s.heading}>Delete my Race Mission data</Text><Text style={s.body}>Permanently deletes all your active and archived missions, saved course files/models, revisions and replay receipts. This cannot be undone. It does not delete your account, training records, connected sources or AI history. Download your export first if you need a copy.</Text><Text style={s.body}>Type DELETE MY RACE MISSIONS to confirm.</Text><TextInput accessibilityLabel="Deletion confirmation" value={confirmation} onChangeText={setConfirmation} autoCapitalize="characters" style={{ minHeight: 48, color: Trail.text, borderColor: Trail.lineStrong, borderWidth: 1, padding: 12, borderRadius: 8 }} /><MissionButton secondary label="Permanently delete mission data" disabled={busy || confirmation !== "DELETE MY RACE MISSIONS"} onPress={() => void erase()} /></TrailPanel>
     {message && <Text accessibilityRole="alert" style={s.body}>{message}</Text>}
   </MissionShell>;
 }

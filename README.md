@@ -64,6 +64,10 @@ npm run web
 
 The gateway defaults to `http://localhost:8000/v1`. Override it with `EXPO_PUBLIC_API_URL`.
 
+Metro caches are partitioned by `EXPO_PUBLIC_*` settings so local review and
+browser-test servers cannot reuse a bundle compiled with each other's API URL.
+Restart Expo after changing those settings; hard-refresh an already open tab.
+
 Requires the foundation in user-service issue #24: migration `0008_race_missions`
 and the gateway `/race-missions` mapping. An older backend shows an unavailable
 API state, not an empty account. See the user-service README for safe migration
@@ -91,20 +95,20 @@ npx expo export --platform web
 ### Automated real-service browser acceptance
 
 The Playwright suite runs the mission lifecycle at 390px and 1440px using installed
-Chrome, real auth/user/gateway processes and disposable SQLite databases. It creates
+Chrome, real auth/user/training/gateway processes and disposable SQLite databases. It creates
 synthetic accounts through the actual API and seeds their returned tokens into the
 browser; it does not test the login/registration UI or mock mission responses.
 
-Prerequisites: sibling auth/user/gateway repositories with the foundation changes,
+Prerequisites: sibling auth/user/training/gateway repositories with the course changes,
 Node dependencies installed, Chrome, and a Python 3.12 environment containing all
-three services' requirements (including Alembic, SQLite driver and httpx).
+four services' requirements (including Alembic, SQLite driver and httpx).
 
 ```powershell
 $env:STREM_TEST_BACKEND_PYTHON = 'C:/path/to/test-venv/Scripts/python.exe'
 npm.cmd run test:e2e
 ```
 
-Ports 9510–9513 must be free. The fixture refuses existing listeners, overrides only
+Ports 9510–9514 must be free. The fixture refuses existing listeners, overrides only
 child-process environments, disables unrelated upstreams, and removes its temporary
 databases when stopped normally. It never changes project `.env` files or real data.
 The Expo server bundles in production mode. Screenshots are synthetic test artifacts
@@ -113,6 +117,13 @@ under ignored `test-results/`; traces are disabled to avoid retaining tokens.
 Coverage: create/reload, optional unknowns, visible/unobscured primary action,
 offline load/retry, stale-version correction with retained entries, archive/create,
 JSON export contents, and explicitly confirmed mission-only deletion.
+
+The course flow additionally verifies file-picker upload, saved geometry/elevation
+sections, reload, versioned replacement, original GPX in mission export and erasure
+through real user/training coordination. Configure user `COURSE_STORAGE_BASE_URL`
+with the internal training root and apply both course migrations before local use.
+Race Lab draws real course geometry without a basemap; map-provider selection and
+event-photo permission remain separate work. No event asset is bundled.
 
 ### Remaining manual/device acceptance
 

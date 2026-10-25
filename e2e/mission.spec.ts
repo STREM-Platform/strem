@@ -102,6 +102,42 @@ async function createMission(page: Page) {
   ).toBeVisible();
 }
 
+test("private GPX upload, course inspection, reload, replacement and coordinated deletion", async ({ page, request }, info) => {
+  await createMission(page);
+  await page.goto("/race");
+  const xml = `<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1"><trk><trkseg><trkpt lat="48" lon="9"><ele>100</ele></trkpt><trkpt lat="48.001" lon="9.001"><ele>110</ele></trkpt><trkpt lat="48.002" lon="9.002"><ele>120</ele></trkpt></trkseg></trk></gpx>`;
+  const choose = async (label: string, content: string) => {
+    const file = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await (await file).setFiles({ name: "synthetic-course.gpx", mimeType: "application/gpx+xml", buffer: Buffer.from(content) });
+  };
+  await choose("Upload GPX / ZIP", xml);
+  await expect(page.getByText(/Saved course v1/)).toBeVisible();
+  await expect(page.getByText("SECTION 1 / 3", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next section", exact: true }).click();
+  await expect(page.getByText("SECTION 2 / 3", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/Saved course v1/)).toBeVisible();
+  await page.getByRole("button", { name: "Course source & file controls", exact: true }).click();
+  await choose("Replace GPX / ZIP", xml.replace("<ele>120</ele>", "<ele>125</ele>"));
+  await expect(page.getByText(/Saved course v2/)).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: info.outputPath("course-explorer.png"), fullPage: true });
+  const token = await page.evaluate(() => localStorage.getItem("strem.access_token"));
+  const headers = { Authorization: `Bearer ${token}` };
+  const exported = await request.get(`${api}/race-missions/data`, { headers });
+  expect(exported.ok()).toBeTruthy();
+  const data = await exported.json();
+  expect(data.courses).toHaveLength(1);
+  expect(Buffer.from(data.courses[0].content_base64, "base64").toString()).toContain("<ele>125</ele>");
+  await page.goto("/mission-data");
+  await page.getByLabel("Deletion confirmation", { exact: true }).fill("DELETE MY RACE MISSIONS");
+  await page.getByRole("button", { name: "Permanently delete mission data", exact: true }).click();
+  await expect(page.getByText(/saved course files, course models/)).toBeVisible();
+  const remaining = await request.get(`${api}/training/courses/data`, { headers });
+  expect((await remaining.json()).courses).toHaveLength(0);
+});
+
 test("real mission lifecycle, reload, conflict, archive, export and delete", async ({
   page,
   context,
