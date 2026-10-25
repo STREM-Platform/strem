@@ -7,17 +7,14 @@ derived from which fields are present (onboarding-flow.md).
 
 from __future__ import annotations
 
-import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import UserProfile
-from app.ranks import rank_for_total_xp
 from app.schemas.enums import SCREEN_ORDER, OnboardingStatusValue, ScreenName
 from app.schemas.onboarding import OnboardingRequest, OnboardingStatusResponse
-from app.schemas.profile import EarnedMedal, UserProfileResponse
+from app.schemas.profile import UserProfileResponse
 
 # The five fields required to mark onboarding complete (onboarding-flow.md).
 _REQUIRED_FIELDS = (
@@ -37,20 +34,6 @@ async def get_or_create_profile(session: AsyncSession, user_id: object) -> UserP
         session.add(profile)
         await session.flush()
     return profile
-
-
-async def get_display_names(
-    session: AsyncSession, ids: list[uuid.UUID]
-) -> dict[uuid.UUID, str]:
-    """Display names for a batch of user ids (#72). Missing/unnamed -> 'Athlete'.
-
-    Returns only id -> display_name — no email or other PII — so a tribemate
-    roster can be enriched without exposing anything sensitive.
-    """
-    if not ids:
-        return {}
-    rows = await session.scalars(select(UserProfile).where(UserProfile.id.in_(ids)))
-    return {profile.id: (profile.display_name or "Athlete") for profile in rows}
 
 
 def _required_complete(profile: UserProfile) -> bool:
@@ -153,17 +136,9 @@ def build_status_response(profile: UserProfile) -> OnboardingStatusResponse:
 
 
 def build_profile_response(
-    profile: UserProfile,
-    *,
-    fallback_display_name: str,
-    total_xp: int = 0,
-    active_medals: list[EarnedMedal] | None = None,
+    profile: UserProfile, *, fallback_display_name: str
 ) -> UserProfileResponse:
-    """Render the full profile + game state for the contract.
-
-    `total_xp` and `active_medals` default to the pre-progression state; the XP
-    ledger (strem-user-service#4) supplies real values.
-    """
+    """Render the profile for the contract."""
     return UserProfileResponse(
         user_id=profile.id,
         display_name=profile.display_name or fallback_display_name,
@@ -171,9 +146,6 @@ def build_profile_response(
         transformation_goal=profile.transformation_goal,  # type: ignore[arg-type]
         training_level=profile.training_level,  # type: ignore[arg-type]
         weekly_target_days=profile.weekly_target_days,
-        rank=rank_for_total_xp(total_xp),
-        total_xp=total_xp,
-        active_medals=active_medals or [],
         onboarding_completed=profile.onboarding_status == OnboardingStatusValue.COMPLETED.value,
         created_at=profile.created_at,
     )

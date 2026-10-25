@@ -35,9 +35,6 @@ class CoursePeer:
     def __init__(self, settings: Settings, token: str) -> None:
         self.settings, self.token = settings, token
 
-    async def export(self) -> list[dict[str, object]]:
-        return (await self.export_all())["courses"]
-
     async def export_all(self) -> dict[str, list[dict[str, object]]]:
         """Courses and training plans held by training-service for this athlete."""
         result = await self._call("GET", "/v1/training/courses/data", self.token)

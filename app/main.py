@@ -1,9 +1,9 @@
 """strem-user-service — application entrypoint.
 
-Owns user profiles, onboarding state, and (from strem-user-service#4) the
-XP ledger, ranks, and medals. Profile and onboarding endpoints implement
-strem-shared-contracts/contracts/user/openapi.yml. `GET /health` stays
-unversioned for probes.
+Owns user profiles, onboarding and legal acceptance, the athlete profile, and
+the Race OS records: Race Missions, their Race Lab layers and race history
+(strem-docs#26). Endpoints implement strem-shared-contracts/contracts/user/openapi.yml.
+`GET /health` stays unversioned for probes.
 """
 
 from collections.abc import AsyncIterator
@@ -14,27 +14,21 @@ from fastapi import FastAPI
 from app.config import get_settings
 from app.db import configure
 from app.errors import register_error_handlers
-from app.events import configure_publisher
 from app.observability import configure_logging, install_request_logging
 from app.routers import (
-    agent_settings,
     athlete,
-    biomarker,
     legal,
     mission_layers,
     onboarding,
     profile,
     race_history,
     race_missions,
-    xp,
 )
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    settings = get_settings()
-    configure(settings.database_url)
-    configure_publisher(settings.message_broker_url)
+    configure(get_settings().database_url)
     yield
 
 
@@ -43,7 +37,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="strem-user-service",
         version="1.0.0",
-        description="User profiles, onboarding, and the XP/rank/medal module for STREM.",
+        description="Profiles, onboarding, legal, athlete profile and Race OS missions for STREM.",
         lifespan=lifespan,
     )
     register_error_handlers(application)
@@ -51,11 +45,8 @@ def create_app() -> FastAPI:
     install_request_logging(application, application.title)
     application.include_router(profile.router)
     application.include_router(onboarding.router)
-    application.include_router(xp.router)
-    application.include_router(agent_settings.router)
     application.include_router(legal.router)
     application.include_router(athlete.router)
-    application.include_router(biomarker.router)
     application.include_router(race_missions.router)
     application.include_router(mission_layers.router)
     application.include_router(race_history.router)
