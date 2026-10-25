@@ -1,4 +1,5 @@
-"""The race team's model client: Claude via the Anthropic SDK.
+"""The race team's model client: Claude via the Anthropic SDK (OpenAI GPT in
+`openai_client.py`, chosen by `AI_PROVIDER`).
 
 Structured outputs return schema-valid JSON; the shared race context sits in a
 cached system block so parallel layer builds and chat turns reuse it. Refusal
@@ -70,7 +71,7 @@ class UnavailableAI:
 
     model = "none"
 
-    def __init__(self, reason: str = "No Anthropic API key is configured on this server.") -> None:
+    def __init__(self, reason: str = "No AI provider key is configured on this server.") -> None:
         self._reason = reason
 
     def status(self) -> AIStatus:
@@ -206,12 +207,31 @@ def get_race_ai() -> RaceAI:
     """FastAPI dependency (tests override with a scripted model)."""
     global _ai
     if _ai is None:
-        settings = get_settings()
-        if settings.anthropic_api_key:
-            _ai = ClaudeRaceAI(settings.anthropic_api_key, settings.race_model)
-        else:
-            _ai = UnavailableAI()
+        _ai = build_race_ai()
     return _ai
+
+
+def build_race_ai() -> RaceAI:
+    """The configured provider, or an honest `UnavailableAI` saying what is missing."""
+    settings = get_settings()
+    provider = settings.ai_provider.strip().lower()
+    if provider not in ("", "anthropic", "openai"):
+        return UnavailableAI(f"Unknown AI_PROVIDER {provider!r}: use anthropic or openai.")
+    if provider == "openai" or (
+        not provider and not settings.anthropic_api_key and settings.openai_api_key
+    ):
+        if not settings.openai_api_key:
+            return UnavailableAI("AI_PROVIDER is openai but no OpenAI API key is configured.")
+        from app.race.ai.openai_client import OpenAIRaceAI
+
+        return OpenAIRaceAI(
+            settings.openai_api_key, settings.openai_model, settings.openai_base_url
+        )
+    if settings.anthropic_api_key:
+        return ClaudeRaceAI(settings.anthropic_api_key, settings.race_model)
+    if provider == "anthropic":
+        return UnavailableAI("AI_PROVIDER is anthropic but no Anthropic API key is configured.")
+    return UnavailableAI()
 
 
 def strict_schema(schema: dict[str, Any]) -> dict[str, Any]:
