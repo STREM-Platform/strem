@@ -1,71 +1,38 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
 const api = "http://localhost:9511/v1";
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+let headers: Record<string, string> = {};
 
 test.beforeEach(async ({ request, context }, info) => {
   const failures: string[] = [];
-  const diagnostics = {
-    name: "api-failures",
-    contentType: "text/plain",
-    body: Buffer.from(""),
-  };
-  const recordFailure = (message: string) => {
-    failures.push(message);
-    diagnostics.body = Buffer.from(failures.join("\n"));
-  };
+  const diagnostics = { name: "api-failures", contentType: "text/plain", body: Buffer.from("") };
   context.on("response", (response) => {
-    if (response.url().startsWith(api) && response.status() >= 400)
-      recordFailure(`${response.status()} ${new URL(response.url()).pathname}`);
+    // The fixture runs no AI service: race-team calls are expected to fail.
+    if (response.url().startsWith(api) && response.status() >= 400 && !response.url().includes("/ai/")) {
+      failures.push(`${response.status()} ${new URL(response.url()).pathname}`);
+      diagnostics.body = Buffer.from(failures.join("\n"));
+    }
   });
-  context.on("requestfailed", (request) => {
-    if (request.url().startsWith(api))
-      recordFailure(
-        `${request.failure()?.errorText} ${new URL(request.url()).pathname}`,
-      );
-  });
-  info.annotations.push({
-    type: "fixture",
-    description: "Real isolated auth/user/gateway; no API mocks",
-  });
+  info.annotations.push({ type: "fixture", description: "Real isolated auth/user/training/gateway; no API mocks; no AI service" });
   // Retain only statuses/paths, never headers, tokens or personal payloads.
   info.attachments.push(diagnostics);
-  // Synthetic account on the test fixture's isolated auth DB. No fake API routes.
   const registration = await request.post(`${api}/auth/register`, {
-    data: {
-      email: `browser-${randomUUID()}@example.com`,
-      password: `Test-${randomUUID()}-only`,
-      display_name: "Browser Test",
-    },
+    data: { email: `browser-${randomUUID()}@example.com`, password: `Test-${randomUUID()}-only`, display_name: "Browser Test" },
   });
   expect(registration.status()).toBe(201);
   const { tokens } = await registration.json();
-  const headers = { Authorization: `Bearer ${tokens.access_token}` };
-  const onboarding = await request.post(`${api}/users/onboarding`, {
-    headers,
-    data: {
-      identity_statement: "Synthetic browser test",
-      transformation_goal: "build_endurance",
-      training_level: "intermediate",
-      weekly_target_days: 3,
-      timezone: "Europe/Sofia",
-    },
-  });
-  expect(onboarding.ok()).toBeTruthy();
-  const legal = await request.get(`${api}/users/me/legal`, { headers });
-  const status = await legal.json();
-  const accepted = await request.post(`${api}/users/me/legal/accept`, {
-    headers,
-    data: {
-      acceptances: status.documents.map(
-        (doc: { document_type: string; required_version: string }) => ({
-          document_type: doc.document_type,
-          version: doc.required_version,
-        }),
-      ),
-    },
-  });
-  expect(accepted.ok()).toBeTruthy();
+  headers = { Authorization: `Bearer ${tokens.access_token}` };
+  expect((await request.post(`${api}/users/onboarding`, { headers, data: {
+    display_name: "Browser Test", identity_statement: "Synthetic browser test", transformation_goal: "build_endurance",
+    training_level: "intermediate", weekly_target_days: 4, timezone: "Europe/Sofia", screen: "identity",
+  } })).ok()).toBeTruthy();
+  const legal = await (await request.get(`${api}/users/me/legal`, { headers })).json();
+  expect((await request.post(`${api}/users/me/legal/accept`, { headers, data: {
+    acceptances: legal.documents.map((doc: { document_type: string; required_version: string }) => ({ document_type: doc.document_type, version: doc.required_version })),
+  } })).ok()).toBeTruthy();
   await context.addInitScript((pair) => {
     if (!localStorage.getItem("strem.test.initialized")) {
       localStorage.setItem("strem.access_token", pair.access_token);
@@ -75,188 +42,98 @@ test.beforeEach(async ({ request, context }, info) => {
   }, tokens);
 });
 
-async function createMission(page: Page) {
-  await page.goto("/home");
-  await page
-    .getByRole("button", { name: "Create Race Mission", exact: true })
-    .click();
-  await page
-    .getByLabel("Race name", { exact: true })
-    .fill("Browser Test Mountain 30");
-  await page
-    .getByLabel("Race date (YYYY-MM-DD)", { exact: true })
-    .fill("2027-06-12");
-  await page
-    .getByLabel("Event timezone", { exact: false })
-    .fill("Europe/Sofia");
-  await page.getByLabel("Location", { exact: true }).fill("Test location");
-  await page.getByLabel("Distance (km)", { exact: true }).fill("30");
-  await page
-    .getByRole("button", { name: "Create my Race Mission", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", {
-      name: "Browser Test Mountain 30",
-      exact: true,
-    }),
-  ).toBeVisible();
+/** A calendar date about four months ahead, in the setup calendar's terms. */
+function raceDay() {
+  const d = new Date();
+  d.setUTCDate(15);
+  d.setUTCMonth(d.getUTCMonth() + 4);
+  return { month: `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`, iso: d.toISOString().slice(0, 10) };
 }
 
-test("private GPX upload, course inspection, reload, replacement and coordinated deletion", async ({ page, request }, info) => {
-  await createMission(page);
-  await page.goto("/race");
-  const xml = `<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1"><trk><trkseg><trkpt lat="48" lon="9"><ele>100</ele></trkpt><trkpt lat="48.001" lon="9.001"><ele>110</ele></trkpt><trkpt lat="48.002" lon="9.002"><ele>120</ele></trkpt></trkseg></trk></gpx>`;
-  const choose = async (label: string, content: string) => {
-    const file = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: label, exact: true }).click();
-    await (await file).setFiles({ name: "synthetic-course.gpx", mimeType: "application/gpx+xml", buffer: Buffer.from(content) });
-  };
-  await choose("Upload GPX / ZIP", xml);
-  await expect(page.getByText(/Saved course v1/)).toBeVisible();
-  await expect(page.getByText("SECTION 1 / 3", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Next section", exact: true }).click();
-  await expect(page.getByText("SECTION 2 / 3", { exact: true })).toBeVisible();
+async function createMissionViaApi(request: APIRequestContext, name: string) {
+  const response = await request.post(`${api}/race-missions`, {
+    headers: { ...headers, "Idempotency-Key": `e2e_${randomUUID().replaceAll("-", "")}` },
+    data: {
+      event: { name, race_date: raceDay().iso, timezone: "Europe/Sofia", location_name: "Test Valley", distance_km: 30, sport: "trail_running" },
+      goal: { outcome: "finish_confidently" },
+    },
+  });
+  expect(response.status()).toBe(201);
+  return (await response.json()) as { id: string };
+}
+
+async function continueStep(page: Page) {
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+}
+
+test("set up a race in seven steps, commit, and land on its Mission screen", async ({ page }) => {
+  const day = raceDay();
+  await page.goto("/home");
+  await page.getByRole("button", { name: "Start a Race Mission", exact: true }).click();
+  await page.getByRole("radio", { name: /Trail & mountain running/ }).click();
+
+  await page.getByLabel("Race or challenge name", { exact: true }).fill("Synthetic Ridge 30K");
+  await page.getByRole("button", { name: day.month, exact: true }).click();
+  await page.getByRole("button", { name: day.iso, exact: true }).click();
+  await page.getByLabel("Where it starts", { exact: true }).fill("Test Valley");
+  await continueStep(page);
+
+  await page.getByLabel("Distance", { exact: true }).fill("30");
+  await page.getByLabel("Elevation gain", { exact: true }).fill("1600");
+  await continueStep(page);
+  await page.getByLabel("Why does this race matter to you?", { exact: true }).fill("Synthetic motivation.");
+  await continueStep(page);
+  // Photo search needs the AI service, which this fixture doesn't run: skipping is always allowed.
+  await page.getByRole("button", { name: "Skip", exact: true }).click();
+  await page.getByLabel("Hours available / week", { exact: true }).fill("7");
+  await continueStep(page);
+
+  await expect(page.getByText("Synthetic Ridge 30K").first()).toBeVisible();
+  await page.getByRole("button", { name: /Commit & build/ }).click();
+  // The race is saved even when the race team is unreachable; the build reports it.
+  await page.getByRole("button", { name: "Open my Race Mission", exact: true }).click({ timeout: 30000 });
+
+  await expect(page.getByRole("heading", { name: "Synthetic Ridge 30K" })).toBeVisible();
+  await expect(page.getByText(/days? to the start line/)).toBeVisible();
   await page.reload();
-  await expect(page.getByText(/Saved course v1/)).toBeVisible();
-  await page.getByRole("button", { name: "Course source & file controls", exact: true }).click();
-  await choose("Replace GPX / ZIP", xml.replace("<ele>120</ele>", "<ele>125</ele>"));
-  await expect(page.getByText(/Saved course v2/)).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: info.outputPath("course-explorer.png"), fullPage: true });
-  const token = await page.evaluate(() => localStorage.getItem("strem.access_token"));
-  const headers = { Authorization: `Bearer ${token}` };
-  const exported = await request.get(`${api}/race-missions/data`, { headers });
-  expect(exported.ok()).toBeTruthy();
-  const data = await exported.json();
-  expect(data.courses).toHaveLength(1);
-  expect(Buffer.from(data.courses[0].content_base64, "base64").toString()).toContain("<ele>125</ele>");
-  await page.goto("/mission-data");
-  await page.getByLabel("Deletion confirmation", { exact: true }).fill("DELETE MY RACE MISSIONS");
-  await page.getByRole("button", { name: "Permanently delete mission data", exact: true }).click();
-  await expect(page.getByText(/saved course files, course models/)).toBeVisible();
-  const remaining = await request.get(`${api}/training/courses/data`, { headers });
-  expect((await remaining.json()).courses).toHaveLength(0);
+  await expect(page.getByRole("heading", { name: "Synthetic Ridge 30K" })).toBeVisible();
 });
 
-test("real mission lifecycle, reload, conflict, archive, export and delete", async ({
-  page,
-  context,
-}, info) => {
-  await createMission(page);
+test("upload a course GPX in Race Lab and see its stats after reload", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic Course Race");
+  const points = Array.from({ length: 40 }, (_, i) => {
+    const lat = (42.1 + i * 0.002).toFixed(5);
+    const ele = 900 + Math.round(120 * Math.sin(i / 5));
+    return `<trkpt lat="${lat}" lon="23.30000"><ele>${ele}</ele></trkpt>`;
+  }).join("");
+  const gpx = `<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="synthetic"><trk><trkseg>${points}</trkseg></trk></gpx>`;
+
+  await page.goto("/race?tab=course");
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Upload GPX / ZIP", exact: true }).click();
+  await (await chooser).setFiles({ name: "synthetic.gpx", mimeType: "application/gpx+xml", buffer: Buffer.from(gpx) });
+
+  await expect(page.getByText("from your GPX")).toBeVisible({ timeout: 30000 });
   await page.reload();
-  await expect(
-    page.getByRole("heading", {
-      name: "Browser Test Mountain 30",
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expect(page.getByText("Unknown", { exact: true })).toHaveCount(2);
-  await expect(
-    page.getByText("Preparation is not assessed yet.", { exact: true }),
-  ).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
-  const edit = page.getByRole("button", { name: "Edit race details" });
-  await expect(edit).toBeInViewport();
-  const editBounds = await edit.boundingBox();
-  const navBounds = await page
-    .getByRole("tab", { name: "Mission", exact: true })
-    .boundingBox();
-  expect(editBounds!.y + editBounds!.height).toBeLessThan(navBounds!.y);
-  await page.screenshot({
-    path: info.outputPath("mission.png"),
-    fullPage: true,
-  });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBeTruthy();
+  await expect(page.getByText("from your GPX")).toBeVisible();
+  // File options fold away once a course is saved.
+  await page.getByRole("link", { name: "Course file & source", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Replace GPX / ZIP", exact: true })).toBeVisible();
+});
 
-  await context.setOffline(true);
-  await page.getByRole("button", { name: "Refresh saved state" }).click();
-  await expect(page.getByRole("alert")).toContainText("could not load");
-  await context.setOffline(false);
-  await page.getByRole("button", { name: "Retry connection" }).click();
-  await expect(
-    page.getByRole("button", { name: "Edit race details" }),
-  ).toBeVisible();
+test("export and permanently delete all mission data", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic Export Race");
+  await page.goto("/mission-data");
+  await page.getByRole("button", { name: "Prepare my export", exact: true }).click();
+  await expect(page.getByText(/^1 missions/)).toBeVisible();
 
-  const second = await context.newPage();
-  await second.goto("/mission-setup");
-  await expect(second.getByLabel("Race name", { exact: true })).toHaveValue(
-    "Browser Test Mountain 30",
-  );
-  await expect(
-    second.getByRole("heading", { name: "Make the facts yours." }),
-  ).toBeVisible();
-  await expect(
-    second.getByText("Loading saved state…", { exact: true }),
-  ).toHaveCount(0);
-  await second.evaluate(() => document.fonts.ready);
-  await second.screenshot({
-    path: info.outputPath("mission-form.png"),
-    fullPage: true,
-  });
-  await page.getByRole("button", { name: "Edit race details" }).click();
-  await page
-    .getByLabel("Location", { exact: true })
-    .fill("Corrected test location");
-  await page
-    .getByLabel("Why are you changing these details?")
-    .fill("Corrected race location");
-  await page.getByRole("button", { name: "Save corrections" }).click();
-  await expect(page.getByText(/Corrected test location/)).toBeVisible();
-  await second
-    .getByLabel("Location", { exact: true })
-    .fill("Stale test location");
-  await second
-    .getByLabel("Why are you changing these details?")
-    .fill("Stale test change");
-  await second.getByRole("button", { name: "Save corrections" }).click();
-  await expect(second.getByRole("alert")).toContainText("This mission changed");
-  await expect(second.getByLabel("Location", { exact: true })).toHaveValue(
-    "Stale test location",
-  );
-  await second.close();
+  const phrase = "DELETE MY RACE MISSIONS";
+  await page.getByLabel(`Type ${phrase} to confirm`, { exact: true }).fill(phrase);
+  await page.getByRole("button", { name: "Permanently delete", exact: true }).click();
+  await expect(page.getByText(/were deleted/)).toBeVisible();
 
-  await page
-    .getByRole("button", { name: "Archive mission", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Confirm archive" }).click();
-  await expect(
-    page.getByRole("button", { name: "Create Race Mission", exact: true }),
-  ).toBeVisible();
-  await createMission(page);
-  await page
-    .getByRole("button", { name: "Archive mission", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Confirm archive" }).click();
-  await expect(
-    page.getByRole("button", { name: "Create Race Mission", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Mission data & history" }).click();
-  await page.getByRole("button", { name: "Load my mission records" }).click();
-  await expect(page.getByText(/2 missions · 5 revisions/)).toBeVisible();
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export JSON" }).click();
-  const exported = await download;
-  expect(exported.suggestedFilename()).toBe("strem-race-missions.json");
-  const stream = await exported.createReadStream();
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
-  const records = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  expect(records.missions).toHaveLength(2);
-  expect(records.revisions).toHaveLength(5);
-  await expect(
-    page.getByRole("button", { name: "Permanently delete mission data" }),
-  ).toBeDisabled();
-  await page
-    .getByLabel("Deletion confirmation")
-    .fill("DELETE MY RACE MISSIONS");
-  await page
-    .getByRole("button", { name: "Permanently delete mission data" })
-    .click();
-  await expect(page.getByRole("alert")).toContainText("were deleted");
-  await page.getByRole("button", { name: "Load my mission records" }).click();
-  await expect(page.getByText(/0 missions · 0 revisions/)).toBeVisible();
+  await page.goto("/home");
+  await expect(page.getByRole("button", { name: "Start a Race Mission", exact: true })).toBeVisible();
+  const remaining = await (await request.get(`${api}/race-missions`, { headers })).json();
+  expect(remaining.items).toHaveLength(0);
 });

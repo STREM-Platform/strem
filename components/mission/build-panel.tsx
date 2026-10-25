@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Card, Overline, Row, Title } from "@/components/ui/kit";
-import { C, LAYER_COLOR, type LayerKey, ui } from "@/constants/theme";
+import { C, LAYER_COLOR, ui } from "@/constants/theme";
 import { BUILD_ORDER, type BuildKind, type BuildState } from "@/lib/race/use-builder";
 
 const META: Record<BuildKind, { label: string; icon: IconName; color: string; doing: string }> = {
@@ -65,14 +65,6 @@ export function BuildPanel({ states }: { states: Partial<Record<BuildKind, Build
     </Card>
   );
 }
-
-export const LAYER_FOR_BUILD: Record<BuildKind, LayerKey> = {
-  plan: "training",
-  fuel: "fuel",
-  gear: "gear",
-  logistics: "logistics",
-  strategy: "strategy",
-};
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
