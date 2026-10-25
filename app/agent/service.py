@@ -34,8 +34,8 @@ async def run_chat(
         METRICS.record_care_redirect()
         return redirect, []
 
-    agent = build_agent(model, build_tools(ctx))
     try:
+        agent = build_agent(model, build_tools(ctx))
         result = await agent.ainvoke(
             {"messages": [HumanMessage(content=message)]},
             context=ctx,
@@ -50,6 +50,8 @@ async def run_chat(
         await ctx.session.rollback()
         text = SAFE_FALLBACK
 
-    if not text or not guardrails_ok(text):
-        text = SAFE_FALLBACK
+    if not text.strip() or text == SAFE_FALLBACK or not guardrails_ok(text):
+        # Context chips are not evidence that an unavailable/blocked model
+        # analyzed anything. This also covers middleware-substituted fallbacks.
+        return SAFE_FALLBACK, []
     return text, grounding_chips(ctx.signals, ctx.memory)

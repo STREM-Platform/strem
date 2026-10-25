@@ -4,8 +4,10 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 
+import pytest
 from langchain_core.messages import AIMessage
 
+from app.agent.llm import SAFE_FALLBACK
 from tests.support import Harness, ScriptedChatModel, ai_app, auth_header
 
 
@@ -61,7 +63,7 @@ def test_agent_calls_a_tool_mid_turn_and_logs_it() -> None:
     asyncio.run(_inner())
 
 
-def test_chat_returns_grounded_cited_reply() -> None:
+def test_keyless_chat_is_unavailable_without_citations() -> None:
     async def scenario(h: Harness) -> None:
         res = await h.client.post(
             "/v1/ai/agent/chat",
@@ -70,9 +72,8 @@ def test_chat_returns_grounded_cited_reply() -> None:
         )
         assert res.status_code == 200
         body = res.json()
-        assert body["text"]
-        # cites are grounded in the user's own signals (readiness chip always present)
-        assert any("Readiness" in c["text"] for c in body["cites"])
+        assert body["text"] == SAFE_FALLBACK
+        assert body["cites"] == []
 
     run(scenario)
 
@@ -86,6 +87,7 @@ def test_chat_care_redirect_on_unsafe_message() -> None:
         )
         assert res.status_code == 200
         assert "professional" in res.json()["text"].lower()
+        assert res.json()["cites"] == []
 
     run(scenario)
 
@@ -160,6 +162,8 @@ def test_output_guardrail_middleware_replaces_a_shaming_reply() -> None:
         assert res.status_code == 200
         text = res.json()["text"].lower()
         assert "lazy" not in text and "failed" not in text
+        assert res.json()["text"] == SAFE_FALLBACK
+        assert res.json()["cites"] == []
 
         metrics = await h.client.get("/v1/ai/agent/metrics", headers=auth_header(uid))
         assert metrics.json()["guardrail_blocks"] >= 1
@@ -169,6 +173,69 @@ def test_output_guardrail_middleware_replaces_a_shaming_reply() -> None:
             await scenario(harness)
 
     asyncio.run(_inner())
+
+
+@pytest.mark.parametrize("content", ["", "   ", [{"type": "text", "text": "Unparsed"}]])
+def test_empty_or_non_text_reply_has_no_citations(content: str | list[dict[str, str]]) -> None:
+    async def scenario() -> None:
+        model = ScriptedChatModel(responses=[AIMessage(content=content)])  # type: ignore[arg-type]
+        async with ai_app(model=model) as h:
+            res = await h.client.post(
+                "/v1/ai/agent/chat",
+                headers=auth_header(uuid.uuid4()),
+                json={"message": "What evidence do you have?"},
+            )
+            assert res.status_code == 200
+            assert res.json()["text"] == SAFE_FALLBACK
+            assert res.json()["cites"] == []
+
+    asyncio.run(scenario())
+
+
+def test_successful_model_reply_preserves_existing_response() -> None:
+    async def scenario() -> None:
+        model = ScriptedChatModel(responses=[AIMessage(content="Your recorded load is 412.")])
+        async with ai_app(model=model) as h:
+            res = await h.client.post(
+                "/v1/ai/agent/chat",
+                headers=auth_header(uuid.uuid4()),
+                json={"message": "What is my recorded load?"},
+            )
+            assert res.status_code == 200
+            assert res.json()["text"] == "Your recorded load is 412."
+            assert res.json()["cites"]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("during_build", [True, False])
+def test_graph_failure_has_no_citations(
+    monkeypatch: pytest.MonkeyPatch, during_build: bool
+) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.agent import service
+
+    graph = MagicMock()
+    graph.ainvoke = AsyncMock(side_effect=RuntimeError("provider unavailable"))
+    factory = (
+        MagicMock(side_effect=RuntimeError("graph unavailable"))
+        if during_build
+        else MagicMock(return_value=graph)
+    )
+    monkeypatch.setattr(service, "build_agent", factory)
+
+    async def scenario(h: Harness) -> None:
+        res = await h.client.post(
+            "/v1/ai/agent/chat",
+            headers=auth_header(uuid.uuid4()),
+            json={"message": "What should I do?"},
+        )
+        assert res.status_code == 200
+        assert res.json()["text"] == SAFE_FALLBACK
+        assert res.json()["cites"] == []
+
+    run(scenario)
 
 
 def test_metrics_count_model_calls() -> None:
