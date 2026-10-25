@@ -2,6 +2,7 @@ import {
   JetBrainsMono_600SemiBold,
   JetBrainsMono_700Bold,
 } from "@expo-google-fonts/jetbrains-mono";
+import { Michroma_400Regular } from "@expo-google-fonts/michroma";
 import {
   Saira_400Regular,
   Saira_500Medium,
@@ -15,28 +16,77 @@ import {
 } from "@expo-google-fonts/saira-condensed";
 import type { TextStyle } from "react-native";
 
-/** The only visual token set used by STREM's trail Race Mission interface. */
-export const Trail = {
-  bg: "#07100C",
-  bgRaised: "#0A1510",
-  panel: "#101D17",
-  panelRaised: "#14241C",
-  panelSoft: "#192A21",
-  line: "rgba(224, 239, 229, 0.10)",
-  lineStrong: "rgba(224, 239, 229, 0.20)",
-  text: "#EEF5EF",
-  textMuted: "#A7B6AA",
-  textDim: "#708076",
-  lime: "#B7ED62",
-  limeInk: "#142208",
-  limeSoft: "rgba(183, 237, 98, 0.11)",
-  limeLine: "rgba(183, 237, 98, 0.34)",
-  orange: "#FF8A4C",
-  orangeSoft: "rgba(255, 138, 76, 0.11)",
-  orangeLine: "rgba(255, 138, 76, 0.32)",
-  sky: "#78C7D6",
-  skySoft: "rgba(120, 199, 214, 0.11)",
+/**
+ * STREM Race OS design tokens.
+ *
+ * Neutral night canvas so race photography carries the colour; white is the
+ * primary action; brand green marks progress and the active state; brand red is
+ * reserved for the finish line and critical alerts (from the logo's tricolour).
+ * Layer colours are the validated categorical dark steps (CVD-checked against
+ * `surface`); status colours are fixed and always paired with an icon + label.
+ */
+export const C = {
+  ink: "#08090B",
+  night: "#0D0F12",
+  surface: "#14171B",
+  surface2: "#1B1F24",
+  surface3: "#252A31",
+  line: "rgba(255,255,255,0.07)",
+  lineStrong: "rgba(255,255,255,0.14)",
+  glass: "rgba(12,14,17,0.72)",
+  scrim: "rgba(8,9,11,0.92)",
+  text: "#F4F5F6",
+  textMuted: "#A3AAB4",
+  textDim: "#6D7580",
+  white: "#FFFFFF",
+  accent: "#4ADE80",
+  accentSoft: "rgba(74,222,128,0.12)",
+  accentLine: "rgba(74,222,128,0.34)",
+  accentInk: "#04210F",
+  flame: "#FF5A4E",
+  flameSoft: "rgba(255,90,78,0.12)",
+  good: "#0ca30c",
+  warning: "#fab219",
+  serious: "#ec835a",
+  critical: "#d03b3b",
+  unknown: "#7d8590",
 } as const;
+
+export type LayerKey = "training" | "fuel" | "course" | "gear" | "logistics" | "strategy";
+
+export const LAYER_COLOR: Record<LayerKey, string> = {
+  training: "#3987e5",
+  fuel: "#d95926",
+  course: "#199e70",
+  gear: "#c98500",
+  logistics: "#d55181",
+  strategy: "#9085e9",
+};
+
+/** Legacy token names kept so older screens adopt the new palette unchanged. */
+export const Trail = {
+  bg: C.ink,
+  bgRaised: C.night,
+  panel: C.surface,
+  panelRaised: C.surface2,
+  panelSoft: C.surface3,
+  line: C.line,
+  lineStrong: C.lineStrong,
+  text: C.text,
+  textMuted: C.textMuted,
+  textDim: C.textDim,
+  lime: C.accent,
+  limeInk: C.accentInk,
+  limeSoft: C.accentSoft,
+  limeLine: C.accentLine,
+  orange: C.serious,
+  orangeSoft: "rgba(236,131,90,0.12)",
+  orangeLine: "rgba(236,131,90,0.32)",
+  sky: LAYER_COLOR.training,
+  skySoft: "rgba(57,135,229,0.12)",
+} as const;
+
+export const R = { sm: 10, md: 16, lg: 22, xl: 30 } as const;
 
 export const FontAssets = {
   SairaCondensed_600SemiBold,
@@ -48,6 +98,7 @@ export const FontAssets = {
   Saira_700Bold,
   JetBrainsMono_600SemiBold,
   JetBrainsMono_700Bold,
+  Michroma_400Regular,
 };
 
 type WeightTable = readonly (readonly [number, string])[];
@@ -76,19 +127,27 @@ function nearestFamily(table: WeightTable, weight: number): string {
   return best[1];
 }
 
+/** Condensed display: race names, countdown, section titles. */
 export function disp(size: number, weight = 800): TextStyle {
   return { fontFamily: nearestFamily(DISPLAY_WEIGHTS, weight), fontSize: size };
 }
 
+/** Interface text. */
 export function ui(size: number, weight = 600): TextStyle {
   return { fontFamily: nearestFamily(UI_WEIGHTS, weight), fontSize: size };
 }
 
+/** Tabular data: distances, times, cutoffs. */
 export function mono(size: number, weight = 700): TextStyle {
   return { fontFamily: nearestFamily(MONO_WEIGHTS, weight), fontSize: size };
 }
 
-/** Compact 24 x 24 stroke-icon paths used by active screens. */
+/** Wide brand face (echoes the STREM wordmark) — overlines and the wordmark only. */
+export function brand(size: number): TextStyle {
+  return { fontFamily: "Michroma_400Regular", fontSize: size };
+}
+
+/** 24 × 24 stroke icon paths. */
 export const PATHS = {
   mountain: "M3 20h18L14.5 7.5 11 13 8.5 9 3 20z",
   flame:
@@ -107,8 +166,11 @@ export const PATHS = {
   lock: ["M6 11h12v9H6z", "M9 11V8a3 3 0 0 1 6 0v3"],
   chevron: "M9 6l6 6-6 6",
   chevronL: "M15 6l-6 6 6 6",
+  chevronDown: "M6 9l6 6 6-6",
+  chevronUp: "M6 15l6-6 6 6",
   plus: "M12 5v14M5 12h14",
   minus: "M5 12h14",
+  x: "M6 6l12 12M18 6L6 18",
   route: ["M6 19a3 3 0 1 0 0-6h12a3 3 0 1 0 0-6", "M6 19h0M18 7h0"],
   moon: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z",
   play: "M7 4l13 8-13 8z",
@@ -125,6 +187,91 @@ export const PATHS = {
     "M12 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0",
   ],
   send: "M5 12h14M13 6l6 6-6 6",
+  run: [
+    "M14.5 4.5m-1.8 0a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0",
+    "M7 21l3.5-6",
+    "M10.5 15l3 2.5V21",
+    "M10.5 15l1.6-5 3.4 2.5 3 .5",
+    "M12.1 10l-3.6 1-2 3",
+  ],
+  bike: [
+    "M5.5 17.5m-3.5 0a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0",
+    "M18.5 17.5m-3.5 0a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0",
+    "M5.5 17.5L9 9h5l4.5 8.5",
+    "M9 9l3.5 8.5M14 9l-1-3h3",
+  ],
+  swim: [
+    "M2 18c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0",
+    "M2 14c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0",
+    "M7 10l4-3 2.5 2 3-2.5",
+    "M18 5.5m-1.6 0a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0",
+  ],
+  hike: [
+    "M13 4.5m-1.8 0a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0",
+    "M9 21l2-7 3 2v5",
+    "M11 14l1-5 3 2.5",
+    "M18 9v12",
+    "M9.5 9.5L8 12",
+  ],
+  ski: ["M4 20l16-6", "M14 4.5m-1.8 0a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0", "M8 15l4-6 3 3 2-1"],
+  row: ["M3 19c2 1 4 1 6 0s4-1 6 0 4 1 6 0", "M5 15l14-10", "M16 7l3 3"],
+  drop: "M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z",
+  pack: ["M5 21V10a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v11z", "M9 5V3h6v2", "M8 14h8v4H8z"],
+  calendar: ["M4 6h16v14H4z", "M4 10h16", "M8 3v4M16 3v4"],
+  map: ["M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z", "M9 4v14M15 6v14"],
+  sun: [
+    "M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0",
+    "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
+  ],
+  cloud: "M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11 3.5 3.5 0 0 0 7 18z",
+  rain: [
+    "M7 15h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 8 3.5 3.5 0 0 0 7 15z",
+    "M8 18l-1 2M12 18l-1 2M16 18l-1 2",
+  ],
+  wind: ["M3 8h11a3 3 0 1 0-3-3", "M3 12h16a3 3 0 1 1-3 3", "M3 16h7"],
+  thermo: "M10 14.5V4a2 2 0 0 1 4 0v10.5a4 4 0 1 1-4 0z",
+  sunrise: ["M3 18h18", "M7 18a5 5 0 0 1 10 0", "M12 3v5M9 6l3-3 3 3"],
+  chart: "M4 20V10M10 20V4M16 20v-7M2 20h20",
+  user: ["M12 8m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0", "M4 21a8 8 0 0 1 16 0"],
+  image: [
+    "M3 5h18v14H3z",
+    "M3 16l5-5 4 4 3-3 6 6",
+    "M15.5 9m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0",
+  ],
+  search: ["M11 11m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0", "M21 21l-5-5"],
+  edit: ["M4 20h4l11-11-4-4L4 16z", "M13 6l4 4"],
+  trash: ["M4 7h16", "M9 7V4h6v3", "M6 7l1 13h10l1-13"],
+  refresh: ["M20 11a8 8 0 0 0-14.9-3M4 4v4h4", "M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"],
+  info: ["M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "M12 11v5M12 8h0"],
+  alert: ["M12 3l10 18H2L12 3z", "M12 10v4M12 17h0"],
+  upload: ["M12 16V4M7 9l5-5 5 5", "M4 16v4h16v-4"],
+  download: ["M12 4v12M7 11l5 5 5-5", "M4 20h16"],
+  checkCircle: ["M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "M8 12.5l3 3 5-6"],
+  circle: "M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0",
+  halfCircle: ["M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "M12 3v18"],
+  xCircle: ["M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "M9 9l6 6M15 9l-6 6"],
+  trophy: [
+    "M8 4h8v5a4 4 0 0 1-8 0V4z",
+    "M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4",
+    "M12 13v4M8 21h8M9 17h6",
+  ],
+  message: "M4 5h16v11H9l-5 4z",
+  plane:
+    "M10.5 4.5L13 10l6.5 1.5c1 .3 1 1.7 0 2L13 15l-2.5 5.5c-.3.7-1.3.6-1.4-.2L8.5 15 4 13.5c-.7-.3-.7-1.3 0-1.6L8.5 10l.6-5.3c.1-.8 1.1-.9 1.4-.2z",
+  home: ["M3 11l9-7 9 7", "M5 10v10h14V10"],
+  layers: ["M12 3l9 5-9 5-9-5 9-5z", "M3 13l9 5 9-5"],
+  sliders: ["M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12", "M16 4v4M10 10v4M18 16v4"],
+  link: [
+    "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1",
+    "M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  ],
+  logout: ["M15 4h4v16h-4", "M10 8l-4 4 4 4", "M6 12h10"],
+  watch: ["M7 7h10v10H7z", "M9 7V3h6v4M9 17v4h6v-4", "M12 10v2l1.5 1"],
+  stopwatch: ["M12 13m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0", "M12 9v4l2 2", "M10 2h4"],
+  bed: ["M3 18V7", "M3 14h18v4", "M21 14a3 3 0 0 0-3-3h-8v3", "M7 11m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0"],
+  grid: ["M4 4h7v7H4z", "M13 4h7v7h-7z", "M4 13h7v7H4z", "M13 13h7v7h-7z"],
+  list: ["M8 6h12M8 12h12M8 18h12", "M4 6h0M4 12h0M4 18h0"],
+  database: ["M12 5m-8 0a8 3 0 1 0 16 0a8 3 0 1 0-16 0", "M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5", "M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"],
 } as const;
 
 export type IconName = keyof typeof PATHS;

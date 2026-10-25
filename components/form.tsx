@@ -15,7 +15,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { Trail, mono, ui } from "@/constants/theme";
+import { C, Trail, mono, ui } from "@/constants/theme";
 
 interface TextFieldProps extends TextInputProps {
   label: string;
@@ -97,7 +97,7 @@ export function PrimaryButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={Trail.limeInk} />
+        <ActivityIndicator color={C.ink} />
       ) : (
         <Text style={styles.buttonLabel}>{label}</Text>
       )}
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   inputFocused: {
-    borderColor: Trail.lime,
+    borderColor: C.text,
     backgroundColor: Trail.panel,
   },
   inputError: {
@@ -169,15 +169,15 @@ const styles = StyleSheet.create({
     boxSizing: "border-box",
     alignSelf: "stretch",
     width: "100%",
-    borderRadius: 14,
+    borderRadius: 999,
     paddingVertical: 14,
     paddingHorizontal: 18,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 54,
     borderWidth: 1,
-    backgroundColor: Trail.lime,
-    borderColor: Trail.lime,
+    backgroundColor: C.white,
+    borderColor: C.white,
   },
   buttonPressed: {
     opacity: 0.82,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   buttonLabel: {
-    color: Trail.limeInk,
+    color: C.ink,
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "800",
