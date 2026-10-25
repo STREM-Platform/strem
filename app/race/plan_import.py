@@ -123,6 +123,8 @@ class AIImportedPlan(BaseModel):
 IMPORT_RULES = """You transcribe an athlete's existing training plan from images, PDFs or text into structured data.
 - Transcribe exactly what is written. Never add, remove, merge, improve or rebalance sessions — this is the athlete's plan.
 - One entry per session. Multiple sessions on one day are separate entries; a written rest day is a session with kind "rest" and sport "rest".
+- Tables: each cell is one session (a day with morning and evening columns has two); "-" or empty cells are nothing. A table with one row per weekday and no weeks is a weekly template: transcribe it once as week 1.
+- Choices such as "Z2 Bike / Run / Stepper" are one session: keep the wording as the title, classify by the first option. Keep names like "Swim A" or "THE ERG" exactly; with no duration given, leave duration null.
 - Durations in minutes, distances in kilometres (convert miles × 1.609), climbing in metres.
 - Classify sport, kind and intensity from the wording (e.g. "long run" → running/long/easy; "6x800m" → running/intervals/hard; "gym" → strength/strength/moderate).
 - Keep paces, reps and notes in `details` verbatim.
@@ -187,6 +189,8 @@ _CLASSES: list[tuple[tuple[str, ...], str, str, str]] = [
     (("yoga", "mobility", "stretch", "pilates", "foam"), "mobility", "mobility", "very_easy"),
     (("hike", "hiking", "walk", "fastpack"), "hiking", "easy", "easy"),
     (("row", "erg", "paddle", "kayak"), "rowing", "cross", "moderate"),
+    (("hyrox", "hy", "wall balls", "sled"), "hybrid", "cross", "hard"),
+    (("stepper", "stairmaster", "stair climber", "stairs"), "hybrid", "cross", "easy"),
     (("ski", "skimo", "nordic"), "skiing", "easy", "easy"),
     (
         ("interval", "repeats", "reps", "fartlek", "vo2", "track", "x400", "x800", "x1k", "x1000"),
@@ -238,6 +242,15 @@ def _num(value: str) -> float:
 
 
 def classify(text: str) -> tuple[str, str, str]:
+    # "Long Aerobic Run / Stepper / Bike" is a choice: the first option names it.
+    if "/" in text:
+        first = text.split("/", 1)[0]
+        if first.strip() and (found := _classify(first))[0] != "other":
+            return found
+    return _classify(text)
+
+
+def _classify(text: str) -> tuple[str, str, str]:
     lowered = f" {text.lower()} "
     if _REPS_RE.search(lowered):
         sport = "cycling" if any(w in lowered for w in (" bike", " ride", " watts")) else "running"
@@ -290,7 +303,13 @@ def _title(text: str) -> str:
 
 
 def _session_from(
-    text: str, plan: RawPlan, *, week: int | None, weekday: int | None, on: date | None
+    text: str,
+    plan: RawPlan,
+    *,
+    week: int | None,
+    weekday: int | None,
+    on: date | None,
+    cell: bool = False,
 ) -> RawSession | None:
     cleaned = text.strip(" \t-–•*|")
     if not cleaned:
@@ -298,7 +317,7 @@ def _session_from(
     sport, kind, intensity = classify(cleaned)
     duration, distance = _duration(cleaned), _distance(cleaned, plan)
     elevation = int(m.group(1)) if (m := _ELEV_RE.search(cleaned)) else None
-    if sport == "other" and duration is None and distance is None:
+    if sport == "other" and duration is None and distance is None and not cell:
         return None
     if kind == "long" and duration is not None and duration < 60 and distance is None:
         kind = "easy"
@@ -401,8 +420,74 @@ def _parse_csv(text: str, plan: RawPlan) -> bool:
     return True
 
 
+_EMPTY_CELL = re.compile(r"^[\s\-–—_.x/]*$|^(?:n/?a|none|off-?)$", re.I)
+
+
+def _cells(line: str, wide_spaces: bool) -> list[str]:
+    if "\t" in line:
+        return [c.strip() for c in line.split("\t")]
+    if line.strip().startswith("|") or line.count("|") >= 2:
+        return [c.strip() for c in line.strip().strip("|").split("|")]
+    if wide_spaces:
+        return [c.strip() for c in re.split(r"\s{2,}", line.strip())]
+    return [line.strip()]
+
+
+def _day(cell: str) -> int | None:
+    return _DAY_NAMES.get(cell.strip().lower().rstrip(".:"))
+
+
+def _parse_grid(text: str, plan: RawPlan) -> bool:
+    """A weekly table: one session per cell, several per day when there are
+    morning/evening columns; '-' or empty cells are nothing."""
+    lines = [ln for ln in text.splitlines() if ln.strip() and not re.fullmatch(r"[\s|:\-+]+", ln)]
+    for wide in (False, True):
+        rows = [_cells(ln, wide) for ln in lines]
+        side = [r for r in rows if len(r) >= 2 and _day(r[0]) is not None]
+        top = next((r for r in rows if sum(_day(c) is not None for c in r) >= 3), None)
+        if len(side) >= 3:
+            week: int | None = None
+            for row in rows:
+                weekday = _day(row[0]) if row else None
+                if weekday is None:
+                    if len(row) == 1 and (m := _WEEK_RE.match(row[0])):
+                        week = int(m.group(1))
+                        plan.week_labels[week] = (m.group(2).strip() or None, None)
+                    continue  # header ("Day | Morning | Evening") or a note row
+                for value in row[1:]:
+                    if _EMPTY_CELL.match(value):
+                        continue
+                    session = _session_from(
+                        value, plan, week=week, weekday=weekday, on=None, cell=True
+                    )
+                    if session:
+                        plan.sessions.append(session)
+            return bool(plan.sessions)
+        if top is not None:
+            columns = {i: d for i, c in enumerate(top) if (d := _day(c)) is not None}
+            for index, row in enumerate(rows[rows.index(top) + 1 :], start=1):
+                label = row[0] if row and 0 not in columns else ""
+                m = _WEEK_RE.match(label) if label else None
+                week = int(m.group(1)) if m else index
+                if label:
+                    plan.week_labels[week] = ((m.group(2).strip() if m else label) or None, None)
+                for i, weekday in columns.items():
+                    value = row[i] if i < len(row) else ""
+                    if _EMPTY_CELL.match(value):
+                        continue
+                    session = _session_from(
+                        value, plan, week=week, weekday=weekday, on=None, cell=True
+                    )
+                    if session:
+                        plan.sessions.append(session)
+            return bool(plan.sessions)
+    return False
+
+
 def parse_text(text: str, plan: RawPlan | None = None, *, csv_hint: bool = False) -> RawPlan:
     plan = plan or RawPlan()
+    if not csv_hint and _parse_grid(text, plan):
+        return plan
     if (
         csv_hint or text.count(",") + text.count(";") + text.count("\t") > text.count("\n")
     ) and _parse_csv(text, plan):
@@ -543,7 +628,8 @@ def normalize(
                 last_weekday = -1
             current_week = max(1, s.week)
         if s.weekday is not None:
-            if s.week is None and s.weekday <= last_weekday:
+            # Earlier weekday than the last one = next week; the same day again is a second session.
+            if s.week is None and s.weekday < last_weekday:
                 current_week += 1
             last_weekday = s.weekday
             day = anchor + timedelta(weeks=current_week - 1, days=s.weekday)
