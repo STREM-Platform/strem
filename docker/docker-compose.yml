@@ -139,6 +139,11 @@ services:
       # still builds every layer and the app says the AI is offline.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       RACE_MODEL: ${RACE_MODEL:-claude-opus-5-5}
+      # Or OpenAI GPT (ai#42): AI_PROVIDER=openai, or leave it empty and set only
+      # OPENAI_API_KEY. Same rules, race context and schemas for either provider.
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-6.1-sol}
     depends_on:
       postgres: {condition: service_healthy}
     healthcheck:
