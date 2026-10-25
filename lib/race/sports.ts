@@ -15,16 +15,17 @@ export interface SportMeta {
 }
 
 export const SPORTS: SportMeta[] = [
-  { id: "trail_running", label: "Trail & mountain running", short: "Trail", icon: "mountain", blurb: "Skyraces, mountain marathons, ultras", distanceHint: "e.g. 50", hasElevation: true },
+  { id: "trail_running", label: "Trail & mountain running", short: "Trail", icon: "trail", blurb: "Skyraces, mountain marathons, ultras", distanceHint: "e.g. 50", hasElevation: true },
   { id: "road_running", label: "Road running", short: "Road", icon: "run", blurb: "10K to marathon and road ultras", distanceHint: "e.g. 42.2", hasElevation: false },
-  { id: "triathlon", label: "Triathlon", short: "Triathlon", icon: "swim", blurb: "Sprint to full distance", distanceHint: "e.g. 113", hasElevation: true, legs: [{ discipline: "swim", distance_km: 1.9 }, { discipline: "bike", distance_km: 90 }, { discipline: "run", distance_km: 21.1 }] },
+  { id: "triathlon", label: "Triathlon", short: "Triathlon", icon: "tri", blurb: "Sprint to full distance", distanceHint: "e.g. 113", hasElevation: true, legs: [{ discipline: "swim", distance_km: 1.9 }, { discipline: "bike", distance_km: 90 }, { discipline: "run", distance_km: 21.1 }] },
+  { id: "duathlon", label: "Duathlon", short: "Duathlon", icon: "duathlon", blurb: "Run, bike, run", distanceHint: "e.g. 55", hasElevation: true, legs: [{ discipline: "run", distance_km: 10 }, { discipline: "bike", distance_km: 40 }, { discipline: "run", distance_km: 5 }] },
   { id: "cycling", label: "Road cycling", short: "Cycling", icon: "bike", blurb: "Gran fondos, sportives, ultra-cycling", distanceHint: "e.g. 160", hasElevation: true },
-  { id: "gravel", label: "Gravel", short: "Gravel", icon: "bike", blurb: "Gravel races and bikepacking", distanceHint: "e.g. 200", hasElevation: true },
-  { id: "mountain_biking", label: "Mountain biking", short: "MTB", icon: "bike", blurb: "XC marathons and stage races", distanceHint: "e.g. 80", hasElevation: true },
+  { id: "gravel", label: "Gravel", short: "Gravel", icon: "gravel", blurb: "Gravel races and bikepacking", distanceHint: "e.g. 200", hasElevation: true },
+  { id: "mountain_biking", label: "Mountain biking", short: "MTB", icon: "mtb", blurb: "XC marathons and stage races", distanceHint: "e.g. 80", hasElevation: true },
   { id: "swimming", label: "Open-water swim", short: "Swim", icon: "swim", blurb: "Lake, sea and marathon swims", distanceHint: "e.g. 5", hasElevation: false },
   { id: "hiking", label: "Hiking & fastpacking", short: "Hike", icon: "hike", blurb: "Long trails, traverses, multi-day", distanceHint: "e.g. 120", hasElevation: true },
-  { id: "skimo", label: "Ski mountaineering", short: "Skimo", icon: "ski", blurb: "Skimo races and long tours", distanceHint: "e.g. 25", hasElevation: true },
-  { id: "nordic_skiing", label: "Nordic skiing", short: "Nordic", icon: "ski", blurb: "Loppets and long-distance classics", distanceHint: "e.g. 50", hasElevation: true },
+  { id: "skimo", label: "Ski mountaineering", short: "Skimo", icon: "skimo", blurb: "Skimo races and long tours", distanceHint: "e.g. 25", hasElevation: true },
+  { id: "nordic_skiing", label: "Nordic skiing", short: "Nordic", icon: "nordic", blurb: "Loppets and long-distance classics", distanceHint: "e.g. 50", hasElevation: true },
   { id: "rowing", label: "Rowing & paddling", short: "Row", icon: "row", blurb: "Regattas, marathons, expeditions", distanceHint: "e.g. 21", hasElevation: false },
   { id: "hybrid", label: "Hybrid racing", short: "Hybrid", icon: "dumbbell", blurb: "Hyrox, OCR and fitness racing", distanceHint: "e.g. 8", hasElevation: false },
   { id: "multisport", label: "Adventure racing", short: "Adventure", icon: "compass", blurb: "Multisport and expedition races", distanceHint: "e.g. 150", hasElevation: true },
