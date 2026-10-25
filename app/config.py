@@ -16,29 +16,16 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me-in-local-only"
     jwt_algorithm: str = "HS256"
 
-    # Redis Streams broker for publishing AI mission/coaching events.
-    message_broker_url: str = "redis://localhost:6379/0"
-
-    # Approved service APIs the orchestrator reads context from. Domain services
-    # remain the sources of truth; the orchestrator copies no raw logs into its
-    # own database.
+    # Approved service APIs the race team reads context from and writes plans and
+    # layers back through. Domain services remain the sources of truth; the
+    # orchestrator copies no raw logs into its own database.
     user_service_base_url: str = "http://localhost:8002/v1"
-    community_service_base_url: str = "http://localhost:8005/v1"
     training_service_base_url: str = "http://localhost:8003/v1"
-    nutrition_service_base_url: str = "http://localhost:8004/v1"
 
-    # Anthropic (Claude) for the omniscient coach (B1). Empty key → the
-    # deterministic, offline coach client is used (local dev, tests, and as the
-    # LLM-unavailable fallback). Use the latest model id.
+    # Anthropic (Claude) for the race team (docs#26). Empty key, no credit or an
+    # outage → the deterministic race engine builds everything and says why.
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-opus-4-8"
-    # The Race OS race team (docs#26): personalization, briefs, chat, adaptation.
     race_model: str = "claude-opus-5-5"
-
-    # LangSmith tracing — full per-run agent observability in production. Empty
-    # key → tracing off (local/tests). See app/agent/llm.configure_tracing.
-    langsmith_api_key: str = ""
-    langsmith_project: str = "strem-forge"
 
 
 @lru_cache

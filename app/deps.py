@@ -6,34 +6,15 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends, Request
-from langchain_core.language_models import BaseChatModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.llm import get_agent_model
-from app.capture import CaptureProvider, get_capture_provider
-from app.capture_writer import CaptureWriter, get_capture_writer
 from app.config import Settings, get_settings
-from app.context import (
-    AthleteContextProvider,
-    ContextProvider,
-    get_athlete_context_provider,
-    get_context_provider,
-)
 from app.db import get_session
 from app.errors import AppError
-from app.events import EventPublisher, get_publisher
 from app.security import decode_access_token
-from app.tribe_coach import TribeSummaryProvider, get_tribe_summary_provider
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
-ContextProviderDep = Annotated[ContextProvider, Depends(get_context_provider)]
-AthleteContextProviderDep = Annotated[AthleteContextProvider, Depends(get_athlete_context_provider)]
-TribeSummaryProviderDep = Annotated[TribeSummaryProvider, Depends(get_tribe_summary_provider)]
-AgentModelDep = Annotated[BaseChatModel, Depends(get_agent_model)]
-CaptureProviderDep = Annotated[CaptureProvider, Depends(get_capture_provider)]
-CaptureWriterDep = Annotated[CaptureWriter, Depends(get_capture_writer)]
 
 
 def get_bearer_token(request: Request) -> str:
