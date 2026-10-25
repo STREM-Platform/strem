@@ -1,7 +1,9 @@
 """Local browser-test fixture: real APIs, disposable SQLite DBs, no production data.
 
 No source files, .env files, service definitions or deployed settings are changed.
-Only this process's environment is configured. No AI/integration service is started.
+Only this process's environment is configured. The AI orchestrator runs with no
+Anthropic key, so the race team uses its deterministic engine and text parser;
+no integration service is started.
 """
 
 from contextlib import ExitStack
@@ -20,6 +22,22 @@ import httpx
 MOBILE = Path(__file__).resolve().parents[1]
 WORKSPACE = MOBILE.parent
 children = []
+
+
+CREATE_AI_TABLES = """
+import asyncio, os
+from sqlalchemy.ext.asyncio import create_async_engine
+from app.db import Base
+import app.race.store  # noqa: F401  (registers the race tables)
+
+async def main():
+    engine = create_async_engine(os.environ["DATABASE_URL"])
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await engine.dispose()
+
+asyncio.run(main())
+"""
 
 
 def stop_all(*_):
@@ -53,7 +71,7 @@ def ready(port):
 
 
 def main():
-    for port in (9510, 9511, 9512, 9513, 9514):
+    for port in (9510, 9511, 9512, 9513, 9514, 9515):
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", port))  # Fail rather than reuse somebody else's service.
     with ExitStack() as stack:
@@ -66,16 +84,20 @@ def main():
                "USER_BASE_URL": "http://127.0.0.1:9513/v1",
                "TRAINING_BASE_URL": "http://127.0.0.1:9514/v1",
                "USER_SERVICE_BASE_URL": "http://127.0.0.1:9513/v1",
+               "TRAINING_SERVICE_BASE_URL": "http://127.0.0.1:9514/v1",
                "COURSE_STORAGE_BASE_URL": "http://127.0.0.1:9514",
-               "AI_BASE_URL": "http://127.0.0.1:1/v1",
+               "AI_BASE_URL": "http://127.0.0.1:9515/v1",
+               "ANTHROPIC_API_KEY": "",
                "CORS_ALLOW_ORIGINS": "http://localhost:9510",
                "UPSTREAM_TIMEOUT_SECONDS": "15", "EXPO_PUBLIC_API_URL": "http://localhost:9511/v1",
                "EXPO_NO_DOTENV": "1", "CI": "1"}
-        for service, port in (("auth", 9512), ("user", 9513), ("training", 9514)):
-            repo = WORKSPACE / f"strem-{service}-service"
+        for service, port in (("auth", 9512), ("user", 9513), ("training", 9514), ("ai", 9515)):
+            repo = WORKSPACE / ("strem-ai-orchestrator" if service == "ai" else f"strem-{service}-service")
             service_env = {**env, "DATABASE_URL": f"sqlite+aiosqlite:///{Path(directory, service + '.db').as_posix()}"}
-            subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"],
-                           cwd=repo, env=service_env, check=True)
+            # The orchestrator's history includes Postgres-only migrations; its race
+            # tables are created straight from the models for this disposable DB.
+            migrate = [sys.executable, "-c", CREATE_AI_TABLES] if service == "ai" else [sys.executable, "-m", "alembic", "upgrade", "head"]
+            subprocess.run(migrate, cwd=repo, env=service_env, check=True)
             launch([sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1",
                     "--port", str(port)], repo, service_env)
             ready(port)
