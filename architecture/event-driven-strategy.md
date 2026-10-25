@@ -1,5 +1,7 @@
 # Event-Driven Strategy
 
+> **Status (2026-10-25, strem-docs#28):** no service publishes or consumes domain events today. The examples below are historical; the strategy (Redis Streams first, owning service owns the event) applies when a cross-service reaction is next needed, e.g. a proactive race-team brief after a sync.
+
 > The event inventory includes existing legacy producers and consumers. New
 > product work must prioritize Race Mission evidence and decision events; dormant
 > tribe or progression events are maintenance-only until formally deprecated.

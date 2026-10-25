@@ -1,30 +1,29 @@
 # Implementation Status
 
-_Last updated: 2026-10-23 (Race OS, `strem-docs#26`); course-flow evidence below remains dated 2026-10-22._
+_Last updated: 2026-10-25 — Race OS and the clean-up are merged to main; course-flow evidence below remains dated 2026-10-22._
 
 ## Race OS (2026-10-23)
 
 Founder direction `strem-docs#26` broadened the product to any race or self-imposed
 challenge ([`race-os.md`](race-os.md), [ADR 0008](../architecture/adr/0008-race-os-layers-and-race-engine.md)).
-It is implemented locally on `issue26-race-os` branches in every affected repository,
-stacked on the open foundation/course-flow PRs. PRs stay open for founder testing;
-nothing is merged or deployed.
+It was merged to `main` in every repository on 2026-10-25, together with the
+October foundation and course-flow PRs and the removal of unused pre-pivot code
+(strem-docs#28). Nothing is deployed. Next: strem-docs#31.
 
 | Capability | Status | Where |
 |---|---|---|
-| Multi-sport Race Mission v2, several active missions, completion into race history | Implemented locally | user-service, contracts, mobile |
-| Race Lab layers: fuel, gear, logistics, strategy (engine + guarded AI, origin shown, progress kept across rebuilds) | Implemented locally | user-service (storage), ai-orchestrator (engine/AI), mobile |
-| Periodized training plan, session status, progress tracker with pre-plan evidence, check-ins | Implemented locally | training-service, ai-orchestrator, mobile |
-| AI race team: daily brief, chat, adapt → proposal → accept/reject, knowledge view | Implemented locally; AI path unit-tested, live AI blocked by the local Anthropic account's credit | ai-orchestrator, mobile |
-| Race history (manual, completed missions, Strava races) and deeper Strava sync | Implemented locally | user-service, training-service, ai-orchestrator |
-| Place search, forecast/seasonal conditions, openly licensed cover photos | Implemented locally; licence-display review pending | ai-orchestrator, mobile |
+| Multi-sport Race Mission v2, several active missions, completion into race history | On main | user-service, contracts, mobile |
+| Race Lab layers: fuel, gear, logistics, strategy (engine + guarded AI, origin shown, progress kept across rebuilds) | On main | user-service (storage), ai-orchestrator (engine/AI), mobile |
+| Periodized training plan, session status, progress tracker with pre-plan evidence, check-ins | On main | training-service, ai-orchestrator, mobile |
+| AI race team: daily brief, chat, adapt → proposal → accept/reject, knowledge view | On main; AI path unit-tested, live AI blocked by the local Anthropic account's credit | ai-orchestrator, mobile |
+| Race history (manual, completed missions, Strava races) and deeper Strava sync | On main | user-service, training-service, ai-orchestrator |
+| Place search, forecast/seasonal conditions, openly licensed cover photos | On main; licence-display review pending | ai-orchestrator, mobile |
 | Course map | OpenTopoMap tiles for development; production provider not chosen | mobile |
-| Redesigned app (Mission, Plan, Race Lab, Team, You; seven-step race setup) | Implemented locally; walked through at 390/1440 px with a seeded athlete | mobile |
+| Redesigned app (Mission, Plan, Race Lab, Team, You; seven-step race setup) | On main; walked through at 390/1440 px with a seeded athlete | mobile |
 | Old surfaces (tribes, XP, crew chat, old trail shell) | Removed from mobile; their backends still run and are retired separately | mobile |
 | Demo seed | `strem-infra/scripts/seed-demo.py` (synthetic athlete, optional local GPX) | infra |
 
-Open before release: founder test of the PRs; contract, migration, health-data and
-AI-safety reviews; Anthropic credit; Whoop keys; licensed map tiles; legal review of
+Open before release: contract, migration, health-data and AI-safety reviews; Anthropic credit; Whoop keys; licensed map tiles; legal review of
 CC BY-SA display.
 
 ## Current product
@@ -42,7 +41,7 @@ STREM is in trail-running pivot validation. Founder-approved issue `strem-user-s
 | Trail visual system, responsive auth, onboarding, legal, and atmospheric race UI | Merged to `strem-mobile/main`; visually reviewed, not the final advanced experience | `f7b867d` and `strem-mobile#103` |
 | Live authentication, legal acceptance, user profile, athlete baseline, consent, AI chat, action receipts, and Strava/Whoop source status | Existing live paths retained | mobile API clients and existing services |
 | Race Mission, event facts/media, GPX/course, constraints, evidence, risk, rehearsal, decision, calendar-intent, and debrief contracts | Review draft open; not merged | `strem-shared-contracts#38`, PR `strem-shared-contracts#39`, human review required |
-| Private mission create/read/edit/archive, one active mission, revisions, export/delete | Implemented locally; approval recorded for this narrow foundation, release checks pending | `strem-user-service#24`; partial delivery of `strem-user-service#23`, `strem-mobile#104`, `strem-api-gateway#11` |
+| Private mission create/read/edit/archive, one active mission, revisions, export/delete | On main; approval recorded for this narrow foundation, release checks pending | `strem-user-service#24`; partial delivery of `strem-user-service#23`, `strem-mobile#104`, `strem-api-gateway#11` |
 | GPX course intelligence | Private course upload/read/replace/export and coordinated deletion implemented locally; route/elevation/section inspector connected in Race Lab; no basemap/navigation | `strem-training-service#10`, parser PR #14 and course-flow branch; `strem-mobile#105`; ADR 0007 |
 | Sourced visual race brief, exact event edition, approved photography and course/map integration | Narrow private course scope approved and implemented; source/edition verification, licensed basemap and photo rights remain outstanding | `strem-docs#24`, existing mobile #103/#105 and media acquisition docs #21 |
 | Real adaptive trail plan and preparation evidence | Separate plan backend package now scoped; implementation not started | `strem-training-service#11/#12`, `strem-mobile#106` |
