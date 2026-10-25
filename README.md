@@ -20,6 +20,7 @@ strem-infra/
 ├── ci-templates/                   # canonical CI workflows for service repos
 ├── scripts/migrate-stack.py        # run Alembic migrations in service containers
 ├── scripts/seed-demo.py            # seed the Race OS demo athlete through the gateway
+├── scripts/delete-local-account.py # remove one local account to test sign-up from zero
 ├── scripts/smoke-health.py         # cross-platform health check for every service
 ├── scripts/smoke-health.sh         # verify every service GET /health after up
 ├── .github/workflows/validate.yml  # validates compose config on PR
@@ -107,6 +108,13 @@ python scripts/seed-demo.py --course path/to/course.gpx
 ```
 
 `docker compose ... ps` should show every container `healthy` before you seed.
+
+To test the first-run flow from zero, remove a local account and register it again
+(local Docker stack only; asks before deleting):
+
+```bash
+python scripts/delete-local-account.py --email you@example.com
+```
 
 Then start the mobile app from the sibling `strem-mobile` repo, in a second
 terminal:
