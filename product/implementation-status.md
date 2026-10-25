@@ -1,6 +1,31 @@
 # Implementation Status
 
-_Last updated: 2026-10-22 (private course flow; earlier foundation evidence remains dated 2026-10-11)._
+_Last updated: 2026-10-23 (Race OS, `strem-docs#26`); course-flow evidence below remains dated 2026-10-22._
+
+## Race OS (2026-10-23)
+
+Founder direction `strem-docs#26` broadened the product to any race or self-imposed
+challenge ([`race-os.md`](race-os.md), [ADR 0008](../architecture/adr/0008-race-os-layers-and-race-engine.md)).
+It is implemented locally on `issue26-race-os` branches in every affected repository,
+stacked on the open foundation/course-flow PRs. PRs stay open for founder testing;
+nothing is merged or deployed.
+
+| Capability | Status | Where |
+|---|---|---|
+| Multi-sport Race Mission v2, several active missions, completion into race history | Implemented locally | user-service, contracts, mobile |
+| Race Lab layers: fuel, gear, logistics, strategy (engine + guarded AI, origin shown, progress kept across rebuilds) | Implemented locally | user-service (storage), ai-orchestrator (engine/AI), mobile |
+| Periodized training plan, session status, progress tracker with pre-plan evidence, check-ins | Implemented locally | training-service, ai-orchestrator, mobile |
+| AI race team: daily brief, chat, adapt → proposal → accept/reject, knowledge view | Implemented locally; AI path unit-tested, live AI blocked by the local Anthropic account's credit | ai-orchestrator, mobile |
+| Race history (manual, completed missions, Strava races) and deeper Strava sync | Implemented locally | user-service, training-service, ai-orchestrator |
+| Place search, forecast/seasonal conditions, openly licensed cover photos | Implemented locally; licence-display review pending | ai-orchestrator, mobile |
+| Course map | OpenTopoMap tiles for development; production provider not chosen | mobile |
+| Redesigned app (Mission, Plan, Race Lab, Team, You; seven-step race setup) | Implemented locally; walked through at 390/1440 px with a seeded athlete | mobile |
+| Old surfaces (tribes, XP, crew chat, old trail shell) | Removed from mobile; their backends still run and are retired separately | mobile |
+| Demo seed | `strem-infra/scripts/seed-demo.py` (synthetic athlete, optional local GPX) | infra |
+
+Open before release: founder test of the PRs; contract, migration, health-data and
+AI-safety reviews; Anthropic credit; Whoop keys; licensed map tiles; legal review of
+CC BY-SA display.
 
 ## Current product
 
