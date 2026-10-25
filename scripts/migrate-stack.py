@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_SERVICES = ("auth", "user", "training", "nutrition", "community", "ai")
+DEFAULT_SERVICES = ("auth", "user", "training", "ai")
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_COMPOSE_FILE = ROOT / "docker" / "docker-compose.yml"
 

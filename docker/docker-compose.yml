@@ -1,10 +1,8 @@
 # STREM local development infrastructure + MVP service stack.
 #
-# Broker decision (see strem-docs/architecture/event-driven-strategy.md):
-# Redis Streams is the MVP message broker. Redis is already required for cache
-# and rate limiting, and Redis Streams can serve double duty as the broker —
-# avoiding a third stateful service (NATS/RabbitMQ). Revisit when event volume
-# or routing complexity justifies a dedicated broker (write an ADR then).
+# Redis backs the gateway's shared rate limiting. No service publishes domain
+# events since strem-docs#28; Redis Streams remains the documented broker choice
+# (strem-docs/architecture/event-driven-strategy.md) when events return.
 #
 # Layout assumption: the service repositories are cloned as siblings of
 # strem-infra under one parent directory, so each service's build context is
@@ -12,8 +10,11 @@
 # only now that every repo has a Dockerfile and a GET /health endpoint.
 #
 # Local ports: postgres 5432, redis 6379, gateway 8000, auth 8001, user 8002,
-# training 8003, nutrition 8004, community 8005, ai 8006. Each service listens on
-# 8000 inside its container.
+# training 8003, ai 8006. Each service listens on 8000 inside its container.
+#
+# The pre-pivot nutrition and community services and the XP worker were retired
+# (strem-docs#28). Their databases are still created on first boot and left as
+# they are; dropping them needs a separate retention decision.
 
 x-service-health: &service-health
   interval: 10s
@@ -87,28 +88,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_user
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
       # Private course files and training plans live in training-service behind
       # one deletion fence (ADR 0007, docs#26): export and purge go through it.
       COURSE_STORAGE_BASE_URL: http://training:8000
     depends_on:
       postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
     healthcheck:
       <<: [*healthcheck-cmd, *service-health]
-    restart: unless-stopped
-
-  user-worker:
-    build: ../../strem-user-service
-    command: ["python", "-m", "app.worker"]
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_user
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
-      JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
-    depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
     restart: unless-stopped
 
   training:
@@ -119,7 +105,6 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_training
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
       # Connected-source ingestion (A3). Empty key → connecting a source is
       # refused; empty provider creds → that provider can't be connected. The
       # rest of the service runs regardless.
@@ -134,54 +119,8 @@ services:
       USER_SERVICE_BASE_URL: http://user:8000/v1
     depends_on:
       postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
     healthcheck:
       <<: [*healthcheck-cmd, *service-health]
-    restart: unless-stopped
-
-  nutrition:
-    build: ../../strem-nutrition-service
-    ports:
-      - "8004:8000"
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_nutrition
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
-      JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
-    depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
-    healthcheck:
-      <<: [*healthcheck-cmd, *service-health]
-    restart: unless-stopped
-
-  community:
-    build: ../../strem-community-service
-    ports:
-      - "8005:8000"
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_community
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
-      JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
-    depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
-    healthcheck:
-      <<: [*healthcheck-cmd, *service-health]
-    restart: unless-stopped
-
-  community-worker:
-    build: ../../strem-community-service
-    command: ["python", "-m", "app.worker"]
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_community
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
-      JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
-    depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
     restart: unless-stopped
 
   ai:
@@ -192,26 +131,16 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-strem}:${POSTGRES_PASSWORD:-strem}@postgres:5432/strem_ai
       JWT_SECRET: ${JWT_SECRET:-change-me-in-local-only}
       JWT_ALGORITHM: HS256
-      MESSAGE_BROKER_URL: redis://redis:6379/0
-      # Service URLs the orchestrator reads context from / writes captures to.
-      # These must be the in-network hostnames, not localhost, inside Docker.
+      # The race team reads context from and writes plans/layers through these
+      # (in-network hostnames, not localhost, inside Docker).
       USER_SERVICE_BASE_URL: http://user:8000/v1
-      COMMUNITY_SERVICE_BASE_URL: http://community:8000/v1
       TRAINING_SERVICE_BASE_URL: http://training:8000/v1
-      NUTRITION_SERVICE_BASE_URL: http://nutrition:8000/v1
-      # Forge agent (B1). Empty key → deterministic offline fallback (the stack
-      # still boots and coaches, just without live Claude). LangSmith is optional
-      # tracing.
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
-      # Race OS race team (docs#26). Without credit or a key the race engine
+      # Race OS race team (docs#26). Without a key or credit the race engine
       # still builds every layer and the app says the AI is offline.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       RACE_MODEL: ${RACE_MODEL:-claude-opus-5-5}
-      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
-      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-strem-forge}
     depends_on:
       postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
     healthcheck:
       <<: [*healthcheck-cmd, *service-health]
     restart: unless-stopped
@@ -224,8 +153,6 @@ services:
       AUTH_BASE_URL: http://auth:8000/v1
       USER_BASE_URL: http://user:8000/v1
       TRAINING_BASE_URL: http://training:8000/v1
-      NUTRITION_BASE_URL: http://nutrition:8000/v1
-      COMMUNITY_BASE_URL: http://community:8000/v1
       AI_BASE_URL: http://ai:8000/v1
       # Shared rate-limit counters (the gateway fails open if Redis is down).
       REDIS_URL: redis://redis:6379/0
@@ -235,8 +162,6 @@ services:
       - auth
       - user
       - training
-      - nutrition
-      - community
       - ai
       - redis
     healthcheck:
