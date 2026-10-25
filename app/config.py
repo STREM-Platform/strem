@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     race_model: str = "claude-opus-5-5"
 
+    # Which model provider runs the race team: "anthropic", "openai", or empty for
+    # whichever key is set (Anthropic first). Same rules, context and schemas.
+    ai_provider: str = ""
+    openai_api_key: str = ""
+    openai_model: str = "gpt-6.1-sol"
+    openai_base_url: str = "https://api.openai.com/v1"
+
 
 @lru_cache
 def get_settings() -> Settings:
