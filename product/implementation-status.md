@@ -1,37 +1,45 @@
 # Implementation Status
 
-_Last updated: 2026-09-21._
+_Last updated: 2026-10-22 (private course flow; earlier foundation evidence remains dated 2026-10-11)._
 
 ## Current product
 
-STREM is in trail-running pivot validation. The current mobile app is a product-direction prototype around one Race Mission; it is not yet a production Race Pass.
+STREM is in trail-running pivot validation. Founder-approved issue `strem-user-service#24` now has a locally implemented real Race Mission foundation across user-service, shared-contracts, gateway and mobile. This is not a completed or deployed production Race Pass. Main still contains the older prototype until the coordinated PRs merge.
 
 | Capability | Status | Evidence |
 |---|---|---|
 | Product thesis, first customer, boundaries, and commercial hypothesis | Documented | `trail-running-pivot.md` |
 | Paid pilot gate and repository delivery sequence | Documented | `trail-running-delivery-plan.md` |
-| Advanced race-command experience, responsive flows, motion, accessibility, and component rules | Documented; implementation not started | `race-experience-blueprint.md` |
+| Advanced race-command experience, responsive flows, motion, accessibility, and component rules | Mission workspace merged to mobile/main in PR #110 (`0d8cd22`); full visual acceptance outstanding | `race-experience-blueprint.md`, `strem-mobile#103`, `strem-docs#21` |
 | Licensed event-media acquisition, attribution, fallback, takedown, and `EventMedia` proposal | Documented; contract implementation not started | `race-media-policy.md` |
 | Five-athlete comprehension and usability gate | Documented; test not run | `race-experience-usability.md` |
 | Mobile navigation: Mission, Plan, Race Lab, AI, Athlete | Merged to `strem-mobile/main`; prototype data remains | `88468e6` |
 | Trail visual system, responsive auth, onboarding, legal, and atmospheric race UI | Merged to `strem-mobile/main`; visually reviewed, not the final advanced experience | `f7b867d` and `strem-mobile#103` |
 | Live authentication, legal acceptance, user profile, athlete baseline, consent, AI chat, action receipts, and Strava/Whoop source status | Existing live paths retained | mobile API clients and existing services |
 | Race Mission, event facts/media, GPX/course, constraints, evidence, risk, rehearsal, decision, calendar-intent, and debrief contracts | Review draft open; not merged | `strem-shared-contracts#38`, PR `strem-shared-contracts#39`, human review required |
-| Real mission intake and persistence | Scoped; implementation not started | `strem-user-service#23`, `strem-mobile#104` |
-| GPX course intelligence | Scoped; implementation not started | `strem-training-service#10`, `strem-mobile#105` |
-| Real adaptive trail plan and preparation evidence | Scoped; implementation not started | `strem-training-service#11`, `strem-mobile#106` |
+| Private mission create/read/edit/archive, one active mission, revisions, export/delete | Implemented locally; approval recorded for this narrow foundation, release checks pending | `strem-user-service#24`; partial delivery of `strem-user-service#23`, `strem-mobile#104`, `strem-api-gateway#11` |
+| GPX course intelligence | Private course upload/read/replace/export and coordinated deletion implemented locally; route/elevation/section inspector connected in Race Lab; no basemap/navigation | `strem-training-service#10`, parser PR #14 and course-flow branch; `strem-mobile#105`; ADR 0007 |
+| Sourced visual race brief, exact event edition, approved photography and course/map integration | Narrow private course scope approved and implemented; source/edition verification, licensed basemap and photo rights remain outstanding | `strem-docs#24`, existing mobile #103/#105 and media acquisition docs #21 |
+| Real adaptive trail plan and preparation evidence | Separate plan backend package now scoped; implementation not started | `strem-training-service#11/#12`, `strem-mobile#106` |
 | Cited, reversible AI Race Team decisions | Scoped; implementation not started | `strem-ai-orchestrator#33`, `strem-mobile#108` |
-| Functional Race Lab rehearsals and operations | Scoped; implementation not started | `strem-mobile#107` |
+| Honest AI-unavailable response without misleading context citations | Implemented in PR #38; not merged, safety-adjacent fallback review required | `strem-ai-orchestrator#34`; 121 tests, ruff and strict mypy pass |
+| Consented evidence snapshots, proactive proposals and real-provider evaluation | Scoped; not implemented | `strem-ai-orchestrator#35`, `#36`, `#37` |
+| Functional Race Lab rehearsals and operations | Backend ownership proposals and implementation packages scoped; not built | `strem-mobile#107`, `strem-user-service#26`, `strem-training-service#13` |
+| Sourced race conditions / weather | Provider, privacy, forecast horizon and owner decision scoped; no integration | `strem-docs#25` |
 | Calendar export and consented free/busy ingestion | Product/privacy decision scoped; implementation not approved | `strem-docs#18` |
 | Race Pass packaging and entitlement | Validation scoped; checkout not approved | `strem-docs#19` |
 | Paid 10-athlete concierge pilot | Scoped; recruitment and payment not started | `strem-docs#16` |
 | Pilot release environment and observability | Scoped; gated on a deployable vertical slice | `strem-infra#17` |
 
-## Prototype honesty
+## Real foundation and prototype removal
 
-The mobile Mission, Plan, and Race Lab currently use one centralized, visibly labelled sample Race Mission. The fixture is not returned as personal data and must be deleted when approved race-specific contracts land.
+On the foundation branch, mobile creates and reloads authenticated server-owned mission records. Event details and goal are athlete-entered, never official facts. Elevation and cutoff can remain unknown. Dates are calendar dates in the entered event timezone; no race-start time is invented. Editing uses versions; create/archive retries use idempotency receipts. Archive retains history; explicit mission-only deletion removes owned missions, revisions and receipts without touching legacy data.
 
-If a live athlete endpoint fails, active trust surfaces show an empty or unavailable state. They do not fall back to a fictional athlete graph.
+The runtime sample mission, sample course/profile, fabricated preparation sessions and sample advice have been deleted on the foundation branch. The course-flow branch now draws only a privately uploaded and persisted GPX. Plan and race-specific AI still show honest unavailable states. Generic coach chat is no longer presented as a mission-aware Race Team. Unsaved form drafts are not yet resumable across closing the form. No new AI/data-source consent is implied by mission creation.
+
+The founder explicitly approved existing user-service ownership and additive migration `0008_race_missions` on 2026-10-08. No existing rows are migrated or deleted. Keep the additive tables if rolling application code back; downgrading populated tables is destructive and requires separate approval/backup. On 2026-10-11, the approved migration was applied to the existing local review database after a PostgreSQL custom-format backup; no production database was touched. A clearly fictional demo mission was then created in the local demo account at the founder's request; this is a saved review record, not a runtime fallback or official event. The narrow user contract takes precedence over overlapping, unmerged draft PR #39 foundation operations; course/proposal contracts still need their own review.
+
+The existing backend still has legacy coaching paths. Audit found that its keyless/error fallback could claim personal analysis and attach context chips. AI PR #38 fixes those fallback paths; until reviewed and merged, do not describe the backend as fully honest or production-ready. Successful response chips are still context summaries, not validated claim-level citations; that work belongs to #33/#35/#37.
 
 The advanced experience may use approved event photography, athlete-owned media, or licensed stock fallbacks. No race-site or social-media image may be scraped, and no stock or generated image may be presented as the official event. The governing design and media-rights work is now documented in `race-experience-blueprint.md`, `race-media-policy.md`, and `race-experience-usability.md` under `strem-docs#17`.
 
@@ -52,6 +60,28 @@ The cross-repository source of truth is `strem-docs#20`. It sequences paid valid
 
 The pre-pivot mobile issues for Fuel, Tribe, Crew, Forge personas, generic capture, biomarkers, supplements, and social competition were closed as superseded on 2026-09-21. Their Git and issue history remains available; retained trust and integration foundations remain in code.
 
+On 2026-10-08, seven superseded PRs were closed without merging: mobile #92/#94/#95, shared-contracts #37, infra #16, gateway #10 and community #16. Branches and commits remain recoverable. The inherited proof-media changes were also removed from contract PR #39 in `62c5c8c`; that PR now remains focused on Race Mission contracts.
+
+The STREM-Platform Core Platform project board (project 1; organization sign-in required) includes the scoped foundation issue #24. Ninety-two historical completed/superseded items were archived, not deleted. `Ready` is a queued-work status, not permission to bypass dependencies. The `Delivery gate` field distinguishes contract approval, upstream implementation, human review, UX validation and pilot validation.
+
+### Verification for this increment
+
+- Private course flow (2026-10-22): founder approved the narrow scope recorded in [ADR 0007](../architecture/adr/0007-private-mission-courses.md). Training has 95 passing standard tests plus a separately opted-in PostgreSQL migration/reconnect/concurrent deletion-fence check. User-service has 104 passing tests (two older opt-in release checks skipped); gateway has 18. Lint/strict types pass. All seven OpenAPI specs and eighteen event schemas validate. Mobile TypeScript/lint and 24 unit tests pass; four compact/wide real-service browser regressions pass for mission and course lifecycles, with two more course checks passing after condensing the file controls. Tests use synthetic accounts/GPX, disposable SQLite and a separately named disposable PostgreSQL course database; no existing review or production database was migrated. The original UTH50 file remains local/uncommitted.
+- Course data is private and athlete-supplied. Replacement discards the previous original/model; export includes current original GPX bytes. Durable user deletion intent and training generation fences prevent late writes and replayed purges from recreating or erasing the wrong generation. Native file-picker/cache handling, accessibility and real-athlete acceptance remain unverified. Race Lab draws actual geometry without a licensed basemap; photos, navigation, live conditions and coaching remain separate work.
+
+- Initial GPX/analysis increment (2026-10-22, before the private flow above): 92 training-service tests, lint and strict type checks pass in an isolated Python 3.12 environment. The internal processor accepts bounded GPX 1.0/1.1 and single-GPX ZIPs, preserves segment breaks, fingerprints the original GPX and computes horizontal distance plus raw elevation. XML DTD/entities/external resolution and unsafe archives are rejected. Missing elevation stays unknown. Internal analysis adds 100 m sections, distance-weighted net-grade bands and geometric ascent/descent runs (at least 300 m / 30 m net change, consecutive sections at >=3% absolute grade); missing/sparse evidence breaks coverage. Method and limits are documented in the training README; UTH50 yields 502 sections. That initial increment did not include the upload API/storage/mobile connection subsequently verified above.
+- Real-course check: the organizer-linked `UTH50_Endurance.zip` downloaded on 2026-10-22 processed as one segment / 1,515 points / 50,154.25 m horizontal distance / 2,214.63 m raw ascent. GPX SHA-256: `d9d7cc9f2a2038680c25f3714fe306ca6fbae1f4f19a3f9c13dd795b1dccda2b`. These calculations are separate from the organizer's published 50.0 km / 2,100 m; the file was used for local verification and was not committed or attached to a mission. The [current course page](https://upthehill.run/strecken/uth50/) and [schedule](https://upthehill.run/infos/programm/) now list a 09:00 start on 24 April 2027 and 19:00 finish closure, superseding the 08:00 research note from 2026-10-11. Source and allowed-use review remain open under docs #24; no photography was acquired.
+
+- Foundation: 103 standard user-service tests and two separately opted-in release tests pass; mobile has 24 passing tests and a successful production web export. Python lint/strict types and mobile TypeScript/ESLint pass. The PostgreSQL 16 migration/API lifecycle and real-HTTP gateway/user-service restart checks use disposable loopback databases. The HTTP check uses signed test JWTs.
+- Browser acceptance now has a local Playwright/Chrome fallback, independent of the unavailable connected-browser helper. Compact (390px) and wide (1440px) runs use real auth/user/gateway services with temporary SQLite databases and synthetic API-registered accounts. They verify create/reload, unknown facts, visible primary action, offline retry, stale-edit retention, archive/recreate, JSON export contents and confirmed deletion. Login UI, native devices, screen readers and athlete usability remain unverified; do not close #103 or #109 on this evidence alone. Setup and remaining manual checks are in the mobile README.
+- Mission UI now brings editing into the primary race panel, improves heading density/navigation contrast and separates event entry from goal/review context on wide layouts. Save/back navigation dismisses to the existing Mission route instead of duplicating it. No event photography, AI assessment or course data was invented.
+- Dependency triage is tracked in mobile #112. Updating compatible transitive `shell-quote` from 1.8.4 to 1.12.0 removed the critical audit finding; 68 findings (13 moderate, 55 high) remain for reachability/SDK-compatible remediation. Mobile #113 records retryable session restoration: existing bootstrap clears tokens on any API failure. One browser run redirected to login; the precise request failure was not captured and is not claimed fixed. Authentication-state changes require review.
+- A PostgreSQL regression reproduced concurrent deletion leaving an orphaned idempotency snapshot (`0 missions / 0 revisions / 1 receipt`). Per-owner transaction locking now serializes mission writes and exports; the regression verifies complete new records for a create ordered after deletion. No production schema change or existing-data migration was added.
+- Mobile deadlines now cover response-body reads and token refresh/retry, not just initial response headers. Regression tests cover both stalled-body and stalled-refresh cases. Calendar dates reject timestamps instead of silently coercing them. These are foundation correctness fixes, not new AI or integration capabilities.
+- AI: 121 tests, ruff and strict mypy across 63 files passed in an isolated Python 3.12 environment. No paid/live model call was performed; scripted-provider tests do not establish real-provider quality or coaching safety.
+- Foundation contracts: seven main-branch OpenAPI specs and eighteen existing event schemas validate with the additive user contract. The broader PR #39 has separate draft-only validation evidence; do not confuse it with approved implemented operations.
+- Real-event photography rights and the five-athlete comprehension test remain unfulfilled; `strem-docs#21` makes these explicit deliverables.
+
 ## Next irreversible decision
 
-Do not build more unconnected prototype breadth. The advanced race-first experience and legal path to real event imagery are defined. The next engineering decision is human review of `strem-shared-contracts#39` for issue `#38`; no service or mobile implementation should treat that draft as approved before it merges. In parallel, the next business decision remains whether real athletes will pay for the concierge pilot in `strem-docs#16`.
+Do not build more unconnected prototype breadth. Contract PR #39 still needs review of provenance trust, typed plan mutations, target resource concurrency, and real reversal semantics; its unconstrained before/after diff is not an approved write API. No service or mobile implementation should treat the draft as approved before it merges. AI PR #38 also requires review because the fallback is shared with safety middleware. In parallel, the business decision remains whether real athletes will pay for the concierge pilot in `strem-docs#16`.

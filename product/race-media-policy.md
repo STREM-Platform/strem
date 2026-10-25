@@ -25,6 +25,33 @@ This policy defines product requirements, not legal advice. Any ambiguous licens
 
 ## Acquisition Hierarchy
 
+### From a race website to a visual Race Mission
+
+The founder-requested workflow (2026-10-11, `strem-docs#24`) begins with a canonical
+organizer URL and the exact edition/year and distance. A source link is not an
+import permission or an official-status check. In the first slice, an authorized
+curator reviews supplied sources/assets; arbitrary URL fetching and automatic
+OpenGraph-image publication are not approved.
+
+Keep three independent tracks:
+
+- **Facts:** edition-specific values, source reference, checked date, conflicts and
+  athlete confirmation. Never silently replace athlete-entered facts.
+- **Photography:** licensed originals and display variants, verified rights,
+  accurate event association, credit, expiry and takedown. Organizer permission
+  must cover the photographer's rights where relevant.
+- **Course:** authorized GPX and its versioned geometry; draw it on a separately
+  approved basemap. A screenshot of the website's map is not a substitute.
+
+The source review must catch wrong-year photographs, a different race distance,
+superseded GPX and unsupported official claims. Mission and Race Lab should show
+where information came from and retain useful geometry/text when media is absent.
+Public sharing, arbitrary crawling and importing another platform's embedded map
+remain outside this slice. The proposed metadata/storage owners and deletion
+behavior in docs #24 require review before implementation.
+
+### Preferred sources
+
 Use the highest trustworthy source available:
 
 1. **Organizer or official photographer agreement.** Written permission or license identifies the event, assets, commercial product use, territory, period, required credit, and whether `official` presentation is allowed.
