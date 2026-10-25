@@ -1,8 +1,8 @@
 """Connected-source domain logic (A3): connect, disconnect, registry, sync.
 
 Sync is idempotent: runs dedupe by the provider's activity id, recovery by
-(user, source, day). Each sync refreshes the access token when expired, updates
-``last_synced_at``, and publishes ``wearable.synced`` so the agent (B3) can react.
+(user, source, day). Each sync refreshes the access token when expired and
+updates ``last_synced_at``; the race team reads the result through the API.
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crypto import TokenCipher
 from app.errors import AppError
-from app.events import EventPublisher
 from app.integrations.providers import (
     PROVIDER_CATALOG,
     NormalizedRecovery,
@@ -24,8 +23,6 @@ from app.integrations.providers import (
     TokenSet,
 )
 from app.models import ConnectedSource, RecoverySample, TrainingSession
-
-WEARABLE_SYNCED = "wearable.synced"
 
 
 def _require_provider(registry: dict[str, Provider], provider: str) -> Provider:
@@ -37,9 +34,7 @@ def _require_provider(registry: dict[str, Provider], provider: str) -> Provider:
 
 def _store_tokens(row: ConnectedSource, tokens: TokenSet, cipher: TokenCipher) -> None:
     row.access_token_enc = cipher.encrypt(tokens.access_token)
-    row.refresh_token_enc = (
-        cipher.encrypt(tokens.refresh_token) if tokens.refresh_token else None
-    )
+    row.refresh_token_enc = cipher.encrypt(tokens.refresh_token) if tokens.refresh_token else None
     row.scope = tokens.scope
     row.expires_at = tokens.expires_at
 
@@ -68,9 +63,7 @@ async def connect(
     return row
 
 
-async def disconnect(
-    session: AsyncSession, *, user_id: uuid.UUID, provider: str
-) -> bool:
+async def disconnect(session: AsyncSession, *, user_id: uuid.UUID, provider: str) -> bool:
     """Remove a connection and its tokens. Honours A7: the source then vanishes
     from every recommendation. Returns whether a connection existed."""
     row = await session.get(ConnectedSource, (user_id, provider))
@@ -96,13 +89,9 @@ def _humanize_last(ts: datetime | None) -> str:
     return f"{hours // 24}d ago"
 
 
-async def list_sources(
-    session: AsyncSession, *, user_id: uuid.UUID
-) -> list[dict[str, object]]:
+async def list_sources(session: AsyncSession, *, user_id: uuid.UUID) -> list[dict[str, object]]:
     """The connection registry: every provider with its real connection state."""
-    rows = await session.scalars(
-        select(ConnectedSource).where(ConnectedSource.user_id == user_id)
-    )
+    rows = await session.scalars(select(ConnectedSource).where(ConnectedSource.user_id == user_id))
     connected = {row.provider: row for row in rows}
     sources: list[dict[str, object]] = []
     for provider_id, meta in PROVIDER_CATALOG.items():
@@ -217,7 +206,6 @@ async def _upsert_recovery(
 
 async def sync(
     session: AsyncSession,
-    publisher: EventPublisher,
     registry: dict[str, Provider],
     cipher: TokenCipher,
     *,
@@ -242,17 +230,6 @@ async def sync(
     row.last_synced_at = datetime.now(UTC)
     await session.flush()
 
-    await publisher.publish(
-        WEARABLE_SYNCED,
-        {
-            "version": 1,
-            "user_id": str(user_id),
-            "provider": provider,
-            "synced_sessions": new_sessions,
-            "synced_recovery": new_recovery,
-            "synced_at": row.last_synced_at.isoformat(),
-        },
-    )
     return {"synced_sessions": new_sessions, "synced_recovery": new_recovery}
 
 

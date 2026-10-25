@@ -8,17 +8,14 @@ import jwt
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.baseline import load_pr_baseline
 from app.config import Settings, get_settings
 from app.db import get_session
 from app.errors import AppError
-from app.events import EventPublisher, get_publisher
 from app.integrations.providers import Provider, get_provider_registry
 from app.security import decode_access_token
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
 ProviderRegistryDep = Annotated[dict[str, Provider], Depends(get_provider_registry)]
 
 
@@ -59,11 +56,3 @@ def get_bearer_token(request: Request) -> str:
 
 
 BearerTokenDep = Annotated[str, Depends(get_bearer_token)]
-
-
-async def get_pr_baseline(token: BearerTokenDep, settings: SettingsDep) -> dict[str, float]:
-    """The seeded PR e1RM floor for the current user (athlete-baseline PRs, #61)."""
-    return await load_pr_baseline(settings.user_service_base_url, token)
-
-
-PrBaselineDep = Annotated[dict[str, float], Depends(get_pr_baseline)]

@@ -1,8 +1,9 @@
 """strem-training-service — application entrypoint.
 
-Implements strem-shared-contracts/contracts/training/openapi.yml: strength,
-running, and mobility session logging, publishing `training.session_logged` on
-each log. `GET /health` stays unversioned for probes.
+Implements strem-shared-contracts/contracts/training/openapi.yml: logged and
+imported training sessions, connected sources (Strava, Whoop), private mission
+courses, Race OS training plans, progress and daily check-ins (strem-docs#26).
+`GET /health` stays unversioned for probes.
 """
 
 from collections.abc import AsyncIterator
@@ -13,16 +14,13 @@ from fastapi import FastAPI
 from app.config import get_settings
 from app.db import configure
 from app.errors import register_error_handlers
-from app.events import configure_publisher
 from app.observability import configure_logging, install_request_logging
 from app.routers import courses, integrations, plans, training
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    settings = get_settings()
-    configure(settings.database_url)
-    configure_publisher(settings.message_broker_url)
+    configure(get_settings().database_url)
     yield
 
 
@@ -31,7 +29,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="strem-training-service",
         version="1.0.0",
-        description="Strength, running, and mobility session logging for STREM.",
+        description="Training evidence, connected sources, courses and Race OS plans for STREM.",
         lifespan=lifespan,
     )
     register_error_handlers(application)

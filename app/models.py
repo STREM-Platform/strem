@@ -3,6 +3,10 @@
 `user_id` is the auth `user_id` from the access token. `session_type` matches
 the contract / event enum. `distance_km` is only meaningful for running
 sessions. This service owns these tables and no XP state.
+
+`workout_sets` and `personal_records` belong to the strength-logging feature
+retired in strem-docs#28. No code reads or writes them; their models stay so
+Alembic metadata keeps matching the existing schema.
 """
 
 import uuid

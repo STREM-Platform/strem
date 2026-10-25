@@ -14,7 +14,6 @@ from app.crypto import get_token_cipher
 from app.deps import (
     CurrentUserDep,
     ProviderRegistryDep,
-    PublisherDep,
     SessionDep,
     SettingsDep,
 )
@@ -66,9 +65,7 @@ async def connect_source(
 
 
 @router.delete("/integrations/{provider}", status_code=status.HTTP_204_NO_CONTENT)
-async def disconnect_source(
-    provider: str, current: CurrentUserDep, session: SessionDep
-) -> None:
+async def disconnect_source(provider: str, current: CurrentUserDep, session: SessionDep) -> None:
     await service.disconnect(session, user_id=current.user_id, provider=provider)
     await session.commit()
 
@@ -80,11 +77,10 @@ async def sync_source(
     session: SessionDep,
     settings: SettingsDep,
     registry: ProviderRegistryDep,
-    publisher: PublisherDep,
 ) -> SyncResponse:
     cipher = get_token_cipher(settings)
     counts = await service.sync(
-        session, publisher, registry, cipher, user_id=current.user_id, provider=provider
+        session, registry, cipher, user_id=current.user_id, provider=provider
     )
     await session.commit()
     return SyncResponse(**counts)
