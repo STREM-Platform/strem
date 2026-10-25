@@ -57,7 +57,12 @@ def test_text_parser_reads_weeks_days_types_and_units() -> None:
         None,
     ) in kinds
     assert (1, 5, "long", "running", 90, 14.0) in kinds
-    assert any(s.week == 2 and s.elevation == 600 and s.distance == 18.0 for s in raw.sessions)
+    # "2h 18 km" is two hours and 18 km, and the title drops what the row already shows.
+    assert any(
+        (s.week, s.title, s.duration, s.distance, s.elevation) == (2, "Long trail", 120, 18.0, 600)
+        for s in raw.sessions
+    )
+    assert pi.parse_text("Sun: hike 600 m+ 3h").sessions[0].duration == 180
     assert raw.week_labels[1] == ("base", None)
     assert raw.unparsed == ["remember to buy gels"]
 

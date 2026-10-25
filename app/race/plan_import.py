@@ -157,8 +157,13 @@ _DMY_RE = re.compile(r"\b(\d{1,2})[./](\d{1,2})[./](\d{2,4})\b")
 _DAY_RE = re.compile(
     r"^\s*(" + "|".join(sorted(_DAY_NAMES, key=len, reverse=True)) + r")\b\.?[\s:,\-–]*", re.I
 )
-_HM_RE = re.compile(r"\b(\d{1,2})\s*h(?:ours?|rs?)?\s*(\d{1,2})?\s*(?:m(?:in)?s?)?\b", re.I)
-_MIN_RE = re.compile(r"\b(\d{1,3})\s*(?:min|mins|minutes|m\b|')", re.I)
+# "1h30", "2h 15min" — but never the distance in "2h 18 km".
+_HM_RE = re.compile(
+    r"\b(\d{1,2})\s*h(?:ours?|rs?)?"
+    r"(?:\s*(\d{1,2})(?!\d)(?!\s*(?:km|k|mi|miles?)\b|\s*m\s*\+)(?:\s*(?:min|mins|m)\b|')?)?(?!\w)",
+    re.I,
+)
+_MIN_RE = re.compile(r"\b(\d{1,3})\s*(?:min|mins|minutes|m\b(?!\s*(?:\+|d\+|vert|climb))|')", re.I)
 _CLOCK_RE = re.compile(r"\b(\d{1,2}):(\d{2})(?::\d{2})?\b")
 _KM_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:km|k)\b", re.I)
 _MI_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:mi|mile|miles)\b", re.I)
@@ -276,6 +281,14 @@ def _date(text: str) -> date | None:
     return None
 
 
+def _title(text: str) -> str:
+    """The session's name without the numbers the row already shows ("tempo 55 min" → "Tempo")."""
+    for pattern in (_ELEV_RE, _HM_RE, _CLOCK_RE, _KM_RE, _MI_RE, _MIN_RE):
+        text = pattern.sub(" ", text)
+    text = re.sub(r"\s{2,}", " ", text).strip(" 	-–•*|,;:+")
+    return (text[:1].upper() + text[1:])[:120]
+
+
 def _session_from(
     text: str, plan: RawPlan, *, week: int | None, weekday: int | None, on: date | None
 ) -> RawSession | None:
@@ -289,9 +302,10 @@ def _session_from(
         return None
     if kind == "long" and duration is not None and duration < 60 and distance is None:
         kind = "easy"
-    title = re.sub(r"\s{2,}", " ", cleaned)[:120]
+    title = _title(cleaned) or kind.replace("_", " ").capitalize()
     return RawSession(
         title=title,
+        details=cleaned if title.lower() != cleaned.lower() else "",
         sport=sport,
         kind=kind,
         intensity=intensity,
