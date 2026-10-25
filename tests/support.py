@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import jwt
+from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -58,6 +59,7 @@ class Harness:
 
     client: httpx.AsyncClient
     sessionmaker: async_sessionmaker[AsyncSession]
+    app: FastAPI
 
 
 async def _make_engine() -> AsyncEngine:
@@ -87,7 +89,7 @@ async def user_app() -> AsyncIterator[Harness]:
     transport = httpx.ASGITransport(app=app)
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            yield Harness(client=client, sessionmaker=sessionmaker)
+            yield Harness(client=client, sessionmaker=sessionmaker, app=app)
     finally:
         await engine.dispose()
 
