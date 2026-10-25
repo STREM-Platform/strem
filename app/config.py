@@ -18,8 +18,6 @@ class Settings(BaseSettings):
     auth_base_url: str = "http://localhost:8001/v1"
     user_base_url: str = "http://localhost:8002/v1"
     training_base_url: str = "http://localhost:8003/v1"
-    nutrition_base_url: str = "http://localhost:8004/v1"
-    community_base_url: str = "http://localhost:8005/v1"
     ai_base_url: str = "http://localhost:8006/v1"
 
     # Per-request upstream timeout (seconds). Generous because AI work is slow:
@@ -70,10 +68,6 @@ def upstream_for(settings: Settings, first_segment: str) -> str | None:
         "race-missions": settings.user_base_url,  # Athlete-owned mission foundation (#24).
         "training": settings.training_base_url,
         "integrations": settings.training_base_url,  # A3 — lives in training-service
-        "nutrition": settings.nutrition_base_url,
-        "tribes": settings.community_base_url,
-        "duels": settings.community_base_url,  # 1v1 duels (#64) live in community-service
-        "matches": settings.community_base_url,  # tribe-vs-tribe matches (#65) in community
         "ai": settings.ai_base_url,
     }
     return routes.get(first_segment)

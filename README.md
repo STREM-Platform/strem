@@ -6,7 +6,8 @@ database, and no business logic** (see
 `strem-docs/architecture/adr/0006-authorize-strem-api-gateway.md`).
 
 `strem-mobile` targets a single configurable base URL (this gateway) instead of
-per-service ports.
+per-service ports. Nutrition and community routes were retired with the pre-pivot
+product (strem-docs#28); those prefixes now return `404`.
 
 ## Routing
 
@@ -14,9 +15,8 @@ per-service ports.
 |-----------------------|------------------|
 | `/v1/auth/*` | strem-auth-service |
 | `/v1/users/*` | strem-user-service |
-| `/v1/training/*` | strem-training-service |
-| `/v1/nutrition/*` | strem-nutrition-service |
-| `/v1/tribes/*` | strem-community-service |
+| `/v1/race-missions/*` | strem-user-service |
+| `/v1/training/*`, `/v1/integrations/*` | strem-training-service |
 | `/v1/ai/*` | strem-ai-orchestrator |
 
 The gateway forwards the method, path, query, body, and `Authorization` header
