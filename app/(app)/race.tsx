@@ -5,10 +5,11 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { CoursePanel } from "@/components/lab/course";
 import { LAYER_META, LayerView, layerProgress } from "@/components/lab/layer-view";
 import { BuildPanel } from "@/components/mission/build-panel";
+import { RaceSwitcher } from "@/components/mission/race-switcher";
 import { ConditionsCard } from "@/components/mission/sections";
 import { Meter } from "@/components/ui/charts";
 import { Icon } from "@/components/ui/icon";
-import { Body, Button, EmptyState, ErrorBanner, OriginBadge, Overline, Page, Row, Segmented, Skeleton, Title } from "@/components/ui/kit";
+import { Body, Button, EmptyState, ErrorBanner, OriginBadge, Page, Row, Segmented, Skeleton, Title } from "@/components/ui/kit";
 import { C, LAYER_COLOR, ui } from "@/constants/theme";
 import type { LayerKind } from "@/lib/api/race";
 import { todayIn } from "@/lib/race/format";
@@ -54,7 +55,7 @@ export default function RaceLab() {
   return (
     <Page>
       <View style={{ gap: 6 }}>
-        <Overline>Race Lab · {mission.event.name}</Overline>
+        <RaceSwitcher />
         <Title size={38}>Execute race day</Title>
       </View>
       <Segmented scroll options={TABS} value={tab} onChange={setTab} />

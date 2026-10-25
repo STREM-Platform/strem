@@ -39,7 +39,8 @@ export default function MissionsScreen() {
             focused={m.id === race.mission?.id}
             onPress={() => {
               race.setFocus(m.id);
-              router.replace("/(app)/home");
+              if (router.canGoBack()) router.back();
+              else router.replace("/(app)/home");
             }}
             onEdit={() => router.push(`/(app)/mission-setup?id=${m.id}`)}
           />
