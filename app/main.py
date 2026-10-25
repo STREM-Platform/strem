@@ -23,6 +23,7 @@ from app.routers import (
     legal,
     onboarding,
     profile,
+    race_missions,
     xp,
 )
 
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     application.include_router(legal.router)
     application.include_router(athlete.router)
     application.include_router(biomarker.router)
+    application.include_router(race_missions.router)
 
     @application.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:

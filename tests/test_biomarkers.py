@@ -10,6 +10,8 @@ import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 
+import httpx
+
 from app.legal import DocumentType, required_version
 from tests.support import Harness, auth_header, user_app
 
@@ -45,7 +47,7 @@ def _reading(marker: str, value: float, *, days_ago: int, unit: str = "ng/mL") -
     return {"marker_type": marker, "value": value, "unit": unit, "taken_at": taken.isoformat()}
 
 
-async def _post(harness: Harness, user: uuid.UUID, reading: dict[str, object]):
+async def _post(harness: Harness, user: uuid.UUID, reading: dict[str, object]) -> httpx.Response:
     return await harness.client.post(
         "/v1/users/me/biomarkers", headers=auth_header(user), json=reading
     )

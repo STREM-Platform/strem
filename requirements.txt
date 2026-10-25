@@ -8,3 +8,4 @@ asyncpg>=0.29
 alembic>=1.13
 pyjwt>=2.8
 redis>=5.0
+tzdata>=2025.1

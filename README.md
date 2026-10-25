@@ -1,6 +1,6 @@
 # strem-user-service
 
-User profiles, onboarding state, and the XP / rank / medal progression module
+Private Race Missions, user profiles, onboarding state, and retained legacy progression
 for STREM. This service is the source of truth for personalization data that is
 not authentication (see `strem-docs/architecture/service-map.md`).
 
@@ -9,6 +9,71 @@ implement `strem-shared-contracts/contracts/user/openapi.yml`. Progression
 events are published to Redis Streams per `event-driven-strategy.md`.
 
 ## Endpoints
+
+### Race Mission foundation (#24)
+
+Founder approved on 2026-10-08: authenticated private create/read/edit/archive,
+one active mission per account, additive storage, and mission-only export/delete.
+This does not authorize AI advice, activity integrations or migration of legacy data.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/v1/race-missions` | Create; Idempotency-Key required. |
+| GET | `/v1/race-missions/active` | Load current account's active mission. |
+| GET/PATCH | `/v1/race-missions/{id}` | Owned read/edit; edits require If-Match version and correction reason. |
+| POST | `/v1/race-missions/{id}/archive` | Archive, preserving history; If-Match and Idempotency-Key required. |
+| GET/DELETE | `/v1/race-missions/data` | Export all owned missions/revisions, or permanently remove mission data with exact confirmation. |
+
+Contract: `strem-shared-contracts/contracts/user/openapi.yml`. Missing optional
+course facts stay null; source is always athlete_entry. No readiness, official
+verification or plan is inferred. Archive is not deletion. Mission deletion removes
+revisions and idempotency receipts too, but does not delete account/activity data.
+
+Migration `0008_race_missions` adds three tables without changing existing rows.
+Back up the target DB, verify DATABASE_URL, then run `alembic upgrade head` before
+starting the new API. Deploy user API and gateway before the mobile consumer.
+On rollback keep the additive tables and revert application code; do not downgrade
+a populated database unless separately approved and backed up (downgrade deletes
+the new tables). Tests never migrate your configured development/production DB.
+
+Tests cover isolated SQLite migration/restart, concurrent creation/editing,
+JWT owner isolation, replay, history and deletion. Opt-in PostgreSQL 16 tests also
+verify the migration and the same API lifecycle. A separate real-HTTP test starts
+the gateway/user API, stops/restarts the user process, and verifies persisted
+state, headers, ownership, outage errors and export/delete through the gateway.
+These use synthetic test JWTs, not auth-service registration or mobile UI.
+
+Mission writes and export acquire a namespaced, per-owner PostgreSQL transaction
+advisory lock. This prevents a concurrent creation from leaving an orphaned
+receipt during deletion and keeps exports consistent across their two queries.
+The partial unique index and optimistic versions remain enforced. Deletion is
+not an account ban: a create ordered after deletion may save a new mission.
+
+### Optional release tests
+
+Use a new, disposable PostgreSQL container with no project-data mounts. Bind it
+to loopback only. The database name must be `strem_mission_test`. Set
+`STREM_TEST_POSTGRES_URL` to its `postgresql+asyncpg://...` URL (never your normal
+`DATABASE_URL`). The migration test refuses non-local targets or existing tables;
+recreate the disposable database before rerunning it.
+
+```text
+python -m pytest tests/test_race_mission_postgres.py
+```
+
+Then set `STREM_TEST_GATEWAY_REPO` to the local `strem-api-gateway` checkout and,
+with gateway dependencies installed in the test Python environment, run:
+
+```text
+python -m pytest tests/test_race_mission_gateway_smoke.py
+```
+
+Both are skipped in ordinary CI unless explicitly configured. They leave only
+synthetic rows in the disposable database; the HTTP test always stops its child
+API processes. Remove the dedicated test container after verification. Browser,
+device, registration and deployed-environment acceptance are separate checks.
+
+### Existing profile and legacy progression APIs
 
 All routes are served under the `/v1` base path (the health probe is unversioned).
 Every `/v1` route is authenticated with the access token issued by
