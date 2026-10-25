@@ -107,6 +107,16 @@ def create_app() -> FastAPI:
         settings.rate_limit_max, settings.rate_limit_window_seconds
     )
     application.state.max_request_bytes = settings.max_request_bytes
+    application.state.max_course_request_bytes = settings.max_course_request_bytes
+
+    def request_limit(request: Request) -> int:
+        if (
+            request.method == "PUT"
+            and request.url.path.startswith("/v1/training/missions/")
+            and request.url.path.endswith("/course")
+        ):
+            return int(request.app.state.max_course_request_bytes)
+        return int(request.app.state.max_request_bytes)
 
     @application.middleware("http")
     async def guard(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -117,7 +127,7 @@ def create_app() -> FastAPI:
         content_length = request.headers.get("content-length")
         if content_length is not None:
             try:
-                if int(content_length) > request.app.state.max_request_bytes:
+                if int(content_length) > request_limit(request):
                     return _error(413, "payload_too_large", "Request body is too large.", request)
             except ValueError:
                 pass
@@ -159,6 +169,11 @@ def create_app() -> FastAPI:
         # across services.
         forwarded_headers = dict(request.headers)
         forwarded_headers["x-request-id"] = request_id_var.get()
+        body = bytearray()
+        async for chunk in request.stream():
+            if len(body) + len(chunk) > request_limit(request):
+                return _error(413, "payload_too_large", "Request body is too large.", request)
+            body.extend(chunk)
         try:
             upstream_response = await forward(
                 client,
@@ -167,7 +182,7 @@ def create_app() -> FastAPI:
                 downstream_path=path,
                 query_string=request.url.query,
                 headers=forwarded_headers,
-                body=await request.body(),
+                body=bytes(body),
             )
         except httpx.RequestError as exc:
             raise AppError(
