@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import jwt
 from cryptography.fernet import Fernet
+from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -71,6 +72,8 @@ class Harness:
     client: httpx.AsyncClient
     publisher: InMemoryPublisher
     providers: dict[str, Provider]
+    app: FastAPI
+    sessionmaker: async_sessionmaker[AsyncSession]
 
 
 @asynccontextmanager
@@ -106,6 +109,12 @@ async def training_app(
     transport = httpx.ASGITransport(app=app)
     try:
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            yield Harness(client=client, publisher=publisher, providers=registry)
+            yield Harness(
+                client=client,
+                publisher=publisher,
+                providers=registry,
+                app=app,
+                sessionmaker=sessionmaker,
+            )
     finally:
         await engine.dispose()
