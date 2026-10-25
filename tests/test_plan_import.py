@@ -289,3 +289,58 @@ def test_without_ai_text_imports_and_screenshots_explain_why() -> None:
             assert nothing.status_code == 422
 
     asyncio.run(scenario())
+
+
+GRID_PLAN = (
+    "Day\tMorning\tAfternoon / evening\n"
+    "Monday\tFull Rest\tWalk / Mobility\n"
+    "Tuesday\tSwim A \tStrength A \n"
+    "Wednesday\tTHE ERG \tZ2 Bike / Run / Stepper \n"
+    "Thursday\tSwim B\tStrength B\n"
+    "Friday\tLong Aerobic Run/ Stepper / Bike\t-\n"
+    "Saturday\tZ2 Bike / Run / Stepper \tSwim C \n"
+    "Sunday\t-\tTHE HY + Cooldown\n"
+)
+
+
+def test_weekly_grid_with_two_sessions_a_day() -> None:
+    raw = pi.parse_text(GRID_PLAN)
+    got = [(s.weekday, s.title, s.sport, s.kind) for s in raw.sessions]
+    assert len(got) == 12 and raw.unparsed == []  # every cell, header skipped, "-" is nothing
+    assert got[:2] == [(0, "Full Rest", "rest", "rest"), (0, "Walk / Mobility", "hiking", "easy")]
+    assert (2, "THE ERG", "rowing", "cross") in got
+    assert (
+        4,
+        "Long Aerobic Run/ Stepper / Bike",
+        "running",
+        "long",
+    ) in got  # first option names it
+    assert (6, "THE HY + Cooldown", "hybrid", "cross") in got
+    content, _ = pi.normalize(
+        raw,
+        today=date(2026, 10, 25),
+        race_date=date(2027, 4, 17),
+        start_date=date(2026, 11, 2),
+        timezone="UTC",
+        sport="hybrid",
+        title="x",
+    )
+    tuesday = [s["title"] for s in content["weeks"][0]["sessions"] if s["date"] == "2026-11-03"]
+    assert tuesday == ["Swim A", "Strength A"]  # morning before evening
+
+
+def test_grid_with_days_across_the_top_reads_one_week_per_row() -> None:
+    raw = pi.parse_text(
+        "Week\tMon\tTue\tWed\tThu\tFri\tSat\tSun\n"
+        "Week 1 base\tRest\tEasy 40 min\t-\tTempo 45 min\tRest\tLong run 1h30\t-\n"
+        "Week 2\tRest\tEasy 45 min\tHills 50 min\t-\t-\tLong run 1h45\t-\n"
+    )
+    assert [(s.week, s.weekday, s.kind) for s in raw.sessions if s.kind != "rest"] == [
+        (1, 1, "easy"),
+        (1, 3, "tempo"),
+        (1, 5, "long"),
+        (2, 1, "easy"),
+        (2, 2, "hills"),
+        (2, 5, "long"),
+    ]
+    assert raw.week_labels[1] == ("base", None)
