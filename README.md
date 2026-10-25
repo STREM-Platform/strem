@@ -18,7 +18,7 @@ strem-infra/
 │   └── postgres/init/              # per-service database creation on first boot
 ├── ci-templates/                   # canonical CI workflows for service repos
 ├── scripts/migrate-stack.py        # run Alembic migrations in service containers
-├── scripts/seed-demo.py            # seed a real demo account through the gateway
+├── scripts/seed-demo.py            # seed the Race OS demo athlete through the gateway
 ├── scripts/smoke-health.py         # cross-platform health check for every service
 ├── scripts/smoke-health.sh         # verify every service GET /health after up
 ├── .github/workflows/validate.yml  # validates compose config on PR
@@ -56,7 +56,7 @@ context is `../../strem-<service>` relative to the compose file):
 ```bash
 cp .env.example .env          # safe local defaults; adjust if needed
 
-docker compose -f docker/docker-compose.yml up -d     # start
+docker compose --env-file .env -f docker/docker-compose.yml up -d     # start
 docker compose -f docker/docker-compose.yml ps        # status / health
 docker compose -f docker/docker-compose.yml down       # stop (keep data)
 docker compose -f docker/docker-compose.yml down -v    # stop + wipe data (reset)
@@ -90,11 +90,21 @@ From `strem-infra`:
 
 ```bash
 cp .env.example .env
-<<<<<<< HEAD
-docker compose -f docker/docker-compose.yml up -d --build   # builds 7 images on first run (a few minutes)
+docker compose --env-file .env -f docker/docker-compose.yml up -d --build   # builds 7 images on first run (a few minutes)
 python scripts/migrate-stack.py                              # apply Alembic migrations in each service
 python scripts/smoke-health.py                               # every service reports healthy
-python scripts/seed-demo.py                                  # seed demo@strem.app end-to-end through the gateway
+python scripts/seed-demo.py                                  # seed the Race OS demo athlete through the gateway
+```
+
+> Pass `--env-file .env` when the compose file lives in `docker/`: Compose looks
+> for `.env` next to the compose file, so without it keys such as
+> `ANTHROPIC_API_KEY` silently stay empty.
+
+To see the course map, elevation profile and climb-by-climb pacing, attach a
+GPX/ZIP you are allowed to use (course files are never committed):
+
+```bash
+python scripts/seed-demo.py --course path/to/course.gpx
 ```
 
 `docker compose ... ps` should show every container `healthy` before you seed.
@@ -116,29 +126,36 @@ it, set `EXPO_PUBLIC_API_URL=http://localhost:8000/v1` before starting Expo.
 Use the seeded account:
 
 ```text
-Email:    demo@strem.app
+Email:    race-demo@strem.app
 Password: NeverSettle123!
 ```
 
+The seed creates a synthetic athlete preparing alone for a first 50 km trail race
+abroad: a profile (weight, an old knee issue, lactose intolerance), three past
+races (a half marathon, a DNF in the heat, a strong 30K), eight weeks of logged
+training, today's check-in and one Race Mission with an openly licensed cover
+photo. It then asks the race team to build every layer.
+
 Expected demo path:
 
-1. Sign in with the seeded account.
-2. Land directly in the app because onboarding was completed by the seed script.
-3. See the dashboard with identity statement, current rank / XP, and active AI missions.
-4. Complete the active mission and watch XP increase after the workers process the event.
-5. Open Profile to see XP progress and medals as they are earned.
-6. Open Log or Nutrition and add a real entry through the API.
-7. Open Tribe to see `Forge Circle`, submit a check-in, and watch Tribe Power update after the workers process events.
-8. Open Coach to read the seeded weekly recap; a fresh account can generate one with the in-screen button.
+1. Sign in with the seeded account and land on the Mission screen: the race
+   hero, today's session, the race-team brief and the tracker with the eight
+   weeks of training before the plan.
+2. Open Plan to see the periodized weeks to race day and why the plan looks the
+   way it does.
+3. Open Race Lab for fuel, gear, logistics and strategy — and, with `--course`,
+   the course map, climbs and segment-by-segment pacing.
+4. Open Team to ask the AI race team about your race (needs an Anthropic key
+   with credit; without one every layer is built by the deterministic race
+   engine and says so).
+5. Open You for race history, connected sources, check-ins and data export.
 
 Known local-demo limits:
 
-- The seeded XP total (≈425) and ranks are real, but the demo represents a single
-  user — Tribe Power equals that user's XP because `Forge Circle` has one member.
-- Event processing is asynchronous. XP and Tribe Power usually update within a
-  few seconds; refresh the mobile screen if needed.
-- `seed-demo.py` is idempotent for account creation and tribe lookup, but it
-  intentionally adds fresh training/check-in proof on each run.
+- `seed-demo.py` is idempotent: it reuses the account, the mission and the seeded
+  history, and rebuilds layers only when they are missing (`--rebuild` forces it).
+- Without `ANTHROPIC_API_KEY` (or with an account out of credit) the brief, chat
+  and adaptations fall back to the race engine and show the reason in the app.
 
 ## Ports
 
