@@ -76,3 +76,21 @@ def test_durable_retryable_cleanup_blocks_writes_and_exports_until_complete() ->
             assert (await h.client.get(next_path, headers=auth)).json()["generation"] == 1
 
     asyncio.run(scenario())
+
+
+def test_parallel_first_course_access_creates_one_state_row() -> None:
+    """The race team loads several layers at once; each asks for course access."""
+
+    async def scenario() -> None:
+        async with user_app() as h:
+            h.app.dependency_overrides[get_settings] = lambda: TEST_SETTINGS.model_copy(
+                update={"course_storage_base_url": "http://training"}
+            )
+            auth = headers(uuid.uuid4())
+            created = await h.client.post("/v1/race-missions", headers=auth, json=PAYLOAD)
+            path = f"/v1/race-missions/{created.json()['id']}/course-access"
+            results = await asyncio.gather(*(h.client.get(path, headers=auth) for _ in range(5)))
+            assert [r.status_code for r in results] == [200] * 5, results[0].text
+            assert all(r.json() == {"generation": 0, "state": "active"} for r in results)
+
+    asyncio.run(scenario())
