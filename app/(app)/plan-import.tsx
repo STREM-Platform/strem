@@ -281,7 +281,7 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
         />
       ) : null}
       {notes.length ? <Notice icon="alert" tone="attention" title="Check before saving" body={notes.join("\n")} /> : null}
-      {draft.unparsed.length ? <Notice icon="info" title="Not imported" body={draft.unparsed.map((u) => `“${u}”`).join("\n")} /> : null}
+      {draft.unparsed.length ? <Notice icon="info" title="Unclear in your plan — check these" body={draft.unparsed.map((u) => `“${u}”`).join("\n")} /> : null}
       <Card pad={14} style={{ gap: 10 }}>
         <Row>
           <Icon name="calendar" size={18} color={C.textMuted} />
