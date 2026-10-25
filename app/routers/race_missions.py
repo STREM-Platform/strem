@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql, sqlite
 
 from app import race_history
 from app import race_missions as store
@@ -144,9 +145,19 @@ async def course_access(
         raise AppError(503, "courses_disabled", "Course storage is not configured on this server.")
     state = await session.get(CourseState, current.user_id)
     if state is None:
-        state = CourseState(user_id=current.user_id, generation=0, deletion_pending=False)
-        session.add(state)
+        # Parallel first requests (the race team loads layers at once) must not
+        # collide on the primary key: insert-if-absent, then read the one row.
+        postgres = session.get_bind().dialect.name == "postgresql"
+        insert = postgresql.insert if postgres else sqlite.insert
+        await session.execute(
+            insert(CourseState)
+            .values(user_id=current.user_id, generation=0, deletion_pending=False)
+            .on_conflict_do_nothing(index_elements=["user_id"])
+        )
         await session.commit()
+        state = await session.get(CourseState, current.user_id, populate_existing=True)
+        if state is None:
+            raise AppError(503, "course_service_unavailable", "Course data is unavailable. Retry.")
     response.headers["Cache-Control"] = "no-store"
     return {"generation": state.generation, "state": record.state}
 
