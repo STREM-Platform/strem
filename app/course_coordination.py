@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import jwt
-from sqlalchemy import Boolean, Integer, delete
+from sqlalchemy import Boolean, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
@@ -36,13 +36,21 @@ class CoursePeer:
         self.settings, self.token = settings, token
 
     async def export(self) -> list[dict[str, object]]:
+        return (await self.export_all())["courses"]
+
+    async def export_all(self) -> dict[str, list[dict[str, object]]]:
+        """Courses and training plans held by training-service for this athlete."""
         result = await self._call("GET", "/v1/training/courses/data", self.token)
         try:
-            value = result.json()["courses"]
-            if not isinstance(value, list) or not all(isinstance(row, dict) for row in value):
-                raise ValueError
-            return value
-        except (ValueError, KeyError, TypeError):
+            body = result.json()
+            exported: dict[str, list[dict[str, object]]] = {}
+            for key in ("courses", "plans"):
+                value = body.get(key, []) if key == "plans" else body[key]
+                if not isinstance(value, list) or not all(isinstance(row, dict) for row in value):
+                    raise ValueError
+                exported[key] = value
+            return exported
+        except (ValueError, KeyError, TypeError, AttributeError):
             raise AppError(
                 503, "course_service_unavailable", "Course export is unavailable. Retry."
             ) from None
@@ -105,7 +113,6 @@ async def delete_all(
         # A concurrent completion/new deletion must not erase newly created missions.
         await session.rollback()
         return
-    for model in (missions.MissionReceipt, missions.MissionRevisionRecord, missions.MissionRecord):
-        await session.execute(delete(model).where(model.user_id == user_id))
+    await missions.delete_mission_rows(session, user_id)
     state.deletion_pending = False
     await session.commit()  # Retain only owner UUID + generation fence, no course/mission content.

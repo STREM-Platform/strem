@@ -41,12 +41,23 @@ def test_additive_migration_restart_and_disposable_downgrade(tmp_path: Path) -> 
             record = await session.scalar(
                 select(MissionRecord).where(MissionRecord.id == mission_id)
             )
-            assert record is not None and record.snapshot["event"] == PAYLOAD["event"]
+            assert record is not None
+            stored: dict[str, object] = dict(record.snapshot["event"])  # type: ignore[call-overload]
+            # New optional Race OS fields are stored with their defaults.
+            assert {key: stored[key] for key in PAYLOAD["event"]} == PAYLOAD["event"]
+            assert stored["sport"] == "trail_running"
         await engine.dispose()
 
     asyncio.run(read_after_restart())
     # Disposable test database only. A populated real DB must NOT be downgraded.
-    migrate("-x", "allow_course_data_loss=true", "downgrade", "0007_biomarkers")
+    migrate(
+        "-x",
+        "allow_course_data_loss=true",
+        "-x",
+        "allow_race_os_data_loss=true",
+        "downgrade",
+        "0007_biomarkers",
+    )
 
     async def check_tables() -> None:
         engine = create_async_engine(db_url)
@@ -54,6 +65,8 @@ def test_additive_migration_restart_and_disposable_downgrade(tmp_path: Path) -> 
             tables = await conn.run_sync(lambda sync: inspect(sync).get_table_names())
             assert (
                 "race_missions" not in tables
+                and "mission_layers" not in tables
+                and "race_results" not in tables
                 and "user_profiles" in tables
                 and "biomarkers" in tables
             )

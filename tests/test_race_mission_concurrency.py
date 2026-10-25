@@ -54,9 +54,10 @@ def test_concurrent_creation_replay_and_edits(tmp_path: Path) -> None:
                 )
 
             owner = uuid.uuid4()
+            # Several active missions are allowed: distinct keys create distinct missions.
             different = await asyncio.gather(write("different_one"), write("different_two"))
-            assert sum(isinstance(result, RaceMission) for result in different) == 1
-            assert 409 in different
+            assert all(isinstance(result, RaceMission) for result in different)
+            assert len({result.id for result in different if isinstance(result, RaceMission)}) == 2
         finally:
             await engine.dispose()
 

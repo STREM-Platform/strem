@@ -21,8 +21,10 @@ from app.routers import (
     athlete,
     biomarker,
     legal,
+    mission_layers,
     onboarding,
     profile,
+    race_history,
     race_missions,
     xp,
 )
@@ -55,6 +57,8 @@ def create_app() -> FastAPI:
     application.include_router(athlete.router)
     application.include_router(biomarker.router)
     application.include_router(race_missions.router)
+    application.include_router(mission_layers.router)
+    application.include_router(race_history.router)
 
     @application.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:
