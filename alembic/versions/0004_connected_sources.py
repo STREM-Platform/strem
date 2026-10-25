@@ -65,9 +65,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", "source", "date", name="uq_recovery_user_source_date"),
     )
-    op.create_index(
-        "ix_recovery_samples_user_id", "recovery_samples", ["user_id"], unique=False
-    )
+    op.create_index("ix_recovery_samples_user_id", "recovery_samples", ["user_id"], unique=False)
 
 
 def downgrade() -> None:

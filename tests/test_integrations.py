@@ -226,3 +226,55 @@ def test_integrations_require_auth() -> None:
         assert (await h.client.get("/v1/integrations/recovery")).status_code == 401
 
     run(scenario)
+
+
+# ── provider failures are explained, not 500s (issue #21) ───────────────────
+
+_REAL_ASYNC_CLIENT = __import__("httpx").AsyncClient
+
+
+def _patch_http(monkeypatch, handler) -> None:  # type: ignore[no-untyped-def]
+    import httpx
+
+    from app.integrations import providers
+
+    def client(**kwargs):  # type: ignore[no-untyped-def]
+        return _REAL_ASYNC_CLIENT(transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", client)
+
+
+def test_provider_failures_become_clear_errors(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import httpx
+    import pytest
+
+    from app.integrations.providers import _get_json, _post_form
+
+    def unreachable(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("certificate verify failed", request=request)
+
+    cases = [
+        (unreachable, 503, "provider_unreachable", "Strava could not be reached"),
+        (
+            lambda r: httpx.Response(400, json={"message": "Bad Request"}),
+            400,
+            "provider_rejected",
+            "Strava did not accept",
+        ),
+        (lambda r: httpx.Response(429), 503, "provider_rate_limited", "busy"),
+        (lambda r: httpx.Response(502), 503, "provider_unavailable", "had an error"),
+    ]
+    for handler, status, code, text in cases:
+        _patch_http(monkeypatch, handler)
+        with pytest.raises(AppError) as caught:
+            asyncio.run(_post_form("https://www.strava.com/oauth/token", {"code": "x"}))
+        assert (caught.value.status_code, caught.value.code) == (status, code)
+        assert text in caught.value.message
+
+    _patch_http(monkeypatch, unreachable)
+    with pytest.raises(AppError) as caught:
+        asyncio.run(_get_json("https://api.prod.whoop.com/developer/v1/recovery", {}, {}))
+    assert caught.value.code == "provider_unreachable" and "WHOOP" in caught.value.message
+
+    _patch_http(monkeypatch, lambda r: httpx.Response(200, json={"ok": True}))
+    assert asyncio.run(_post_form("https://www.strava.com/oauth/token", {})) == {"ok": True}
