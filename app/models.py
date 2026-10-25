@@ -6,9 +6,19 @@ sessions. This service owns these tables and no XP state.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    UniqueConstraint,
+    false,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -31,6 +41,15 @@ class TrainingSession(Base):
     source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
     # The provider's activity id, so re-syncs are idempotent (null for manual).
     external_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Race OS evidence fields (docs#26): what the source recorded, never inferred.
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    sport_detail: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    elapsed_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    avg_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_race: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
     logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -100,9 +119,7 @@ class ConnectedSource(Base):
     refresh_token_enc: Mapped[str | None] = mapped_column(String(512), nullable=True)
     scope: Mapped[str | None] = mapped_column(String(255), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_synced_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     connected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -129,5 +146,32 @@ class RecoverySample(Base):
     sleep_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     recovery_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class WellnessCheckin(Base):
+    """A quick daily check-in: how the athlete slept and feels (1-5 scales).
+
+    Subjective evidence the race team weighs next to recorded load and recovery.
+    One row per user per calendar day; a later check-in that day replaces it.
+    """
+
+    __tablename__ = "wellness_checkins"
+    __table_args__ = (UniqueConstraint("user_id", "day", name="uq_checkin_user_day"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    sleep_quality: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sleep_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    energy: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    soreness: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    stress: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    motivation: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    illness: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    pain_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

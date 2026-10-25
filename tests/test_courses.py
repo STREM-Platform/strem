@@ -59,7 +59,8 @@ def test_upload_reload_retry_replace_export_ownership_and_cleanup() -> None:
             other = auth_header(uuid.uuid4())
             assert (await h.client.get(path, headers=other)).status_code == 404
             assert (await h.client.get("/v1/training/courses/data", headers=other)).json() == {
-                "courses": []
+                "courses": [],
+                "plans": [],
             }
             changed = {**UPLOAD, "source_url": "https://example.org/course"}
             assert (await h.client.put(path, headers=headers, json=changed)).status_code == 412
@@ -74,7 +75,8 @@ def test_upload_reload_retry_replace_export_ownership_and_cleanup() -> None:
             assert (await h.client.delete(path, headers=remove_headers)).status_code == 204
             assert (await h.client.get(path, headers=headers)).status_code == 404
             assert (await h.client.get("/v1/training/courses/data", headers=headers)).json() == {
-                "courses": []
+                "courses": [],
+                "plans": [],
             }
             reattached = await h.client.put(path, headers=headers, json=UPLOAD)
             assert reattached.json()["version"] == 4
@@ -90,7 +92,8 @@ def test_upload_reload_retry_replace_export_ownership_and_cleanup() -> None:
             # Simulate an upload that obtained permission before the purge but finishes afterward.
             assert (await h.client.put(path, headers=headers, json=UPLOAD)).status_code == 409
             assert (await h.client.get("/v1/training/courses/data", headers=headers)).json() == {
-                "courses": []
+                "courses": [],
+                "plans": [],
             }
 
             async def newer() -> dict[str, object]:
@@ -162,7 +165,8 @@ def test_storage_quota_and_processor_overload_fail_without_saving(
                 limiter.release_on_behalf_of("one")
                 limiter.release_on_behalf_of("two")
             assert (await h.client.get("/v1/training/courses/data", headers=headers)).json() == {
-                "courses": []
+                "courses": [],
+                "plans": [],
             }
 
     asyncio.run(scenario())

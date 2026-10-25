@@ -141,4 +141,8 @@ async def purge(session: AsyncSession, user_id: uuid.UUID, generation: int) -> N
         return
     owner.generation = generation
     await session.execute(delete(CourseRecord).where(CourseRecord.user_id == user_id))
+    # Plans live behind the same generation fence (docs#26).
+    from app.plans import purge_plans
+
+    await purge_plans(session, user_id)
     await session.commit()

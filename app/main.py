@@ -15,7 +15,7 @@ from app.db import configure
 from app.errors import register_error_handlers
 from app.events import configure_publisher
 from app.observability import configure_logging, install_request_logging
-from app.routers import courses, integrations, training
+from app.routers import courses, integrations, plans, training
 
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ def create_app() -> FastAPI:
     application.include_router(training.router)
     application.include_router(integrations.router)
     application.include_router(courses.router)
+    application.include_router(plans.router)
 
     @application.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:
