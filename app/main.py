@@ -108,6 +108,7 @@ def create_app() -> FastAPI:
     )
     application.state.max_request_bytes = settings.max_request_bytes
     application.state.max_course_request_bytes = settings.max_course_request_bytes
+    application.state.max_plan_import_request_bytes = settings.max_plan_import_request_bytes
 
     def request_limit(request: Request) -> int:
         if (
@@ -116,6 +117,12 @@ def create_app() -> FastAPI:
             and request.url.path.endswith("/course")
         ):
             return int(request.app.state.max_course_request_bytes)
+        if (
+            request.method == "POST"
+            and request.url.path.startswith("/v1/ai/race/")
+            and request.url.path.endswith("/plan/import")
+        ):
+            return int(request.app.state.max_plan_import_request_bytes)
         return int(request.app.state.max_request_bytes)
 
     @application.middleware("http")

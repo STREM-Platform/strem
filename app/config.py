@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # Reject request bodies larger than this many bytes (defends the edge).
     max_request_bytes: int = 1_048_576
     max_course_request_bytes: int = 6 * 1024 * 1024
+    # Plan import carries screenshots/PDFs as base64 (strem-mobile#118).
+    max_plan_import_request_bytes: int = 12 * 1024 * 1024
 
     # Browser origins allowed to call the gateway (comma-separated). Needed so the
     # Expo web build can reach the API; native clients are unaffected by CORS.
