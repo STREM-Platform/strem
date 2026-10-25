@@ -15,7 +15,12 @@ const TABS: { label: string; icon: IconName; path: string; match: string }[] = [
   { label: "Plan", icon: "route", path: "/(app)/plan", match: "/plan" },
   { label: "Race lab", icon: "mountain", path: "/(app)/race", match: "/race" },
   { label: "AI", icon: "bot", path: "/(app)/coach", match: "/coach" },
-  { label: "Athlete", icon: "shield", path: "/(app)/profile", match: "/profile" },
+  {
+    label: "Athlete",
+    icon: "shield",
+    path: "/(app)/profile",
+    match: "/profile",
+  },
 ];
 
 export function BottomNav() {
@@ -24,7 +29,10 @@ export function BottomNav() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+    <View
+      style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) }]}
+      pointerEvents="box-none"
+    >
       <BlurView intensity={28} tint="dark" style={styles.bar}>
         {TABS.map((tab) => {
           const active = pathname === tab.match;
@@ -32,13 +40,30 @@ export function BottomNav() {
             <Pressable
               key={tab.path}
               accessibilityRole="tab"
-              accessibilityLabel={tab.label === "AI" ? "AI race decisions" : tab.label}
+              accessibilityLabel={
+                tab.label === "AI" ? "AI race decisions" : tab.label
+              }
               accessibilityState={{ selected: active }}
               onPress={() => router.replace(tab.path)}
-              style={({ pressed }) => [styles.tab, active && styles.tabActive, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.tab,
+                active && styles.tabActive,
+                pressed && styles.pressed,
+              ]}
             >
-              <Icon name={tab.icon} size={21} color={active ? Trail.lime : Trail.textDim} sw={active ? 2.4 : 2} />
-              <Text style={[styles.label, { color: active ? Trail.text : Trail.textDim }]} numberOfLines={1}>
+              <Icon
+                name={tab.icon}
+                size={21}
+                color={active ? Trail.lime : Trail.textMuted}
+                sw={active ? 2.4 : 2}
+              />
+              <Text
+                style={[
+                  styles.label,
+                  { color: active ? Trail.text : Trail.textMuted },
+                ]}
+                numberOfLines={1}
+              >
                 {tab.label}
               </Text>
             </Pressable>
@@ -70,7 +95,8 @@ const styles = StyleSheet.create({
     borderColor: Trail.lineStrong,
     overflow: "hidden",
     // BlurView is translucent; a fallback tint keeps it legible where blur is weak.
-    backgroundColor: Platform.OS === "android" ? "rgba(10,21,16,0.96)" : "rgba(10,21,16,0.78)",
+    backgroundColor:
+      Platform.OS === "android" ? "rgba(10,21,16,0.96)" : "rgba(10,21,16,0.78)",
     boxShadow: "0px 20px 48px rgba(0,0,0,0.62)",
   },
   tab: {

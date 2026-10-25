@@ -1,172 +1,214 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { BottomNav } from "@/components/bottom-nav";
-import { BrandLogo } from "@/components/brand-logo";
-import { CourseExplorer } from "@/components/trail/course-explorer";
-import { MissionHero, PrototypeLabel, TrailAtmosphere, trailStyles } from "@/components/trail/trail-ui";
-import { Icon } from "@/components/ui/icon";
-import { Trail, disp, mono, ui } from "@/constants/theme";
-import { TRAIL_MISSION_PREVIEW, daysUntilRace } from "@/lib/trail/mission-preview";
-import { syncConnectedSources } from "@/lib/sync-sources";
+import { useState } from "react";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import {
+  MissionButton,
+  MissionGate,
+  MissionShell,
+  missionStyles as s,
+} from "@/components/trail/mission-shell";
+import { TrailPanel } from "@/components/trail/trail-ui";
+import { Trail, disp, ui } from "@/constants/theme";
+import { raceMissions } from "@/lib/api/race-missions";
+import { ApiError } from "@/lib/api/client";
+import { useMission } from "@/lib/trail/mission-context";
+import { raceDays, requestKey } from "@/lib/trail/mission-form";
 
 export default function MissionScreen() {
+  const { mission, reload } = useMission();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { width, fontScale } = useWindowDimensions();
-  const wide = width >= 1080 && fontScale < 1.5;
-  const [showReason, setShowReason] = useState(false);
-  const [selectedEvidence, setSelectedEvidence] = useState<number | null>(null);
-  const mission = TRAIL_MISSION_PREVIEW;
-
-  useEffect(() => { void syncConnectedSources(); }, []);
-
+  const { width } = useWindowDimensions();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [archiveKey, setArchiveKey] = useState(requestKey);
+  const days = mission ? raceDays(mission) : 0;
+  const archive = async () => {
+    if (!mission || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await raceMissions.archive(mission, "Archived by athlete", archiveKey);
+      setConfirming(false);
+      await reload();
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Archive was not confirmed. Reload to check saved state before retrying.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <View style={trailStyles.root}>
-      <TrailAtmosphere quiet />
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 24 }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.brandLockup}>
-            <BrandLogo variant="symbol" style={styles.brandMark} />
-            <Text style={styles.brand}>STREM<Text style={styles.brandSub}> / RACE MISSION</Text></Text>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open athlete profile" style={styles.profileButton} onPress={() => router.push("/(app)/profile")}>
-            <Icon name="shield" size={20} color={Trail.text} />
-          </Pressable>
-        </View>
-        <View style={styles.previewRow}>
-          <PrototypeLabel />
-          <Text style={styles.snapshot}>Demo snapshot · {mission.asOfLabel}</Text>
-        </View>
-        <View style={styles.pageHeading}>
-          <Text accessibilityRole="header" style={styles.pageTitle}>The start line is earned.</Text>
-          <Text style={styles.pageSubtitle}>One race. A clear priority. Evidence you can inspect.</Text>
-        </View>
-
-        <View style={[styles.workspace, wide && styles.workspaceWide]}>
-          <View style={[styles.mainColumn, wide && styles.mainColumnWide]}>
-            <MissionHero days={daysUntilRace()} />
-            <View style={styles.phase}>
-              <View style={styles.phaseIndex}><Text style={styles.phaseNumber}>{String(mission.phase.week).padStart(2, "0")}<Text style={styles.phaseTotal}> / {String(mission.phase.totalWeeks).padStart(2, "0")}</Text></Text><Text style={styles.smallLabel}>PREPARATION WEEK</Text></View>
-              <View style={styles.flex}>
-                <Text style={styles.phaseTitle}>{mission.phase.name}</Text>
-                <Text style={styles.body}>{mission.readiness.explanation}</Text>
+    <MissionShell
+      title={mission?.event.name ?? "Your next start line."}
+      subtitle={
+        mission
+          ? "Your race workspace · private to your account"
+          : "Every mission starts with a race worth preparing for."
+      }
+    >
+      <MissionGate>
+        {mission && (
+          <>
+            <View style={[styles.workspace, width >= 1024 && styles.wide]}>
+              <TrailPanel accent style={styles.identity}>
+                <Text style={s.label}>THE OBJECTIVE / TRAIL RUNNING</Text>
+                <Text style={styles.date}>{mission.event.race_date}</Text>
+                <Text style={s.body}>
+                  {mission.event.location_name} · {mission.event.timezone}
+                </Text>
+                <Text style={styles.distance}>
+                  {mission.event.distance_km}{" "}
+                  <Text style={styles.unit}>km</Text>
+                </Text>
+                <View style={s.row}>
+                  <Fact
+                    value={
+                      mission.event.elevation_gain_m === null
+                        ? "Unknown"
+                        : `${mission.event.elevation_gain_m} m+`
+                    }
+                    label="Total ascent"
+                  />
+                  <Fact
+                    value={
+                      mission.event.cutoff_minutes === null
+                        ? "Unknown"
+                        : `${mission.event.cutoff_minutes} min`
+                    }
+                    label="Race cutoff"
+                  />
+                </View>
+                <Text style={styles.countdown}>
+                  {days > 0
+                    ? `${days} calendar days to race day`
+                    : days === 0
+                      ? "Race day is today"
+                      : "The entered race date has passed"}
+                </Text>
+                <MissionButton
+                  label="Edit race details"
+                  onPress={() => router.push("/(app)/mission-setup")}
+                />
+                <Text style={styles.caption}>
+                  Entered by you · not organizer verified. Calendar days only;
+                  start time is unknown.
+                </Text>
+              </TrailPanel>
+              <View style={styles.actions}>
+                <TrailPanel style={s.panel}>
+                  <Text style={s.label}>YOUR GOAL</Text>
+                  <Text style={s.heading}>
+                    {mission.goal.outcome === "target_time"
+                      ? `Finish in ${mission.goal.target_finish_minutes} minutes`
+                      : mission.goal.outcome === "finish"
+                        ? "Reach the finish"
+                        : "Finish confidently"}
+                  </Text>
+                  <Text style={s.body}>
+                    Saved to your account · version {mission.version}. This is
+                    your stated goal, not an assessed finish prediction.
+                  </Text>
+                </TrailPanel>
+                <TrailPanel style={s.panel}>
+                  <Text style={s.label}>WHAT IS STILL UNKNOWN</Text>
+                  <Text style={s.heading}>
+                    Preparation is not assessed yet.
+                  </Text>
+                  <Text style={s.body}>
+                    No race-specific course model, evidence assessment or
+                    preparation plan is available. STREM will not substitute
+                    example workouts or an estimated readiness score.
+                  </Text>
+                  <MissionButton
+                    secondary
+                    label="Manage connected sources"
+                    onPress={() => router.push("/(app)/integrations")}
+                  />
+                </TrailPanel>
               </View>
             </View>
-            {wide && <CourseExplorer />}
-          </View>
-
-          <View style={[styles.sideColumn, wide && styles.sideColumnWide]}>
-            <View style={styles.decision}>
-              <View style={styles.decisionHeader}><Text style={styles.eyebrow}>01 / YOUR NEXT MOVE</Text><Icon name="route" size={20} color={Trail.lime} /></View>
-              <Text style={styles.sampleLabel}>Illustrative recommendation · not live AI</Text>
-              <Text accessibilityRole="header" style={styles.actionTitle}>{mission.today.title}</Text>
-              <Text style={styles.body}>{mission.today.detail}</Text>
-              <View style={styles.reason}>
-                <Text style={styles.reasonTitle}>Prepare for the final descent.</Text>
-                <Text style={styles.body}>The sample mission has a descending-evidence gap. Inspect the reasoning before changing a session.</Text>
-              </View>
-              <Pressable accessibilityRole="button" style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]} onPress={() => router.push("/(app)/plan")}>
-                <Text style={styles.primaryButtonText}>Inspect sample session</Text><Icon name="chevron" size={18} color={Trail.limeInk} />
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityState={{ expanded: showReason }} onPress={() => setShowReason(!showReason)} style={styles.explainButton}>
-                <Text style={styles.explainText}>{showReason ? "Hide reasoning" : "Why this recommendation?"}</Text><Icon name={showReason ? "minus" : "plus"} size={16} color={Trail.textMuted} />
-              </Pressable>
-              {showReason && <View style={styles.expanded}>
-                <Text style={styles.body}>{mission.today.reason}</Text>
-                {mission.decisionEvidence.map((line) => <Text key={line} style={styles.evidenceLine}>— {line}</Text>)}
-                <Text style={styles.warning}>All inputs are synthetic. Current fatigue, injury status and availability are unknown. No personal plan has been analyzed or changed.</Text>
-              </View>}
-            </View>
-
-            <View style={styles.evidencePanel}>
-              <Text style={styles.eyebrow}>02 / PREPARATION EVIDENCE</Text>
-              <Text style={styles.panelIntro}>Progress, not a readiness score.</Text>
-              {mission.evidence.map((item, index) => <View key={item.label}>
-                <Pressable accessibilityRole="button" accessibilityLabel={`${item.label}: ${item.value}. ${item.status}. Inspect sample evidence.`} accessibilityState={{ expanded: selectedEvidence === index }} onPress={() => setSelectedEvidence(selectedEvidence === index ? null : index)} style={styles.evidenceRow}>
-                  <View style={styles.flex}><Text style={styles.evidenceName}>{item.label}</Text><Text style={styles.evidenceStatus}>{item.status} · sample</Text></View>
-                  <Text style={styles.evidenceValue}>{item.value}</Text><Icon name={selectedEvidence === index ? "minus" : "plus"} size={16} color={Trail.textMuted} />
-                </Pressable>
-                {selectedEvidence === index && <Text style={styles.evidenceDetail}>{item.detail}</Text>}
-              </View>)}
-            </View>
-            <Pressable accessibilityRole="button" style={styles.risk} onPress={() => router.push("/(app)/race")}>
-              <Text style={styles.riskLabel}>UNRESOLVED / FUEL REHEARSAL</Text>
-              <Text style={styles.riskTitle}>90 minutes proven in the sample. What happens after that?</Text>
-              <View style={styles.riskAction}><Text style={styles.riskLink}>Explore Race Lab</Text><Icon name="chevron" size={17} color={Trail.orange} /></View>
-            </Pressable>
-          </View>
-        </View>
-        {!wide && <CourseExplorer />}
-        <View style={styles.footer}>
-          <Icon name="lock" size={16} color={Trail.textMuted} />
-          <Text style={styles.footerText}>Your real sources are separate from this demo. Connecting an account does not make these sample values personal data.</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("/(app)/integrations")} style={styles.sourcesButton}><Text style={styles.sourcesText}>Manage sources</Text></Pressable>
-        </View>
-      </ScrollView>
-      <BottomNav />
+            {error && (
+              <Text accessibilityRole="alert" style={s.error}>
+                {error}
+              </Text>
+            )}
+            {confirming ? (
+              <TrailPanel style={s.panel}>
+                <Text style={s.heading}>Archive this mission?</Text>
+                <Text style={s.body}>
+                  It will leave your active workspace. Its saved details and
+                  revisions remain in your mission export. You can then create a
+                  different mission.
+                </Text>
+                <MissionButton
+                  label={busy ? "Archiving…" : "Confirm archive"}
+                  disabled={busy}
+                  onPress={() => void archive()}
+                />
+                <MissionButton
+                  secondary
+                  label="Keep active"
+                  disabled={busy}
+                  onPress={() => setConfirming(false)}
+                />
+              </TrailPanel>
+            ) : (
+              <MissionButton
+                secondary
+                label="Archive mission"
+                onPress={() => {
+                  setArchiveKey(requestKey());
+                  setConfirming(true);
+                }}
+              />
+            )}
+          </>
+        )}
+      </MissionGate>
+      <View style={s.row}>
+        <MissionButton
+          secondary
+          label="Refresh saved state"
+          onPress={() => void reload()}
+        />
+        <MissionButton
+          secondary
+          label="Mission data & history"
+          onPress={() => router.push("/(app)/mission-data")}
+        />
+      </View>
+    </MissionShell>
+  );
+}
+function Fact({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.fact}>
+      <Text style={styles.factValue}>{value}</Text>
+      <Text style={s.body}>{label}</Text>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  scroll: { width: "100%", maxWidth: 1360, alignSelf: "center", paddingHorizontal: 22, paddingBottom: 140, gap: 24 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  brandLockup: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
-  brandMark: { width: 30, height: 30 },
-  brand: { flexShrink: 1, ...disp(22, 800), letterSpacing: 2, color: Trail.text },
-  brandSub: { ...mono(10, 500), letterSpacing: 1, color: Trail.textMuted },
-  profileButton: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Trail.lineStrong },
-  previewRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 10 },
-  snapshot: { ...mono(11, 500), color: Trail.textMuted },
-  pageHeading: { gap: 6 },
-  pageTitle: { ...disp(40, 700), color: Trail.text, lineHeight: 46 },
-  pageSubtitle: { ...ui(15, 500), color: Trail.textMuted, lineHeight: 23 },
-  workspace: { gap: 24 },
-  workspaceWide: { flexDirection: "row", alignItems: "flex-start" },
-  mainColumn: { gap: 24, minWidth: 0 },
-  mainColumnWide: { flex: 1.35 },
-  sideColumn: { gap: 20, minWidth: 0 },
-  sideColumnWide: { flex: 1 },
-  phase: { flexDirection: "row", gap: 20, alignItems: "center", paddingVertical: 6 },
-  phaseIndex: { borderRightWidth: 1, borderRightColor: Trail.lineStrong, paddingRight: 18, gap: 2, maxWidth: 145 },
-  phaseNumber: { ...disp(38, 700), color: Trail.text },
-  phaseTotal: { ...mono(13, 500), color: Trail.textMuted },
-  smallLabel: { ...mono(9, 600), color: Trail.textMuted, lineHeight: 15 },
-  phaseTitle: { ...disp(24, 700), color: Trail.text, marginBottom: 5 },
-  flex: { flex: 1, minWidth: 0 },
-  body: { ...ui(14, 500), color: Trail.textMuted, lineHeight: 22 },
-  decision: { padding: 24, gap: 16, borderTopWidth: 3, borderTopColor: Trail.lime, backgroundColor: Trail.panelRaised, borderRadius: 16 },
-  decisionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  eyebrow: { ...mono(11, 700), letterSpacing: 1, color: Trail.textMuted },
-  sampleLabel: { ...ui(12, 500), color: Trail.orange },
-  actionTitle: { ...disp(36, 700), color: Trail.text, lineHeight: 40 },
-  reason: { paddingTop: 18, gap: 6, borderTopWidth: 1, borderTopColor: Trail.lineStrong },
-  reasonTitle: { ...ui(15, 600), color: Trail.text },
-  primaryButton: { minHeight: 52, padding: 14, borderRadius: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, backgroundColor: Trail.lime },
-  primaryButtonText: { flexShrink: 1, ...ui(15, 700), color: Trail.limeInk },
-  explainButton: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  explainText: { flexShrink: 1, ...ui(14, 600), color: Trail.text },
-  expanded: { gap: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: Trail.lineStrong },
-  evidenceLine: { ...ui(13, 500), color: Trail.textMuted, lineHeight: 20 },
-  warning: { ...ui(12, 500), color: Trail.orange, lineHeight: 19 },
-  pressed: { opacity: 0.8 },
-  evidencePanel: { padding: 22, borderWidth: 1, borderColor: Trail.lineStrong, borderRadius: 16, backgroundColor: Trail.panel },
-  panelIntro: { ...ui(13, 500), color: Trail.textMuted, marginVertical: 12 },
-  evidenceRow: { minHeight: 70, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: Trail.line },
-  evidenceName: { ...ui(15, 600), color: Trail.text },
-  evidenceStatus: { ...ui(12, 500), color: Trail.textMuted, marginTop: 3 },
-  evidenceValue: { ...mono(13, 600), color: Trail.text },
-  evidenceDetail: { ...ui(13, 500), color: Trail.textMuted, lineHeight: 21, paddingBottom: 16 },
-  risk: { padding: 22, gap: 12, borderLeftWidth: 2, borderLeftColor: Trail.orange, backgroundColor: Trail.orangeSoft, borderRadius: 8 },
-  riskLabel: { ...mono(10, 700), color: Trail.orange, letterSpacing: 0.6 },
-  riskTitle: { ...ui(16, 600), color: Trail.text, lineHeight: 24 },
-  riskAction: { flexDirection: "row", alignItems: "center", gap: 8 },
-  riskLink: { ...ui(14, 600), color: Trail.orange },
-  footer: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, borderTopWidth: 1, borderTopColor: Trail.lineStrong, paddingTop: 18 },
-  footerText: { flex: 1, minWidth: 190, ...ui(12, 500), color: Trail.textMuted, lineHeight: 19 },
-  sourcesButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
-  sourcesText: { ...ui(13, 600), color: Trail.lime },
+  workspace: { gap: 22 },
+  wide: { flexDirection: "row", alignItems: "flex-start" },
+  identity: { flex: 1.2, gap: 14, padding: 20 },
+  actions: { flex: 1, gap: 20 },
+  date: { ...disp(32, 700), lineHeight: 38, color: Trail.text },
+  distance: { ...disp(64, 700), lineHeight: 72, color: Trail.lime },
+  unit: { ...ui(24, 500), color: Trail.textMuted },
+  countdown: {
+    ...ui(16, 600),
+    lineHeight: 24,
+    color: Trail.text,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: Trail.lineStrong,
+  },
+  caption: { ...ui(12, 500), lineHeight: 18, color: Trail.textMuted },
+  fact: { flex: 1, minWidth: 100, gap: 3 },
+  factValue: { ...disp(26, 700), lineHeight: 32, color: Trail.text },
 });

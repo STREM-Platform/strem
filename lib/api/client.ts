@@ -51,6 +51,8 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   auth?: boolean;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
 }
 
 async function parseError(response: Response): Promise<ApiError> {
@@ -63,7 +65,7 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, body);
 }
 
-async function refreshAccessToken(): Promise<string> {
+async function refreshAccessToken(signal: AbortSignal): Promise<string> {
   const tokens = await getStoredTokens();
   if (!tokens) {
     throw new SessionExpiredError();
@@ -72,6 +74,7 @@ async function refreshAccessToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: tokens.refreshToken }),
+    signal,
   });
   if (!response.ok) {
     await clearTokens();
@@ -82,8 +85,8 @@ async function refreshAccessToken(): Promise<string> {
   return pair.access_token;
 }
 
-async function send(path: string, options: RequestOptions, accessToken?: string): Promise<Response> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+async function send(path: string, options: RequestOptions, signal: AbortSignal, accessToken?: string): Promise<Response> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", ...options.headers };
   if (options.auth && accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -91,29 +94,41 @@ async function send(path: string, options: RequestOptions, accessToken?: string)
     method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal,
   });
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  let accessToken: string | undefined;
-  if (options.auth) {
-    accessToken = (await getStoredTokens())?.accessToken;
-  }
+  // One deadline covers headers, token refresh, retry AND response-body reading.
+  // A timeout cannot establish whether a write committed; callers retain their
+  // idempotency key or reload before editing against a newer version.
+  const controller = new AbortController();
+  const timer = options.timeoutMs
+    ? setTimeout(() => controller.abort(), options.timeoutMs)
+    : undefined;
+  try {
+    let accessToken: string | undefined;
+    if (options.auth) {
+      accessToken = (await getStoredTokens())?.accessToken;
+    }
 
-  let response = await send(path, options, accessToken);
+    let response = await send(path, options, controller.signal, accessToken);
 
-  if (response.status === 401 && options.auth) {
-    const refreshed = await refreshAccessToken();
-    response = await send(path, options, refreshed);
-  }
+    if (response.status === 401 && options.auth) {
+      const refreshed = await refreshAccessToken(controller.signal);
+      response = await send(path, options, controller.signal, refreshed);
+    }
 
-  if (!response.ok) {
-    throw await parseError(response);
+    if (!response.ok) {
+      throw await parseError(response);
+    }
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    return (await response.json()) as T;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return (await response.json()) as T;
 }
 
 export const api = {

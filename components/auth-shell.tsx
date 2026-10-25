@@ -10,7 +10,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Defs, LinearGradient as SvgGradient, Path, Stop } from "react-native-svg";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { TrailAtmosphere } from "@/components/trail/trail-ui";
@@ -60,7 +59,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
                 </Text>
                 {wide ? (
                   <Text style={styles.storyBody}>
-                    One adaptive race mission connecting course demands, training evidence, recovery, gear and execution.
+                    Save the race you chose, keep your facts together, and stay in control of your data. Course intelligence and AI planning are not available yet.
                   </Text>
                 ) : null}
               </View>
@@ -69,18 +68,17 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
                 <LinearGradient colors={["rgba(25,48,33,0.96)", "rgba(10,23,16,0.94)"]} style={styles.raceCard}>
                   <View style={styles.raceCardTop}>
                     <View>
-                      <Text style={styles.cardOverline}>MISSION PREVIEW / 01</Text>
-                      <Text style={styles.raceName}>RILA RIDGE</Text>
+                      <Text style={styles.cardOverline}>YOUR OWN RACE / YOUR OWN FACTS</Text>
+                      <Text style={styles.raceName}>THE NEXT START LINE</Text>
                     </View>
                     <View style={styles.raceBadge}>
                       <Icon name="mountain" size={18} color={Trail.lime} />
                     </View>
                   </View>
-                  <AuthElevation />
                   <View style={styles.metrics}>
-                    <Metric value="32K" label="DISTANCE" />
-                    <Metric value="1,850M" label="VERTICAL" />
-                    <Metric value="06:45" label="TARGET" />
+                    <Metric value="SAVE" label="YOUR EVENT" />
+                    <Metric value="EDIT" label="YOUR GOAL" />
+                    <Metric value="OWN" label="YOUR DATA" />
                   </View>
                 </LinearGradient>
               ) : null}
@@ -125,27 +123,6 @@ function Metric({ value, label }: { value: string; label: string }) {
   );
 }
 
-function AuthElevation() {
-  return (
-    <View style={styles.elevation}>
-      <Svg width="100%" height="82" viewBox="0 0 420 82" preserveAspectRatio="none">
-        <Defs>
-          <SvgGradient id="authElevation" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={Trail.lime} stopOpacity="0.34" />
-            <Stop offset="1" stopColor={Trail.lime} stopOpacity="0" />
-          </SvgGradient>
-        </Defs>
-        <Path d="M0 69L31 64L58 49L87 55L116 33L145 42L175 18L204 27L236 10L265 37L297 29L328 51L361 41L392 61L420 56L420 82L0 82Z" fill="url(#authElevation)" />
-        <Path d="M0 69L31 64L58 49L87 55L116 33L145 42L175 18L204 27L236 10L265 37L297 29L328 51L361 41L392 61L420 56" fill="none" stroke={Trail.lime} strokeWidth="2.2" />
-      </Svg>
-      <View style={styles.elevationMeta}>
-        <Text style={styles.elevationLabel}>START · BOROVETS</Text>
-        <Text style={styles.elevationLabel}>FINISH · MUSALA GATE</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Trail.bg },
   container: { flex: 1 },
@@ -173,9 +150,6 @@ const styles = StyleSheet.create({
   cardOverline: { ...mono(8, 700), color: Trail.textDim, letterSpacing: 1.2 },
   raceName: { ...disp(26, 800), color: Trail.text, letterSpacing: 1, marginTop: 2 },
   raceBadge: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: Trail.limeSoft, borderWidth: 1, borderColor: Trail.limeLine },
-  elevation: { marginTop: 15 },
-  elevationMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: -2 },
-  elevationLabel: { ...mono(7, 700), color: Trail.textDim, letterSpacing: 0.5 },
   metrics: { flexDirection: "row", borderTopWidth: 1, borderTopColor: Trail.line, marginTop: 14, paddingTop: 14 },
   metric: { flex: 1 },
   metricValue: { ...disp(22, 800), color: Trail.text },
