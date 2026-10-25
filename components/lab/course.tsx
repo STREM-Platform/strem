@@ -7,9 +7,8 @@
  */
 
 import * as DocumentPicker from "expo-document-picker";
-import { File as LocalFile } from "expo-file-system";
 import { useMemo, useState } from "react";
-import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { ElevationArea } from "@/components/ui/charts";
@@ -17,6 +16,7 @@ import { Input } from "@/components/ui/fields";
 import { Icon } from "@/components/ui/icon";
 import { Body, Button, Card, ErrorBanner, Notice, Overline, Row, StatTile, TextLink, Title } from "@/components/ui/kit";
 import { C, LAYER_COLOR, disp, mono, ui } from "@/constants/theme";
+import { readBase64 } from "@/lib/files";
 import { ApiError } from "@/lib/api/client";
 import { courses, type CoursePoint, type MissionCourse } from "@/lib/api/courses";
 import { km } from "@/lib/race/format";
@@ -211,34 +211,16 @@ export function CoursePanel({ missionId, saved, onChange }: { missionId: string;
       return;
     }
     const asset = picked.assets[0];
-    const local = Platform.OS === "web" ? null : new LocalFile(asset.uri);
     try {
-      const size = asset.size ?? local?.size ?? asset.file?.size;
+      const size = asset.size ?? asset.file?.size;
       if (!/\.(gpx|zip)$/i.test(asset.name) || !size || size > 4 * 1024 * 1024) throw new Error("Choose a GPX or ZIP file up to 4 MB.");
-      let content: string;
-      if (Platform.OS === "web" && asset.file) {
-        const file = asset.file;
-        content = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result).split(",")[1]);
-          reader.onerror = () => reject(new Error("File could not be read."));
-          reader.readAsDataURL(file);
-        });
-      } else if (local) content = await local.base64();
-      else throw new Error("File could not be read.");
+      const content = await readBase64(asset);
       const data = await courses.upload(missionId, saved?.version ?? 0, content, source.trim() || null);
       onChange(data);
       setShowFile(false);
     } catch (err) {
       setError(err instanceof ApiError && err.status === 412 ? "The saved course changed. Reload before replacing it." : err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Upload was not confirmed. Reload before retrying.");
     } finally {
-      if (local) {
-        try {
-          local.delete();
-        } catch {
-          // The OS cache cleans up later.
-        }
-      }
       setBusy(false);
     }
   };

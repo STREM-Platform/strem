@@ -10,13 +10,13 @@ test.beforeEach(async ({ request, context }, info) => {
   const failures: string[] = [];
   const diagnostics = { name: "api-failures", contentType: "text/plain", body: Buffer.from("") };
   context.on("response", (response) => {
-    // The fixture runs no AI service: race-team calls are expected to fail.
+    // The race team runs without an Anthropic key: AI-only calls may fail by design.
     if (response.url().startsWith(api) && response.status() >= 400 && !response.url().includes("/ai/")) {
       failures.push(`${response.status()} ${new URL(response.url()).pathname}`);
       diagnostics.body = Buffer.from(failures.join("\n"));
     }
   });
-  info.annotations.push({ type: "fixture", description: "Real isolated auth/user/training/gateway; no API mocks; no AI service" });
+  info.annotations.push({ type: "fixture", description: "Real isolated auth/user/training/AI orchestrator (no Anthropic key)/gateway; no API mocks" });
   // Retain only statuses/paths, never headers, tokens or personal payloads.
   info.attachments.push(diagnostics);
   const registration = await request.post(`${api}/auth/register`, {
@@ -83,7 +83,7 @@ test("set up a race in seven steps, commit, and land on its Mission screen", asy
   await continueStep(page);
   await page.getByLabel("Why does this race matter to you?", { exact: true }).fill("Synthetic motivation.");
   await continueStep(page);
-  // Photo search needs the AI service, which this fixture doesn't run: skipping is always allowed.
+  // Photo search needs live AI, which this fixture has no key for: skipping is always allowed.
   await page.getByRole("button", { name: "Skip", exact: true }).click();
   await page.getByLabel("Hours available / week", { exact: true }).fill("7");
   await continueStep(page);
@@ -136,6 +136,33 @@ test("export and permanently delete all mission data", async ({ page, request })
   await expect(page.getByRole("button", { name: "Start a Race Mission", exact: true })).toBeVisible();
   const remaining = await (await request.get(`${api}/race-missions`, { headers })).json();
   expect(remaining.items).toHaveLength(0);
+});
+
+test("import my own plan from pasted text, review it and train from it", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic Import Race");
+  await page.goto("/plan");
+  await page.getByRole("button", { name: "Import my plan", exact: true }).click();
+
+  const text = ["Week 1 - base", "Mon: rest", "Tue: easy 40 min", "Thu: hills 50 min", "Sat: long trail 1h45 16 km 500 m+", "Week 2 - build", "Tue: easy 45 min", "Thu: tempo 55 min", "Sat: long trail 2h 18 km 700 m+"].join("\n");
+  await page.getByLabel("…or paste your plan", { exact: true }).fill(text);
+  await page.getByRole("button", { name: "Read my plan (1)", exact: true }).click();
+
+  // No Anthropic key in this fixture: the offline text reader transcribes it and says so.
+  await expect(page.getByText("Read without the AI race team")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("Your plan — 2 weeks")).toBeVisible();
+  await expect(page.getByText("Week 2 · Build")).toBeVisible();
+  await page.getByRole("button", { name: /^Remove Tempo/ }).click();
+  await expect(page.getByRole("button", { name: /^Remove Tempo/ })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Save as my plan", exact: true }).click();
+  // Back on the Plan tab, the saved plan is marked as the athlete's own.
+  await expect(page.getByRole("link", { name: "Why this plan" })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByLabel("Your plan", { exact: true })).toBeVisible();
+  const saved = await (await request.get(`${api}/race-missions`, { headers })).json();
+  const plan = await (await request.get(`${api}/training/missions/${saved.items[0].id}/plan`, { headers })).json();
+  expect(plan.origin).toBe("athlete");
+  expect(plan.content.weeks.flatMap((w: { sessions: { title: string }[] }) => w.sessions).some((s: { title: string }) => /tempo/i.test(s.title))).toBe(false);
+
 });
 
 test("switch to another race from inside Race Lab", async ({ page, request }) => {

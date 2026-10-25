@@ -264,7 +264,7 @@ export function OriginBadge({ origin, model }: { origin: Origin | null | undefin
   const map = {
     ai: { label: "AI race team", icon: "sparkles" as IconName, color: C.accent, bg: C.accentSoft, border: C.accentLine },
     engine: { label: "Race engine", icon: "sliders" as IconName, color: C.textMuted, bg: C.surface2, border: C.line },
-    athlete: { label: "Edited by you", icon: "user" as IconName, color: C.text, bg: C.surface2, border: C.line },
+    athlete: { label: "Your plan", icon: "user" as IconName, color: C.text, bg: C.surface2, border: C.line },
   }[origin];
   return (
     <View accessibilityLabel={`${map.label}${model ? ` (${model})` : ""}`} style={[styles.chip, { backgroundColor: map.bg, borderColor: map.border }]}>

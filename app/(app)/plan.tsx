@@ -78,8 +78,13 @@ export default function PlanScreen() {
         <EmptyState
           icon="calendar"
           title="Your plan isn't built yet"
-          body="STREM periodizes every week from today to race day around your availability, current fitness and the course — then the AI race team personalizes it."
-          action={<Button label="Build my training plan" icon="sparkles" loading={builder.running} onPress={() => void builder.build(mission.id, ["plan"])} />}
+          body="Your AI race team can build every week from today to race day around your availability, fitness and the course — or bring the plan you already follow and it will fit it to this race."
+          action={
+            <Row gap={10} wrap style={{ justifyContent: "center" }}>
+              <Button label="Generate it for me" icon="sparkles" loading={builder.running} onPress={() => void builder.build(mission.id, ["plan"])} />
+              <Button label="Import my plan" icon="upload" kind="secondary" onPress={() => router.push("/(app)/plan-import")} />
+            </Row>
+          }
         />
         <BuildPanel states={builder.states} />
       </Page>
@@ -182,7 +187,8 @@ export default function PlanScreen() {
       ) : null}
       <Row gap={10} wrap>
         <Button label="Adapt my plan" icon="sliders" kind="secondary" onPress={() => setAdaptOpen(true)} />
-        <Button label="Rebuild plan" icon="refresh" kind="ghost" loading={builder.running} onPress={() => void builder.build(mission.id, ["plan"])} />
+        <Button label="Import my plan" icon="upload" kind="ghost" onPress={() => router.push("/(app)/plan-import")} />
+        <Button label={plan.origin === "athlete" ? "Generate a plan instead" : "Rebuild plan"} icon="refresh" kind="ghost" loading={builder.running} onPress={() => void builder.build(mission.id, ["plan"])} />
       </Row>
       <AdaptSheet visible={adaptOpen} onClose={() => setAdaptOpen(false)} missionId={mission.id} onAccepted={() => void refresh()} />
     </Page>

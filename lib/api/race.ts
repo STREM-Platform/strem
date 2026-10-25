@@ -433,7 +433,32 @@ export const historyApi = {
   },
 };
 
+export interface ImportSource {
+  kind: "image" | "pdf" | "csv" | "text";
+  media_type?: string;
+  data_base64?: string;
+  text?: string;
+  name?: string;
+}
+
+export interface PlanImportDraft {
+  content: PlanContent;
+  warnings: string[];
+  unparsed: string[];
+  parser: "ai" | "text";
+  model?: string | null;
+  ai_reason?: string | null;
+  review?: { summary: string; notes: string[] } | null;
+  sessions: number;
+}
+
 export const raceAi = {
+  importPlan(missionId: string, sources: ImportSource[], startDate?: string | null) {
+    return request<PlanImportDraft>(`/ai/race/${missionId}/plan/import`, { ...slow, method: "POST", body: { sources, ...(startDate ? { start_date: startDate } : {}) } });
+  },
+  commitImport(missionId: string, content: PlanContent) {
+    return request<MissionPlan>(`/ai/race/${missionId}/plan/import/commit`, { ...auth, method: "POST", body: { content } });
+  },
   status() {
     return request<AIStatus>("/ai/race/status", auth);
   },

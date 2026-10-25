@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BuildPanel } from "@/components/mission/build-panel";
 import { Choices, DatePicker, Input } from "@/components/ui/fields";
-import { Icon } from "@/components/ui/icon";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { Body, Button, Card, Chip, ErrorBanner, IconButton, Notice, Overline, Row, Title, useLayout } from "@/components/ui/kit";
 import { HeroMedia } from "@/components/ui/photo";
 import { C, R, disp, ui } from "@/constants/theme";
@@ -16,7 +16,7 @@ import { hm, km, longDate, parseFinishTime, requestKey, todayIn } from "@/lib/ra
 import { missionForm, toInput, validate, type FormErrors, type MissionForm } from "@/lib/race/mission-form";
 import { useRace } from "@/lib/race/race-context";
 import { FORMATS, SPORTS, SUPPORTS, TERRAIN, sportMeta } from "@/lib/race/sports";
-import { useBuilder } from "@/lib/race/use-builder";
+import { BUILD_ORDER, useBuilder } from "@/lib/race/use-builder";
 
 const STEPS = ["sport", "race", "demands", "goal", "photo", "prep", "review"] as const;
 type Step = (typeof STEPS)[number];
@@ -29,6 +29,12 @@ const STEP_TITLE: Record<Step, string> = {
   prep: "Your starting point",
   review: "Ready to commit",
 };
+type PlanSource = "generate" | "import" | "later";
+const PLAN_SOURCES: { value: PlanSource; label: string; hint: string; icon: IconName }[] = [
+  { value: "generate", label: "Generate it for me", hint: "The AI race team builds every week", icon: "sparkles" },
+  { value: "import", label: "I have my own plan", hint: "Screenshot, PDF, CSV or text", icon: "upload" },
+  { value: "later", label: "Decide later", hint: "Build the race kit first", icon: "clock" },
+];
 const WEEKDAYS: { value: Weekday; label: string }[] = [
   { value: "monday", label: "Mon" },
   { value: "tuesday", label: "Tue" },
@@ -52,6 +58,7 @@ export default function MissionSetup() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [planSource, setPlanSource] = useState<PlanSource>("generate");
   const key = useRef(requestKey());
   const scroll = useRef<ScrollView>(null);
   const finish = useCallback(async () => {
@@ -103,7 +110,8 @@ export default function MissionSetup() {
       setCreatedId(created.id);
       race.setFocus(created.id);
       scroll.current?.scrollTo({ y: 0, animated: true });
-      void builder.build(created.id);
+      // An imported (or postponed) plan skips the generated one; the rest of the race kit still builds.
+      void builder.build(created.id, planSource === "generate" ? undefined : BUILD_ORDER.filter((k) => k !== "plan"));
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : "Saving was not confirmed. Check your connection and try again — retrying is safe.");
     } finally {
@@ -145,8 +153,17 @@ export default function MissionSetup() {
             <View style={{ gap: 16 }}>
               {/* Once committed, the build is the news: progress first, the race card below. */}
               <BuildPanel states={builder.states} />
+              {doneBuilding && planSource === "import" ? (
+                <Button label="Import my plan" icon="upload" size="lg" onPress={() => router.replace("/(app)/plan-import")} />
+              ) : null}
               {doneBuilding ? (
-                <Button label="Open my Race Mission" iconRight="chevron" size="lg" onPress={() => router.dismissTo("/(app)/home")} />
+                <Button label="Open my Race Mission" iconRight="chevron" size="lg" kind={planSource === "import" ? "secondary" : "primary"} onPress={() => router.dismissTo("/(app)/home")} />
+              ) : null}
+              {!createdId && !editing ? (
+                <View style={{ gap: 8 }}>
+                  <Text style={[ui(13, 700), { color: C.textMuted }]}>Your training plan</Text>
+                  <Choices options={PLAN_SOURCES} value={planSource} onChange={setPlanSource} />
+                </View>
               ) : null}
               {!wide ? <PreviewCard form={form} /> : null}
               {!createdId ? <ReviewSummary form={form} /> : null}
@@ -159,7 +176,7 @@ export default function MissionSetup() {
         <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
           {step === "review" ? (
             <Button
-              label={editing ? "Save changes" : saving ? "Creating…" : "Commit & build my race plan"}
+              label={editing ? "Save changes" : saving ? "Creating…" : planSource === "generate" ? "Commit & build my race plan" : "Commit & build my race kit"}
               icon={editing ? "check" : "sparkles"}
               size="lg"
               loading={saving}
