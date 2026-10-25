@@ -51,6 +51,7 @@ class RaceAI(Protocol):
         schema: dict[str, Any],
         max_tokens: int = 16000,
         effort: str = "medium",
+        attachments: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]: ...
 
     async def complete_text(
@@ -156,11 +157,16 @@ class ClaudeRaceAI:
         schema: dict[str, Any],
         max_tokens: int = 16000,
         effort: str = "medium",
+        attachments: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        # Images and PDFs (e.g. a plan screenshot) go before the instruction.
+        content: str | list[dict[str, Any]] = (
+            [*attachments, {"type": "text", "text": prompt}] if attachments else prompt
+        )
         message = await self._call(
             max_tokens=max_tokens,
             system=self._system(rules, context),
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": content}],
             output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
         )
         text = "".join(block.text for block in message.content if block.type == "text")

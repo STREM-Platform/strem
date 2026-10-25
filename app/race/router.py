@@ -9,11 +9,12 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
 
 from app.deps import BearerTokenDep, CurrentUserDep, SessionDep
-from app.race import service, store
+from app.race import importer, service, store
 from app.race.ai.client import RaceAI, get_race_ai
 from app.race.clients import RaceServices
 from app.race.enrich.geo import search_places
 from app.race.enrich.media import search_media
+from app.race.plan_import import PlanImportRequest
 
 router = APIRouter(prefix="/v1/ai", tags=["race-os"])
 RaceAIDep = Annotated[RaceAI, Depends(get_race_ai)]
@@ -41,6 +42,10 @@ class ChatRequest(BaseModel):
 
 class AdaptRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=600)
+
+
+class ImportCommit(BaseModel):
+    content: dict[str, Any]
 
 
 def _no_store(response: Response) -> None:
@@ -183,6 +188,33 @@ async def adapt(
     return await service.propose_adaptation(
         services, ai, db, current.user_id, mission_id, body.reason.strip()
     )
+
+
+@router.post("/race/{mission_id}/plan/import")
+async def import_plan(
+    mission_id: uuid.UUID,
+    body: PlanImportRequest,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    ai: RaceAIDep,
+    response: Response,
+) -> dict[str, Any]:
+    """Read the athlete's own plan (screenshot, PDF, CSV, text) into a draft to review."""
+    _no_store(response)
+    return await importer.import_plan(services, ai, mission_id, body)
+
+
+@router.post("/race/{mission_id}/plan/import/commit")
+async def commit_import(
+    mission_id: uuid.UUID,
+    body: ImportCommit,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    response: Response,
+) -> dict[str, Any]:
+    """Save the reviewed draft as the athlete's plan."""
+    _no_store(response)
+    return await importer.commit_import(services, mission_id, body.content)
 
 
 @router.post("/race/{mission_id}/proposals/{proposal_id}/{decision}")

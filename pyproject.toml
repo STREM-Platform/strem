@@ -19,3 +19,6 @@ testpaths = ["tests"]
 # Prose-heavy content: athlete-facing engine copy and model instructions.
 "app/race/engine/*.py" = ["E501"]
 "app/race/ai/prompts.py" = ["E501"]
+# Keyword tables, regexes and athlete-facing messages for plan import.
+"app/race/plan_import.py" = ["E501"]
+"app/race/importer.py" = ["E501"]
