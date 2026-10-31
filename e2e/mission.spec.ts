@@ -293,3 +293,20 @@ test("a past race's stomach trouble shapes the fuel plan", async ({ page, reques
   await expect(page.getByText("From your races")).toBeVisible({ timeout: 30000 });
   await expect(page.getByText("70 g/h was too much at Synthetic Gut 50K")).toBeVisible();
 });
+
+test("create a season, let the race team draft its plan, and train from it", async ({ page, request }) => {
+  await page.goto("/plan");
+  await expect(page.getByText("No plan yet")).toBeVisible();
+  await page.getByRole("button", { name: "New season", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Winter base");
+  await page.getByRole("button", { name: "Save season", exact: true }).click();
+  await page.getByRole("button", { name: "Season Winter base", exact: true }).click();
+  await page.getByRole("button", { name: "Generate season plan", exact: true }).click();
+  // The plan appears as soon as it is built (the empty Plan tab becomes the timeline).
+  await expect(page.getByRole("heading", { name: "Your training" })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole("button", { name: "Season Winter base", exact: true })).toContainText("plan ready");
+  await expect(page.getByText("Winter base").first()).toBeVisible();
+  const plan = await (await request.get(`${api}/training/plan`, { headers })).json();
+  expect(plan.seasons[0]).toMatchObject({ name: "Winter base", has_plan: true, current: true });
+  expect(plan.content.weeks[0].source).toBe("season");
+});

@@ -1,5 +1,5 @@
 import * as DocumentPicker from "expo-document-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -47,9 +47,13 @@ export default function PlanImportScreen() {
   const [draft, setDraft] = useState<PlanImportDraft | null>(null);
   const today = todayIn(mission?.event.timezone);
   // A plan can belong to a race, or to the athlete with no race (training#23).
-  const [chosen, setTarget] = useState<"race" | "athlete" | null>(null);
+  // A plan can belong to a race, a season (training#18) or the athlete with no race.
+  const params = useLocalSearchParams<{ season?: string }>();
+  const seasons = race.timeline?.seasons ?? [];
+  const [chosen, setTarget] = useState<string | null>(params.season ?? null);
   const target = chosen ?? (mission ? "race" : "athlete");
   const forRace = target === "race" && mission != null;
+  const season = seasons.find((s) => s.id === target) ?? null;
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(app)/plan"));
 
@@ -90,7 +94,8 @@ export default function PlanImportScreen() {
     setError(null);
     try {
       const from = fixedStart && start ? start : null;
-      setDraft(forRace ? await raceAi.importPlan(mission.id, sources, from) : await raceAi.importAthletePlan(sources, from));
+      const seasonStart = season && season.start_date > today ? season.start_date : null;
+      setDraft(forRace ? await raceAi.importPlan(mission.id, sources, from) : await raceAi.importAthletePlan(sources, from ?? seasonStart));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "The plan could not be read. Check your connection and try again.");
     } finally {
@@ -104,7 +109,7 @@ export default function PlanImportScreen() {
     setError(null);
     try {
       if (forRace) await raceAi.commitImport(mission.id, draft.content);
-      else await raceAi.commitAthleteImport(draft.content);
+      else await raceAi.commitAthleteImport(draft.content, season?.id);
       await race.refresh(["plan", "progress", "brief"], { briefRefresh: true });
       router.dismissTo("/(app)/plan");
     } catch (err) {
@@ -119,9 +124,9 @@ export default function PlanImportScreen() {
       <Page>
         <Row>
           <IconButton icon="chevronL" label="Back to sources" onPress={() => setDraft(null)} tone="surface" />
-          <Overline style={{ flex: 1 }}>Import · {forRace ? mission.event.name : "Your own plan"}</Overline>
+          <Overline style={{ flex: 1 }}>Import · {forRace ? mission.event.name : season ? season.name : "Your own plan"}</Overline>
         </Row>
-        <DraftReview draft={draft} today={today} hasPlan={forRace ? Boolean(plan) : Boolean(race.timeline?.base_version)} onChange={(content) => setDraft({ ...draft, content })} />
+        <DraftReview draft={draft} today={today} hasPlan={forRace ? Boolean(plan) : season ? season.has_plan : Boolean(race.timeline?.base_version)} onChange={(content) => setDraft({ ...draft, content })} />
         {error ? <ErrorBanner message={error} /> : null}
         <Row gap={10} wrap>
           <Button label="Save as my plan" icon="check" size="lg" loading={saving} disabled={!draft.content.weeks.length} onPress={() => void save()} style={{ flexGrow: 1 }} />
@@ -139,11 +144,13 @@ export default function PlanImportScreen() {
         <Overline style={{ flex: 1 }}>Your plan</Overline>
       </Row>
       <Title size={38}>Bring your own plan</Title>
-      {mission ? (
+      {mission || seasons.length ? (
         <Segmented
+          scroll={seasons.length > 0}
           options={[
-            { value: "race", label: mission.event.name, icon: "flag" },
-            { value: "athlete", label: "My own training", icon: "user" },
+            ...(mission ? [{ value: "race", label: mission.event.name, icon: "flag" as const }] : []),
+            ...seasons.map((s) => ({ value: s.id, label: s.name, icon: "calendar" as const })),
+            { value: "athlete", label: "My own training", icon: "user" as const },
           ]}
           value={target}
           onChange={setTarget}
