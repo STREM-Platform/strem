@@ -9,7 +9,7 @@ import { Body, Button, Card, Chip, EmptyState, ErrorBanner, IconButton, Notice, 
 import { Sheet } from "@/components/ui/sheet";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
-import { planApi, sessionsApi, type MissionPlan, type PlanSession } from "@/lib/api/race";
+import { athletePlanApi, isTimelineId, planApi, sessionsApi, type PlanSession, type PlanWeek, type SessionChange } from "@/lib/api/race";
 import { capitalize, hm, km, longDate, todayIn } from "@/lib/race/format";
 import { useRace } from "@/lib/race/race-context";
 import { SESSION_ICON } from "@/lib/race/sports";
@@ -29,8 +29,8 @@ const LOG_TYPE: Record<string, string> = {
   other: "hybrid",
 };
 
-function findSession(plan: MissionPlan | null, id: string | undefined) {
-  for (const week of plan?.content.weeks ?? []) {
+function findSession(weeks: PlanWeek[] | undefined, id: string | undefined) {
+  for (const week of weeks ?? []) {
     const session = week.sessions.find((s) => s.id === id);
     if (session) return { session, week };
   }
@@ -46,11 +46,13 @@ export default function SessionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
-  const found = findSession(plan, id);
+  // Sessions opened from the athlete's plan carry a source prefix; from a race screen, the mission plan's id.
+  const fromTimeline = id ? isTimelineId(id) : false;
+  const found = fromTimeline ? findSession(race.timeline?.content?.weeks, id) : findSession(plan?.content.weeks, id);
   const [rpe, setRpe] = useState<number | null>(found?.session.rpe ?? null);
   const [note, setNote] = useState(found?.session.athlete_note ?? "");
 
-  if (!plan || !found || !mission) {
+  if (!found || (!fromTimeline && (!plan || !mission))) {
     return (
       <Page>
         <IconButton icon="chevronL" label="Back" onPress={() => router.back()} tone="surface" />
@@ -59,18 +61,22 @@ export default function SessionScreen() {
     );
   }
   const { session, week } = found;
-  const today = todayIn(mission.event.timezone);
-  const prog = progress?.sessions.find((s) => s.id === session.id);
+  const today = todayIn(fromTimeline ? race.timeline?.content?.timezone : mission?.event.timezone);
+  const prog = (fromTimeline ? race.timelineProgress : progress)?.sessions.find((s) => s.id === session.id);
   const status = sessionStatus(session, prog, today);
   const matched = prog?.matched ?? [];
 
-  const patch = async (body: Parameters<typeof planApi.patchSession>[2], after?: () => void) => {
+  const patch = async (body: SessionChange, after?: () => void) => {
     setBusy(true);
     setError(null);
     try {
-      const next = await planApi.patchSession(plan, session.id, body);
-      race.replacePlan(next);
-      void race.refresh(["progress", "brief"], { briefRefresh: true });
+      if (fromTimeline) {
+        race.replaceTimeline(await athletePlanApi.patchSession(session.id, body));
+        void race.refresh(["plan", "progress", "brief"], { briefRefresh: true });
+      } else if (plan) {
+        race.replacePlan(await planApi.patchSession(plan, session.id, body));
+        void race.refresh(["progress", "brief"], { briefRefresh: true });
+      }
       after?.();
     } catch (err) {
       setError(err instanceof ApiError && err.status === 412 ? "The plan changed elsewhere. Pull to refresh and try again." : err instanceof ApiError ? err.message : "That didn't save. Retry.");

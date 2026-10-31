@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { DatePicker, Input } from "@/components/ui/fields";
 import { Icon, type IconName } from "@/components/ui/icon";
-import { Body, Button, Card, EmptyState, ErrorBanner, IconButton, Notice, Overline, Page, Row, StatTile, Title } from "@/components/ui/kit";
+import { Body, Button, Card, ErrorBanner, IconButton, Notice, Overline, Page, Row, Segmented, StatTile, Title } from "@/components/ui/kit";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
 import { raceAi, type ImportSource, type PlanImportDraft, type PlanSession } from "@/lib/api/race";
@@ -46,16 +46,12 @@ export default function PlanImportScreen() {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<PlanImportDraft | null>(null);
   const today = todayIn(mission?.event.timezone);
+  // A plan can belong to a race, or to the athlete with no race (training#23).
+  const [chosen, setTarget] = useState<"race" | "athlete" | null>(null);
+  const target = chosen ?? (mission ? "race" : "athlete");
+  const forRace = target === "race" && mission != null;
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/(app)/plan"));
-
-  if (!mission) {
-    return (
-      <Page>
-        <EmptyState title="No race yet" body="Start a Race Mission first — an imported plan is always fitted to a race." action={<Button label="Start a Race Mission" onPress={() => router.replace("/(app)/mission-setup")} />} />
-      </Page>
-    );
-  }
 
   const pick = async (images: boolean) => {
     setError(null);
@@ -93,7 +89,8 @@ export default function PlanImportScreen() {
     setReading(true);
     setError(null);
     try {
-      setDraft(await raceAi.importPlan(mission.id, sources, fixedStart && start ? start : null));
+      const from = fixedStart && start ? start : null;
+      setDraft(forRace ? await raceAi.importPlan(mission.id, sources, from) : await raceAi.importAthletePlan(sources, from));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "The plan could not be read. Check your connection and try again.");
     } finally {
@@ -106,7 +103,8 @@ export default function PlanImportScreen() {
     setSaving(true);
     setError(null);
     try {
-      await raceAi.commitImport(mission.id, draft.content);
+      if (forRace) await raceAi.commitImport(mission.id, draft.content);
+      else await raceAi.commitAthleteImport(draft.content);
       await race.refresh(["plan", "progress", "brief"], { briefRefresh: true });
       router.dismissTo("/(app)/plan");
     } catch (err) {
@@ -121,9 +119,9 @@ export default function PlanImportScreen() {
       <Page>
         <Row>
           <IconButton icon="chevronL" label="Back to sources" onPress={() => setDraft(null)} tone="surface" />
-          <Overline style={{ flex: 1 }}>Import · {mission.event.name}</Overline>
+          <Overline style={{ flex: 1 }}>Import · {forRace ? mission.event.name : "Your own plan"}</Overline>
         </Row>
-        <DraftReview draft={draft} today={today} hasPlan={Boolean(plan)} onChange={(content) => setDraft({ ...draft, content })} />
+        <DraftReview draft={draft} today={today} hasPlan={forRace ? Boolean(plan) : Boolean(race.timeline?.base_version)} onChange={(content) => setDraft({ ...draft, content })} />
         {error ? <ErrorBanner message={error} /> : null}
         <Row gap={10} wrap>
           <Button label="Save as my plan" icon="check" size="lg" loading={saving} disabled={!draft.content.weeks.length} onPress={() => void save()} style={{ flexGrow: 1 }} />
@@ -138,11 +136,21 @@ export default function PlanImportScreen() {
     <Page>
       <Row>
         <IconButton icon="chevronL" label="Back" onPress={close} tone="surface" />
-        <Overline style={{ flex: 1 }}>Training plan · {mission.event.name}</Overline>
+        <Overline style={{ flex: 1 }}>Your plan</Overline>
       </Row>
       <Title size={38}>Bring your own plan</Title>
+      {mission ? (
+        <Segmented
+          options={[
+            { value: "race", label: mission.event.name, icon: "flag" },
+            { value: "athlete", label: "My own training", icon: "user" },
+          ]}
+          value={target}
+          onChange={setTarget}
+        />
+      ) : null}
       <Body muted>
-        A coach&apos;s PDF, a screenshot from another app, a spreadsheet or plain text — your race team reads it with everything it knows about {mission.event.name}, keeps every session as written and tells you what it would watch.
+        A coach&apos;s PDF, a screenshot from another app, a spreadsheet or plain text — your race team reads it with everything it knows about {forRace ? mission.event.name : "you and your races"}, keeps every session as written and tells you what it would watch.
       </Body>
       <View style={styles.tiles}>
         <SourceTile icon="image" title="Screenshots or photos" body="Calendar views, a photo of a printed plan — several pages are fine." onPress={() => void pick(true)} />
@@ -201,7 +209,10 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
   const [moving, setMoving] = useState(false);
   const [beforeRepeat, setBeforeRepeat] = useState<PlanImportDraft["content"] | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const gap = daysBetween(planEnd(content), content.race_date);
+  // A plan with no race (the athlete's own) has no race day: offer a fixed number of weeks instead.
+  const raceDate: string | null = content.race_date || null;
+  const gap = raceDate ? daysBetween(planEnd(content), raceDate) : 0;
+  const short = !raceDate && content.weeks.length < 8;
   const repeat = (times: number | "race") => {
     setBeforeRepeat((b) => b ?? content);
     onChange(repeatBlock(content, times));
@@ -224,7 +235,7 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
     <View style={{ gap: 14 }}>
       <Title size={34}>{content.headline}</Title>
       <Text style={[ui(13, 600), { color: C.textMuted }]}>
-        {dayLabel(first)} → {dayLabel(addDays(content.weeks[content.weeks.length - 1]?.start_date ?? first, 6))} · race {dayLabel(content.race_date)}
+        {dayLabel(first)} → {dayLabel(addDays(content.weeks[content.weeks.length - 1]?.start_date ?? first, 6))}{raceDate ? ` · race ${dayLabel(raceDate)}` : " · your own plan"}
       </Text>
       <View style={styles.stats}>
         <StatTile label="Weeks" value={String(content.weeks.length)} style={styles.stat} />
@@ -251,7 +262,7 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
       {draft.parser === "text" ? (
         <Notice icon="info" title="Read without the AI race team" body={`The text reader transcribed this plan; no AI review this time.${draft.ai_reason ? ` ${draft.ai_reason}` : ""}`} />
       ) : null}
-      {gap > 21 ? (
+      {gap > 21 || short ? (
         <Card pad={16} style={{ gap: 10 }}>
           <Row gap={8}>
             <Icon name="refresh" size={18} color={LAYER_COLOR.training} />
@@ -260,10 +271,16 @@ function DraftReview({ draft, today, hasPlan, onChange }: { draft: PlanImportDra
             </Text>
           </Row>
           <Body muted size={13}>
-            It ends {dayLabel(planEnd(content))}, {gap} days before race day. Repeat it to fill the weeks up to race week — the race team can adapt the build and taper later.
+            {raceDate
+              ? `It ends ${dayLabel(planEnd(content))}, ${gap} days before race day. Repeat it to fill the weeks up to race week — the race team can adapt the build and taper later.`
+              : `It ends ${dayLabel(planEnd(content))}. Repeat it to keep training on it — you can change it or add a race any time.`}
           </Body>
           <Row gap={8} wrap>
-            <Button label="Repeat until race week" icon="refresh" size="sm" onPress={() => repeat("race")} />
+            {raceDate ? (
+              <Button label="Repeat until race week" icon="refresh" size="sm" onPress={() => repeat("race")} />
+            ) : (
+              <Button label="Repeat for 8 weeks" icon="refresh" size="sm" onPress={() => repeat(Math.max(1, Math.ceil(8 / content.weeks.length) - 1))} />
+            )}
             <Button label="Repeat once" kind="secondary" size="sm" onPress={() => repeat(1)} />
           </Row>
         </Card>
