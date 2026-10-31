@@ -61,6 +61,18 @@ export interface RaceEvent {
   website_url?: string | null;
   description?: string | null;
   legs?: RaceLeg[] | null;
+  checkpoints?: Checkpoint[] | null;
+}
+
+export type CheckpointService = "water" | "food" | "crew" | "drop_bag" | "medical" | "toilet";
+
+/** An aid station or checkpoint, in course order (ai#46). */
+export interface Checkpoint {
+  name: string;
+  km: number;
+  services?: CheckpointService[];
+  cutoff_minutes?: number | null;
+  notes?: string | null;
 }
 
 export interface RaceGoal {

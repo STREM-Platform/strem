@@ -261,3 +261,22 @@ test("missed sessions: the race team adjusts the week and I apply it", async ({ 
   const hills = plan.content.weeks.flatMap((w: { sessions: { id: string; kind: string }[] }) => w.sessions).find((s: { id: string }) => s.id === "next-hills");
   expect(hills.kind).toBe("easy");
 });
+
+test("add checkpoints in Race Lab and get a leg-by-leg checkpoint plan", async ({ page, request }) => {
+  const { id } = await createMissionViaApi(request, "Synthetic Checkpoint 30K");
+  await page.goto("/race?tab=strategy");
+  await page.getByRole("button", { name: "Build race strategy", exact: true }).click();
+  await expect(page.getByText("Segment plan")).toBeVisible({ timeout: 30000 });
+  for (const [name, km, cutoff] of [["Hut", "10", "2:30"], ["Pass", "20", ""]]) {
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByLabel("Name", { exact: true }).fill(name);
+    await page.getByLabel("Distance from start", { exact: true }).fill(km);
+    if (cutoff) await page.getByLabel("Cutoff from start", { exact: true }).fill(cutoff);
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByRole("button", { name: new RegExp(`^Edit ${name}, km`) })).toBeVisible({ timeout: 30000 });
+  }
+  await expect(page.getByText("Checkpoint plan")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText(/Start → Hut/)).toBeVisible();
+  const mission = await (await request.get(`${api}/race-missions/${id}`, { headers })).json();
+  expect(mission.event.checkpoints.map((c: { name: string }) => c.name)).toEqual(["Hut", "Pass"]);
+});

@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CoursePanel } from "@/components/lab/course";
+import { CheckpointsCard } from "@/components/lab/checkpoints";
 import { LAYER_META, LayerView, layerProgress } from "@/components/lab/layer-view";
 import { BuildPanel } from "@/components/mission/build-panel";
 import { RaceSwitcher } from "@/components/mission/race-switcher";
@@ -99,6 +100,15 @@ export default function RaceLab() {
       ) : null}
       {tab === "course" ? (
         race.dataLoading && course === undefined ? <Skeleton height={320} radius={22} /> : <CoursePanel missionId={mission.id} saved={course} onChange={(c) => { race.replaceCourse(c); void race.refresh(["brief"], { briefRefresh: true }); }} />
+      ) : null}
+      {tab === "strategy" ? (
+        <CheckpointsCard
+          mission={mission}
+          onSaved={(next) => {
+            race.replaceMission(next);
+            if (layers.strategy) void builder.build(next.id, ["strategy", "fuel"]);
+          }}
+        />
       ) : null}
       {tab !== "overview" && tab !== "course" ? (
         layers[tab] ? (
