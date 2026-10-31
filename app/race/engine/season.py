@@ -93,7 +93,9 @@ def build_season_plan(
     for i in range(n_weeks):
         lighter = i % 4 == 3 and i < n_weeks - 1
         # Building blocks ramp toward the target; off-season and recovery sit there from week one.
-        level = target if end_factor < 1 else current + (target - current) * (i / max(n_weeks - 1, 1))
+        level = (
+            target if end_factor < 1 else current + (target - current) * (i / max(n_weeks - 1, 1))
+        )
         hours = round(level * (0.75 if lighter else 1.0), 1)
         week_start = first + timedelta(weeks=i)
         sessions_out: list[dict[str, Any]] = []
