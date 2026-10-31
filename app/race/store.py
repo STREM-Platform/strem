@@ -134,3 +134,21 @@ async def save_brief(
     row.origin, row.model, row.inputs_digest, row.content = origin, model, digest, content
     row.created_at = datetime.now(UTC)
     await session.commit()
+
+
+async def proposals(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    mission_id: uuid.UUID,
+    *,
+    category: str | None = None,
+    limit: int = 30,
+) -> list[RaceProposal]:
+    """Newest first. Category lives in the JSON content, so it is filtered here."""
+    rows = await session.scalars(
+        select(RaceProposal)
+        .where(RaceProposal.user_id == user_id, RaceProposal.mission_id == mission_id)
+        .order_by(RaceProposal.created_at.desc())
+        .limit(limit)
+    )
+    return [r for r in rows if category is None or (r.content or {}).get("category") == category]

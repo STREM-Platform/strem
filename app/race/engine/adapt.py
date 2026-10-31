@@ -215,3 +215,93 @@ def apply_changes(plan: dict[str, Any], changes: list[dict[str, Any]]) -> dict[s
                     s.pop("elevation_m", None)
             s["purpose"] = (c.get("reason") or s.get("purpose") or "")[:600]
     return plan
+
+
+QUALITY = ("intervals", "tempo", "hills", "race_sim")
+
+
+def missed(
+    plan: dict[str, Any], progress: dict[str, Any] | None, today: date
+) -> dict[str, Any] | None:
+    """Skipped or missed training in the last week → a lighter, rule-checked next week.
+
+    Missed sessions are never made up. One missed easy session changes nothing;
+    two or more (or a missed key session) ease the next week so the athlete does
+    not jump back into what they skipped; three or more rebuild the rhythm with
+    easy, slightly shorter training. Returns None when nothing needs to change.
+    """
+    since = today - timedelta(days=7)
+    recent = [
+        s
+        for s in (progress or {}).get("sessions") or []
+        if s.get("derived_status") in ("missed", "skipped")
+        and since.isoformat() <= str(s.get("date")) < today.isoformat()
+        and s.get("kind") not in ("rest", "race")
+    ]
+    key_missed = [s for s in recent if s.get("key")]
+    if len(recent) < 2 and not key_missed:
+        return None
+    severe = len(recent) >= 3
+    long_missed = any(s.get("kind") in ("long", "back_to_back", "race_sim") for s in recent)
+    upcoming = [s for s in window(plan, today, 7) if s["kind"] not in ("rest", "race")]
+    changes: list[dict[str, Any]] = []
+
+    def modify(session: dict[str, Any], why: str, **after: Any) -> None:
+        before = {
+            k: session.get(k)
+            for k in ("title", "duration_minutes", "distance_km", "intensity", "kind")
+        }
+        changes.append(
+            {
+                "session_id": session["id"],
+                "date": session["date"],
+                "change": "modify",
+                "before": before,
+                "after": {**before, **after},
+                "reason": why,
+            }
+        )
+
+    quality_kept = False
+    for s in upcoming:
+        minutes = s.get("duration_minutes") or 0
+        if s["kind"] in QUALITY:
+            if severe or quality_kept:
+                modify(
+                    s,
+                    "Ease back in: easy aerobic time before intensity returns.",
+                    title="Easy aerobic session",
+                    kind="easy",
+                    intensity="easy",
+                )
+            quality_kept = True
+        elif s["kind"] in ("long", "back_to_back") and minutes and (severe or long_missed):
+            factor = 0.85 if severe else 0.9
+            modify(
+                s,
+                "Don't jump back to a longer long session than you've recently done.",
+                duration_minutes=int(minutes * factor),
+                distance_km=_scale(s.get("distance_km"), factor),
+            )
+        elif severe and s["kind"] == "easy" and minutes > 30:
+            modify(
+                s,
+                "Rebuild the rhythm first.",
+                duration_minutes=int(minutes * 0.85),
+                distance_km=_scale(s.get("distance_km"), 0.85),
+            )
+    if not changes:
+        return None
+    titles = ", ".join(str(s.get("title")) for s in recent[:4])
+    summary = f"You missed {len(recent)} session(s) this week ({titles}). Don't make them up — " + (
+        "this week rebuilds the rhythm with easy, slightly shorter training before the plan carries on."
+        if severe
+        else "the plan carries on, a little lighter, so you don't jump straight back into what you skipped."
+    )
+    return {
+        "category": "missed",
+        "summary": summary,
+        "safety_note": None,
+        "changes": changes,
+        "trigger": {"missed": sorted(str(s.get("id")) for s in recent), "since": since.isoformat()},
+    }

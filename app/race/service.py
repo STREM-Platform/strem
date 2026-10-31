@@ -187,7 +187,29 @@ async def daily_brief(
     *,
     refresh: bool = False,
 ) -> dict[str, Any]:
+    """Today's brief, plus the race team's adjustment when training was missed (ai#44)."""
     ctx = await load_context(services, mission_id)
+    brief = await _brief(ctx, ai, db, user_id, mission_id, refresh=refresh)
+    proposal = await missed_proposal(ctx, ai, db, user_id, mission_id)
+    if proposal is not None:
+        brief["proposal"] = proposal
+        actions = [a for a in brief.get("actions") or [] if a.get("target") != "proposal"]
+        brief["actions"] = [
+            {"title": "Review how the race team adjusted your week", "target": "proposal"},
+            *actions,
+        ][:6]
+    return brief
+
+
+async def _brief(
+    ctx: RaceContext,
+    ai: RaceAI,
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    mission_id: uuid.UUID,
+    *,
+    refresh: bool = False,
+) -> dict[str, Any]:
     engine = build_brief(ctx)
     digest = _brief_digest(ctx)
     if not refresh:
@@ -363,6 +385,68 @@ async def propose_adaptation(
     db.add(row)
     await db.commit()
     return proposal_out(row, ai_reason)
+
+
+async def missed_proposal(
+    ctx: RaceContext, ai: RaceAI, db: AsyncSession, user_id: uuid.UUID, mission_id: uuid.UUID
+) -> dict[str, Any] | None:
+    """Skipped or missed sessions → one reviewed proposal; never a silent rewrite.
+
+    A pending one is returned as is. Once the athlete decided on a proposal for
+    the same missed sessions, the race team does not ask again.
+    """
+    if not ctx.plan or ctx.mission.get("state") != "active":
+        return None
+    earlier = await store.proposals(db, user_id, mission_id, category="missed")
+    pending = next((p for p in earlier if p.status == "pending"), None)
+    if pending is not None:
+        if pending.plan_version == ctx.plan.get("version"):
+            return proposal_out(pending)
+        pending.status = "expired"  # the plan moved on; re-check below
+        await db.commit()
+    plan = ctx.plan["content"]
+    proposal = engine_adapt.missed(plan, ctx.progress, ctx.today)
+    if proposal is None:
+        return None
+    seen = set(proposal["trigger"]["missed"])
+    if any(seen <= set((p.content.get("trigger") or {}).get("missed") or []) for p in earlier):
+        return None
+    origin, model, ai_reason = "engine", None, None
+    status = ai.status()
+    if status.available:
+        window = engine_adapt.window(plan, ctx.today, 7)
+        try:
+            adaptation = await ai_adapt(ai, render(ctx), proposal["summary"], window)
+            changes = _guard_ai_changes(window, adaptation)
+            if changes:
+                proposal = {**proposal, "summary": adaptation.summary[:800], "changes": changes}
+                origin, model = "ai", ai.model
+        except AIUnavailable as exc:
+            ai_reason = exc.reason
+        except (ValueError, KeyError, TypeError):
+            ai_reason = "The AI proposal failed validation; showing the engine's proposal."
+    else:
+        ai_reason = status.reason
+    row = store.RaceProposal(
+        user_id=user_id,
+        mission_id=mission_id,
+        status="pending",
+        origin=origin,
+        model=model,
+        plan_version=ctx.plan.get("version"),
+        content={**proposal, "reason": "Missed training"},
+        created_at=datetime.now(UTC),
+    )
+    db.add(row)
+    await db.commit()
+    return proposal_out(row, ai_reason)
+
+
+async def list_proposals(
+    db: AsyncSession, user_id: uuid.UUID, mission_id: uuid.UUID, status: str | None
+) -> list[dict[str, Any]]:
+    rows = await store.proposals(db, user_id, mission_id)
+    return [proposal_out(r) for r in rows if status is None or r.status == status]
 
 
 def proposal_out(row: store.RaceProposal, ai_reason: str | None = None) -> dict[str, Any]:
