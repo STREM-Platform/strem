@@ -2,10 +2,11 @@ import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { View } from "react-native";
 
+import { RaceDayFields, cleanRaceDay } from "@/components/race-day-fields";
 import { Choices, Input, Scale } from "@/components/ui/fields";
 import { Body, Button, EmptyState, ErrorBanner, IconButton, Notice, Overline, Page, Row, Title } from "@/components/ui/kit";
 import { ApiError } from "@/lib/api/client";
-import { raceMissions } from "@/lib/api/race-missions";
+import { raceMissions, type RaceDayData } from "@/lib/api/race-missions";
 import { parseFinishTime, requestKey } from "@/lib/race/format";
 import { useRace } from "@/lib/race/race-context";
 
@@ -19,6 +20,7 @@ export default function DebriefScreen() {
   const [rating, setRating] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [lessons, setLessons] = useState("");
+  const [raceDay, setRaceDay] = useState<RaceDayData>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const key = useRef(requestKey());
@@ -42,6 +44,7 @@ export default function DebriefScreen() {
           rating,
           notes: notes.trim() || null,
           lessons: lessons.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 10),
+          race_day: cleanRaceDay(raceDay),
         },
         key.current,
       );
@@ -82,6 +85,7 @@ export default function DebriefScreen() {
       <Scale label="How do you rate your race?" value={rating} onChange={setRating} low="Rough" high="Best ever" />
       <Input label="What happened" value={notes} onChangeText={setNotes} multiline placeholder="Pacing, fueling, gear, the low point, the high point…" />
       <Input label="Lessons for next time (one per line)" value={lessons} onChangeText={setLessons} multiline placeholder={"Start the first climb slower\nCarry more salt in heat"} />
+      {status !== "dns" ? <RaceDayFields value={raceDay} onChange={setRaceDay} /> : null}
       <Notice icon="info" title="This completes the mission" body="Your plan and Race Lab become read-only and the result joins your race history. Start your next mission whenever you're ready." />
       <Button label="Complete mission" icon="trophy" size="lg" loading={busy} onPress={() => void save()} />
     </Page>

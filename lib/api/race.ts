@@ -4,7 +4,7 @@
  */
 
 import { ApiError, request } from "./client";
-import type { CoverMedia, Sport } from "./race-missions";
+import type { CoverMedia, RaceDayData, Sport } from "./race-missions";
 
 const auth = { auth: true, timeoutMs: 20000 };
 const slow = { auth: true, timeoutMs: 180000 };
@@ -235,6 +235,7 @@ export interface RaceResultInput {
   gear_notes?: string | null;
   notes?: string | null;
   lessons?: string[];
+  race_day?: RaceDayData | null;
 }
 
 export interface RaceResult extends RaceResultInput {

@@ -280,3 +280,16 @@ test("add checkpoints in Race Lab and get a leg-by-leg checkpoint plan", async (
   const mission = await (await request.get(`${api}/race-missions/${id}`, { headers })).json();
   expect(mission.event.checkpoints.map((c: { name: string }) => c.name)).toEqual(["Hut", "Pass"]);
 });
+
+test("a past race's stomach trouble shapes the fuel plan", async ({ page, request }) => {
+  const past = await request.post(`${api}/users/me/races`, {
+    headers,
+    data: { name: "Synthetic Gut 50K", race_date: "2026-05-10", distance_km: 50, status: "finished", lessons: ["Carry more salt in heat"], race_day: { carbs_g_per_hour: 70, gi_issues: "severe", pacing: "faded" } },
+  });
+  expect(past.status()).toBe(201);
+  await createMissionViaApi(request, "Synthetic Fuel Race");
+  await page.goto("/race?tab=fuel");
+  await page.getByRole("button", { name: /^Build .*fuel/i }).click();
+  await expect(page.getByText("From your races")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("70 g/h was too much at Synthetic Gut 50K")).toBeVisible();
+});

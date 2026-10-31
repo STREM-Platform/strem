@@ -112,6 +112,17 @@ export interface Preparation {
   travel_notes?: string | null;
 }
 
+/** What happened on race day, structured so the race team can learn from it (ai#45). */
+export interface RaceDayData {
+  carbs_g_per_hour?: number | null;
+  fluid_ml_per_hour?: number | null;
+  gi_issues?: "none" | "mild" | "severe" | null;
+  cramps?: boolean | null;
+  pacing?: "even" | "negative_split" | "faded" | "blew_up" | null;
+  low_point_km?: number | null;
+  heat?: "cold" | "mild" | "warm" | "hot" | null;
+}
+
 export interface RaceResultSummary {
   status: "finished" | "dnf" | "dns";
   finish_minutes?: number | null;
@@ -119,6 +130,7 @@ export interface RaceResultSummary {
   rating?: number | null;
   notes?: string | null;
   lessons?: string[];
+  race_day?: RaceDayData | null;
   completed_at?: string | null;
 }
 

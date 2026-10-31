@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { RaceDayFields, cleanRaceDay } from "@/components/race-day-fields";
 import { Choices, Input, DatePicker } from "@/components/ui/fields";
 import { Icon } from "@/components/ui/icon";
 import { Body, Button, Chip, EmptyState, ErrorBanner, IconButton, Notice, Overline, Page, Row, Title } from "@/components/ui/kit";
@@ -9,7 +10,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
 import { historyApi, type RaceResult, type RaceResultInput } from "@/lib/api/race";
-import type { Sport } from "@/lib/api/race-missions";
+import type { RaceDayData, Sport } from "@/lib/api/race-missions";
 import { finishTimeText, hm, km, longDate, parseFinishTime } from "@/lib/race/format";
 import { SPORTS, sportMeta } from "@/lib/race/sports";
 
@@ -116,6 +117,7 @@ function RaceSheet({ race, visible, onClose, onSaved }: { race: RaceResult | nul
   const [form, setForm] = useState<RaceResultInput>(() => (race ? { ...race } : { name: "", race_date: "", sport: "trail_running", status: "finished", lessons: [] }));
   const [time, setTime] = useState(() => finishTimeText(race?.finish_minutes ?? null));
   const [lessons, setLessons] = useState(() => (race?.lessons ?? []).join("\n"));
+  const [raceDay, setRaceDay] = useState<RaceDayData>(() => race?.race_day ?? {});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = <K extends keyof RaceResultInput>(k: K, v: RaceResultInput[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -142,6 +144,7 @@ function RaceSheet({ race, visible, onClose, onSaved }: { race: RaceResult | nul
       gear_notes: form.gear_notes || null,
       notes: form.notes || null,
       lessons: lessons.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 10),
+      race_day: cleanRaceDay(raceDay),
     };
     try {
       if (race) await historyApi.update(race.id, body);
@@ -203,6 +206,7 @@ function RaceSheet({ race, visible, onClose, onSaved }: { race: RaceResult | nul
       <Input label="Fueling — what worked, what didn't" value={form.fueling_notes ?? ""} onChangeText={(v) => set("fueling_notes", v)} multiline />
       <Input label="Gear notes" value={form.gear_notes ?? ""} onChangeText={(v) => set("gear_notes", v)} multiline />
       <Input label="Lessons (one per line)" value={lessons} onChangeText={setLessons} multiline placeholder={"Start slower on the first climb\nTake salt every 45 minutes"} />
+      {form.status !== "dns" ? <RaceDayFields value={raceDay} onChange={setRaceDay} /> : null}
     </Sheet>
   );
 }
