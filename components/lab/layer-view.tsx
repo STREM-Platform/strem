@@ -272,6 +272,9 @@ const COLUMNS: Record<string, { label: string; unit?: string; sign?: string }> =
   loss_m: { label: "Descent", unit: "m", sign: "−" },
   split: { label: "Split" },
   arrive: { label: "Arrive" },
+  clock: { label: "Clock" },
+  carry: { label: "Carry" },
+  cutoff_margin: { label: "Cutoff margin" },
 };
 
 /** Known columns get proper names; anything else (e.g. from the AI) is humanized. */
