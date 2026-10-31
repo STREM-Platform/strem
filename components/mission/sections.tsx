@@ -42,6 +42,7 @@ const TARGET_ROUTE: Record<string, string> = {
   debrief: "/(app)/debrief",
   chat: "/(app)/team",
   training: "/(app)/plan",
+  proposal: "/(app)/plan",
 };
 
 export function TodayCard({
@@ -189,7 +190,7 @@ export function BriefCard({ brief, loading, error, onRefresh }: { brief: Brief |
           ))}
           {brief.actions.length ? (
             <Row gap={8} wrap>
-              {brief.actions.map((a) => (
+              {brief.actions.filter((a) => a.target !== "proposal" || !brief.proposal).map((a) => (
                 <Chip key={a.title} label={a.title} icon="chevron" color={C.text} onPress={() => router.push(TARGET_ROUTE[a.target] ?? "/(app)/home")} />
               ))}
             </Row>

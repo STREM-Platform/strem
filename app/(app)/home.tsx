@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BuildPanel } from "@/components/mission/build-panel";
 import { MissionHero } from "@/components/mission/hero";
 import { BriefCard, ComingUp, ConditionsCard, ReadinessCard, TodayCard, TrackerSection } from "@/components/mission/sections";
+import { ProposalCard } from "@/components/plan/proposal-card";
 import { Icon } from "@/components/ui/icon";
 import { Body, Button, ErrorBanner, Overline, Skeleton, Title, Wordmark, useLayout } from "@/components/ui/kit";
 import { TopoArt } from "@/components/ui/photo";
@@ -75,6 +76,9 @@ export default function MissionHome() {
             ) : (
               <TodayCard plan={plan} progress={progress} today={today} onBuild={buildMissing} building={builder.running} />
             )}
+            {brief?.proposal && brief.proposal.status === "pending" ? (
+              <ProposalCard missionId={mission.id} proposal={brief.proposal} onDecided={() => void race.refresh(["plan", "progress", "brief"], { briefRefresh: true })} />
+            ) : null}
             <BriefCard brief={brief} loading={race.briefLoading} error={race.briefError} onRefresh={() => void race.refresh(["brief"], { briefRefresh: true })} />
             <TrackerSection plan={plan} progress={progress} />
           </View>

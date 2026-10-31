@@ -259,6 +259,8 @@ export interface Brief {
   model?: string | null;
   ai_reason?: string | null;
   conditions?: Conditions | null;
+  /** A pending adjustment the race team made on its own (missed training, ai#44). */
+  proposal?: Proposal | null;
 }
 
 export interface Conditions {
