@@ -163,6 +163,29 @@ def test_a_race_governs_c_race_day_stays_and_base_fills_the_rest() -> None:
     assert weeks[1].origin == "ai" and weeks[0].origin == "athlete"
 
 
+def test_a_race_day_the_governing_plan_already_placed_is_not_shown_twice() -> None:
+    a, b = uuid.uuid4(), uuid.uuid4()
+    a_day, b_day = MONDAY + timedelta(weeks=1, days=6), MONDAY + timedelta(days=5)
+    a_plan = mission_plan(
+        a,
+        a_day,
+        [
+            week(1, MONDAY, "build", [s("w1-race-b", b_day, "race", 120)]),
+            week(2, MONDAY + timedelta(weeks=1), "taper", [s("w2-race", a_day, "race", 300)]),
+        ],
+    )
+    b_plan = mission_plan(b, b_day, [week(1, MONDAY, "race", [s("w1-race", b_day, "race", 120)])])
+    plan = timeline.compose(
+        [race(a, "A race", a_day, "A"), race(b, "B race", b_day, "B")],
+        {a: a_plan, b: b_plan},
+        None,
+        TODAY,
+    )
+    assert plan.content is not None
+    first = [x for x in plan.content.weeks[0].sessions if x.kind == "race"]
+    assert len(first) == 1
+
+
 def test_no_race_only_your_own_plan() -> None:
     plan = timeline.compose([], {}, base_plan([week(1, MONDAY, "base", [s("run", MONDAY)])]), TODAY)
     assert plan.content is not None and plan.content.race_date is None and plan.next_race is None

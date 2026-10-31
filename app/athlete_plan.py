@@ -320,11 +320,15 @@ def compose(
                 racing, key=lambda c: (PRIORITY_RANK[c[0].priority], c[0].race_date)
             )
             sessions = _sessions(week, prefix_for(lead.mission_id))
-            # Other races' race days in this week stay on the calendar.
+            # Other races' race days in this week stay on the calendar — unless the
+            # governing plan already placed that race (the engine fits B/C races in).
+            raced = {x["date"] for x in sessions if x.get("kind") == "race"}
             for other, other_week, _ in racing:
                 if other is not lead:
                     extra = _sessions(other_week, prefix_for(other.mission_id))
-                    sessions += [x for x in extra if x.get("kind") == "race"]
+                    sessions += [
+                        x for x in extra if x.get("kind") == "race" and x["date"] not in raced
+                    ]
             source, mission_id = "race", lead.mission_id
         else:
             _, week, owner = options[0]
