@@ -92,9 +92,7 @@ async def export_missions(
     await store.lock_account(session, current.user_id)
     await ensure_available(session, current.user_id)
     state = await session.get(CourseState, current.user_id)
-    training_data = (
-        await peer.export_all() if state is not None else {"courses": [], "plans": []}
-    )
+    training_data = await peer.export_all() if state is not None else {"courses": [], "plans": []}
     response.headers["Cache-Control"] = "no-store"
     missions = await session.scalars(
         select(store.MissionRecord)

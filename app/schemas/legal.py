@@ -50,6 +50,4 @@ class LegalStatus(BaseModel):
     """The user's full legal-acceptance status across all documents."""
 
     documents: list[LegalDocumentStatus]
-    needs_acceptance: bool = Field(
-        description="True when any document still needs acceptance."
-    )
+    needs_acceptance: bool = Field(description="True when any document still needs acceptance.")

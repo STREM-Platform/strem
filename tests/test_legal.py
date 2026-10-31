@@ -138,12 +138,8 @@ def test_reaccepting_same_version_is_idempotent_for_status() -> None:
     async def scenario(harness: Harness) -> None:
         headers = auth_header(uuid.uuid4())
         body = {"acceptances": [{"document_type": "medical", "version": MEDICAL_V}]}
-        first = await harness.client.post(
-            "/v1/users/me/legal/accept", headers=headers, json=body
-        )
-        second = await harness.client.post(
-            "/v1/users/me/legal/accept", headers=headers, json=body
-        )
+        first = await harness.client.post("/v1/users/me/legal/accept", headers=headers, json=body)
+        second = await harness.client.post("/v1/users/me/legal/accept", headers=headers, json=body)
         assert first.status_code == 200
         assert second.status_code == 200
         # Status reflects the latest accepted version either way.

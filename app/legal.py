@@ -61,9 +61,7 @@ def required_version(document_type: DocumentType) -> str:
     return REQUIRED_VERSIONS[document_type]
 
 
-async def accepted_versions(
-    session: AsyncSession, user_id: uuid.UUID
-) -> dict[DocumentType, str]:
+async def accepted_versions(session: AsyncSession, user_id: uuid.UUID) -> dict[DocumentType, str]:
     """The latest accepted version per document type for the user.
 
     With append-only rows a user may have several acceptances for one document
