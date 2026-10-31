@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { PriorityBadge } from "@/components/mission/priority";
 import { Icon } from "@/components/ui/icon";
 import { Button, Row } from "@/components/ui/kit";
 import { Sheet } from "@/components/ui/sheet";
@@ -11,6 +12,7 @@ import { C, disp, ui } from "@/constants/theme";
 import type { RaceMission } from "@/lib/api/race-missions";
 import { daysBetween, km, longDate, todayIn } from "@/lib/race/format";
 import { useRace } from "@/lib/race/race-context";
+import { priorityOf } from "@/lib/race/priority";
 import { sportMeta } from "@/lib/race/sports";
 
 export function RaceSwitcher({ tone = "surface", label }: { tone?: "surface" | "glass"; label?: string }) {
@@ -39,6 +41,7 @@ export function RaceSwitcher({ tone = "surface", label }: { tone?: "surface" | "
         <Text style={[ui(13, 700), { color: C.text, maxWidth: 220 }]} numberOfLines={1}>
           {label ?? current.event.name}
         </Text>
+        <PriorityBadge priority={priorityOf(current)} size={18} />
         {many ? <Text style={[ui(12, 700), { color: C.textMuted }]}>· {race.missions.length}</Text> : null}
         <Icon name="chevronDown" size={16} color={C.textMuted} />
       </Pressable>
@@ -87,12 +90,14 @@ function RaceOption({ mission, selected, onPress }: { mission: RaceMission; sele
         <Icon name={sport.icon} size={20} color={selected ? C.ink : C.text} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[ui(15, 700), { color: C.text }]} numberOfLines={1}>
-          {e.name}
-        </Text>
+        <Row gap={8}>
+          <Text style={[ui(15, 700), { color: C.text, flexShrink: 1 }]} numberOfLines={1}>
+            {e.name}
+          </Text>
+          <PriorityBadge priority={priorityOf(mission)} size={20} />
+        </Row>
         <Text style={[ui(12, 500), { color: C.textMuted }]} numberOfLines={1}>
           {sport.short} · {longDate(e.race_date)} · {km(e.distance_km)}{" "}km
-          {mission.goal.priority ? ` · ${mission.goal.priority} race` : ""}
         </Text>
       </View>
       <View style={{ alignItems: "flex-end" }}>
