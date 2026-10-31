@@ -113,3 +113,13 @@ def test_build_season_endpoint_saves_the_season_plan() -> None:
             assert imported.status_code == 200 and fake.saved["origin"] == "athlete"
 
     asyncio.run(scenario())
+
+
+def test_long_seasons_fit_the_phase_limit() -> None:
+    from app.race import plan_import as pi
+
+    weeks = plan("base", weeks=40)["weeks"]
+    assert len(pi.phase_spans(weeks, None)) <= 8
+    zigzag = [{**w, "phase": "base" if i % 2 else "build"} for i, w in enumerate(weeks)]
+    spans = pi.phase_spans(zigzag, None)
+    assert len(spans) == 8 and spans[-1]["end_date"] >= weeks[-1]["start_date"]

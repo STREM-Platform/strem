@@ -730,6 +730,9 @@ def phase_spans(weeks: list[dict[str, Any]], race_date: date | None) -> list[dic
             spans.append(
                 {"phase": w["phase"], "start_date": w["start_date"], "end_date": end, "goal": goal}
             )
+    # Plans hold at most 8 phase blocks: later blocks fold into the eighth.
+    if len(spans) > 8:
+        spans = spans[:7] + [{**spans[7], "end_date": spans[-1]["end_date"]}]
     return spans
 
 
