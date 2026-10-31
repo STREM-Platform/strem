@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import JSON, DateTime, Integer, LargeBinary, delete, func, select, text
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
@@ -79,9 +80,19 @@ async def lock_owner(session: AsyncSession, user_id: uuid.UUID) -> CourseOwner:
         await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": key})
     owner = await session.get(CourseOwner, user_id)
     if owner is None:
-        owner = CourseOwner(user_id=user_id, generation=0)
-        session.add(owner)
-        await session.flush()
+        # Parallel first requests (plan, progress and timeline load together) must
+        # not collide on the primary key: insert-if-absent, then read the one row.
+        insert = (
+            postgresql.insert if session.get_bind().dialect.name == "postgresql" else sqlite.insert
+        )
+        await session.execute(
+            insert(CourseOwner)
+            .values(user_id=user_id, generation=0)
+            .on_conflict_do_nothing(index_elements=["user_id"])
+        )
+        owner = await session.get(CourseOwner, user_id, populate_existing=True)
+        if owner is None:
+            raise AppError(503, "course_owner_unavailable", "Your training data is busy. Retry.")
     return owner
 
 

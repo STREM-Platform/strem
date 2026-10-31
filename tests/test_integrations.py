@@ -236,12 +236,10 @@ _REAL_ASYNC_CLIENT = __import__("httpx").AsyncClient
 def _patch_http(monkeypatch, handler) -> None:  # type: ignore[no-untyped-def]
     import httpx
 
-    from app.integrations import providers
-
     def client(**kwargs):  # type: ignore[no-untyped-def]
         return _REAL_ASYNC_CLIENT(transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(providers.httpx, "AsyncClient", client)
+    monkeypatch.setattr(httpx, "AsyncClient", client)
 
 
 def test_provider_failures_become_clear_errors(monkeypatch) -> None:  # type: ignore[no-untyped-def]
