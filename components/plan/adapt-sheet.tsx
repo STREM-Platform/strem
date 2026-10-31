@@ -1,16 +1,15 @@
 /** Ask the race team to adapt the next two weeks; inspect, accept or reject. */
 
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text } from "react-native";
 
+import { ProposalChanges } from "@/components/plan/proposal-card";
 import { Choices, Input } from "@/components/ui/fields";
-import { Icon } from "@/components/ui/icon";
 import { Body, Button, ErrorBanner, Notice, OriginBadge, Row } from "@/components/ui/kit";
 import { Sheet } from "@/components/ui/sheet";
 import { C, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
 import { raceAi, type Proposal } from "@/lib/api/race";
-import { dayLabel, hm } from "@/lib/race/format";
 
 const REASONS = [
   { value: "I'm sick — cold symptoms and low energy", label: "I'm sick" },
@@ -88,31 +87,9 @@ export function AdaptSheet({ visible, onClose, missionId, onAccepted }: { visibl
           {proposal.safety_note ? <Notice icon="shield" tone="attention" title="Health first" body={proposal.safety_note} /> : null}
           {proposal.ai_reason ? <Text style={[ui(12, 500), { color: C.textDim }]}>AI unavailable: {proposal.ai_reason} These are the race engine’s rule-based changes.</Text> : null}
           {proposal.changes.length === 0 ? <Notice icon="info" title="No changes needed" body="Your plan already fits what you described." /> : null}
-          {proposal.changes.map((change) => (
-            <View key={change.session_id} style={styles.change}>
-              <Text style={[ui(12, 700), { color: C.textMuted }]}>{dayLabel(change.date)}</Text>
-              <Row gap={8} align="flex-start">
-                <View style={{ flex: 1 }}>
-                  <Text style={[ui(14, 600), { color: C.textMuted, textDecorationLine: "line-through" }]} numberOfLines={1}>
-                    {String(change.before.title ?? "")} · {hm(Number(change.before.duration_minutes ?? 0))}
-                  </Text>
-                  <Row gap={6}>
-                    <Icon name="chevron" size={14} color={C.accent} />
-                    <Text style={[ui(15, 700), { color: C.text, flex: 1 }]} numberOfLines={2}>
-                      {change.change === "modify" ? `${String(change.after.title ?? "")} · ${hm(Number(change.after.duration_minutes ?? 0))}` : "Rest"}
-                    </Text>
-                  </Row>
-                </View>
-              </Row>
-              <Text style={[ui(12, 500), { color: C.textMuted, lineHeight: 18 }]}>{change.reason}</Text>
-            </View>
-          ))}
+          <ProposalChanges proposal={proposal} />
         </>
       )}
     </Sheet>
   );
 }
-
-const styles = StyleSheet.create({
-  change: { gap: 6, padding: 14, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-});

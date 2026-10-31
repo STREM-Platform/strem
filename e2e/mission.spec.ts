@@ -157,7 +157,7 @@ test("import my own plan from pasted text, review it and train from it", async (
   await page.getByRole("button", { name: "Save as my plan", exact: true }).click();
   // Back on the Plan tab, the saved plan is marked as the athlete's own.
   await expect(page.getByRole("link", { name: "Why this week" })).toBeVisible({ timeout: 30000 });
-  await expect(page.getByLabel("Your plan", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Your plan", { exact: true })).toBeVisible({ timeout: 30000 });
   const saved = await (await request.get(`${api}/race-missions`, { headers })).json();
   const plan = await (await request.get(`${api}/training/missions/${saved.items[0].id}/plan`, { headers })).json();
   expect(plan.origin).toBe("athlete");
@@ -221,4 +221,43 @@ test("change a race's priority from My races and see the clash warning go away",
   await expect(page.getByText("Races clash")).toHaveCount(0);
   const missions = await (await request.get(`${api}/race-missions`, { headers })).json();
   expect(missions.items.map((m: { goal: { priority?: string } }) => m.goal.priority ?? "A").sort()).toEqual(["A", "B"]);
+});
+
+test("missed sessions: the race team adjusts the week and I apply it", async ({ page, request }) => {
+  const { id } = await createMissionViaApi(request, "Synthetic Missed Race");
+  const day = (offset: number) => {
+    const d = new Date();
+    d.setUTCHours(12, 0, 0, 0);
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+  const mondayOf = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    return d.toISOString().slice(0, 10);
+  };
+  const planned = [
+    { id: "past-long", offset: -5, kind: "long", minutes: 120, key: true },
+    { id: "past-tempo", offset: -3, kind: "tempo", minutes: 50, key: true },
+    { id: "past-easy", offset: -2, kind: "easy", minutes: 40, key: false },
+    { id: "next-tempo", offset: 1, kind: "tempo", minutes: 50, key: true },
+    { id: "next-hills", offset: 3, kind: "hills", minutes: 55, key: false },
+    { id: "next-long", offset: 5, kind: "long", minutes: 130, key: true },
+  ].map((s) => ({ id: s.id, date: day(s.offset), sport: "trail_running", kind: s.kind, title: s.id.replace("-", " "), duration_minutes: s.minutes, key: s.key }));
+  const mondays = [...new Set(planned.map((s) => mondayOf(s.date)))].sort();
+  const weeks = mondays.map((m, i) => ({ index: i + 1, start_date: m, phase: "build", focus: "Synthetic week", sessions: planned.filter((s) => mondayOf(s.date) === m) }));
+  const put = await request.put(`${api}/training/missions/${id}/plan`, {
+    headers: { ...headers, "If-Match": '"0"' },
+    data: { origin: "engine", content: { headline: "Synthetic plan", sport: "trail_running", timezone: "UTC", start_date: mondays[0], race_date: raceDay().iso, weeks } },
+  });
+  expect(put.status()).toBe(200);
+
+  await page.goto("/home");
+  await expect(page.getByText("Your race team adjusted this week")).toBeVisible({ timeout: 30000 });
+  await page.getByRole("link", { name: /^See \d+ change/ }).click();
+  await page.getByRole("button", { name: "Apply changes", exact: true }).click();
+  await expect(page.getByText("Your race team adjusted this week")).toHaveCount(0, { timeout: 30000 });
+  const plan = await (await request.get(`${api}/training/missions/${id}/plan`, { headers })).json();
+  const hills = plan.content.weeks.flatMap((w: { sessions: { id: string; kind: string }[] }) => w.sessions).find((s: { id: string }) => s.id === "next-hills");
+  expect(hills.kind).toBe("easy");
 });

@@ -25,6 +25,7 @@ import {
   Title,
 } from "@/components/ui/kit";
 import { BuildPanel } from "@/components/mission/build-panel";
+import { ProposalCard } from "@/components/plan/proposal-card";
 import { SessionRow, sessionStatus } from "@/components/plan/session-row";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { addDays, capitalize, dayLabel, km, mondayOf, todayIn, weekdayShort } from "@/lib/race/format";
@@ -125,6 +126,9 @@ export default function PlanScreen() {
         <Notice key={c} icon="alert" tone="attention" title="Races clash" body={c} action={<TextLink label="Change priorities" onPress={() => router.push("/(app)/missions")} />} />
       ))}
       <BuildPanel states={builder.states} />
+      {mission && race.brief?.proposal?.status === "pending" ? (
+        <ProposalCard missionId={mission.id} proposal={race.brief.proposal} onDecided={() => void refresh()} />
+      ) : null}
       {week ? (
         <>
           <Row gap={10}>
