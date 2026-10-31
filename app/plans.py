@@ -217,7 +217,18 @@ async def patch_session(
         raise AppError(404, "plan_not_found", "No training plan has been built for this mission.")
     if expected is not None and expected != ANY_VERSION and expected != record.version:
         raise AppError(412, "version_conflict", "This plan changed. Reload before saving.")
-    content: dict[str, Any] = dict(record.content)
+    content = apply_session_patch(dict(record.content), session_id, body)
+    record.content = PlanContent.model_validate(content).model_dump(mode="json")
+    record.version += 1
+    record.updated_at = datetime.now(UTC)
+    await session.commit()
+    return to_plan(record)
+
+
+def apply_session_patch(
+    content: dict[str, Any], session_id: str, body: SessionPatch
+) -> dict[str, Any]:
+    """Apply athlete changes to one session of a plan document (mission or base)."""
     found = False
     weeks = []
     for week in content.get("weeks", []):
@@ -240,11 +251,7 @@ async def patch_session(
         weeks.append({**week, "sessions": sessions})
     if not found:
         raise AppError(404, "plan_session_not_found", "That session is not part of this plan.")
-    record.content = PlanContent.model_validate({**content, "weeks": weeks}).model_dump(mode="json")
-    record.version += 1
-    record.updated_at = datetime.now(UTC)
-    await session.commit()
-    return to_plan(record)
+    return {**content, "weeks": weeks}
 
 
 async def delete_plan(
@@ -260,7 +267,10 @@ async def delete_plan(
 
 async def purge_plans(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Called inside the course purge transaction (same generation fence)."""
+    from app.athlete_plan import purge_base
+
     await session.execute(delete(MissionPlanRecord).where(MissionPlanRecord.user_id == user_id))
+    await purge_base(session, user_id)
 
 
 async def export_plans(session: AsyncSession, user_id: uuid.UUID) -> list[dict[str, object]]:
@@ -269,7 +279,13 @@ async def export_plans(session: AsyncSession, user_id: uuid.UUID) -> list[dict[s
         .where(MissionPlanRecord.user_id == user_id)
         .order_by(MissionPlanRecord.mission_id)
     )
-    return [to_plan(row).model_dump(mode="json") for row in rows]
+    from app.athlete_plan import get_base
+
+    exported: list[dict[str, object]] = [to_plan(row).model_dump(mode="json") for row in rows]
+    base = await get_base(session, user_id)
+    if base is not None:
+        exported.append({"scope": "athlete", **base.model_dump(mode="json")})
+    return exported
 
 
 # ── Progress ─────────────────────────────────────────────────────────────────
@@ -346,13 +362,24 @@ def compute_progress(
     rows: list[TrainingSession],
     now: datetime | None = None,
 ) -> MissionProgress:
-    zone = _zone(plan.content.timezone if plan else "UTC")
+    parts = progress_parts(
+        plan.content if plan else None, plan.version if plan else None, rows, now
+    )
+    return MissionProgress(mission_id=mission_id, **parts)
+
+
+def progress_parts(
+    content: Any,
+    version: int | None,
+    rows: list[TrainingSession],
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Plan vs. evidence for any plan-shaped content (a mission plan or the athlete timeline)."""
+    zone = _zone(content.timezone if content else "UTC")
     today = _local_day(now or datetime.now(UTC), zone)
     evidence = evidence_summary(rows, today, zone)
-    if plan is None:
-        return MissionProgress(mission_id=mission_id, as_of=today, evidence=evidence)
-
-    content = plan.content
+    if content is None:
+        return {"as_of": today, "evidence": evidence}
     by_id = {row.id: row for row in rows}
     by_day: dict[date, list[TrainingSession]] = defaultdict(list)
     for row in rows:
@@ -472,16 +499,15 @@ def compute_progress(
     resolved = totals.completed + totals.partial + totals.missed
     if resolved:
         totals.consistency_pct = round(100 * (totals.completed + 0.5 * totals.partial) / resolved)
-    window_start, window_end = content.start_date, min(content.race_date, today)
+    window_start, window_end = content.start_date, min(content.race_date or today, today)
     unplanned = [
         _ref(row, zone)
         for row in rows
         if row.id not in claimed and window_start <= _local_day(row.logged_at, zone) <= window_end
     ]
-    return MissionProgress(
-        mission_id=mission_id,
+    return dict(
         as_of=today,
-        plan_version=plan.version,
+        plan_version=version,
         totals=totals,
         weeks=weeks,
         sessions=sessions,
