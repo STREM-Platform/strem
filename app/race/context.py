@@ -295,6 +295,16 @@ def render(ctx: RaceContext) -> str:
             _hm(event.get("cutoff_minutes")) if event.get("cutoff_minutes") else "not entered",
         ),
         _line(
+            "Checkpoints",
+            "; ".join(
+                f"{c.get('name')} km {c.get('km')}"
+                + (f" ({', '.join(c['services'])})" if c.get("services") else " (no services)")
+                + (f" cutoff {_hm(c['cutoff_minutes'])}" if c.get("cutoff_minutes") else "")
+                for c in event.get("checkpoints") or []
+            )
+            or "not entered",
+        ),
+        _line(
             "Legs",
             ", ".join(
                 f"{leg['discipline']} {leg['distance_km']} km" for leg in event.get("legs") or []
