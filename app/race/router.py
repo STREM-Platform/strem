@@ -242,6 +242,21 @@ async def commit_import(
     return await importer.commit_import(services, mission_id, body.content)
 
 
+@router.get("/race/{mission_id}/proposals")
+async def proposals(
+    mission_id: uuid.UUID,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    db: SessionDep,
+    response: Response,
+    status: str | None = None,
+) -> dict[str, Any]:
+    """The race team's proposals for this race, newest first (`?status=pending`)."""
+    _no_store(response)
+    await services.mission(mission_id)
+    return {"items": await service.list_proposals(db, current.user_id, mission_id, status)}
+
+
 @router.post("/race/{mission_id}/proposals/{proposal_id}/{decision}")
 async def decide(
     mission_id: uuid.UUID,
