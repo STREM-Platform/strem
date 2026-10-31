@@ -590,7 +590,7 @@ def normalize(
     raw: RawPlan,
     *,
     today: date,
-    race_date: date,
+    race_date: date | None,
     start_date: date | None,
     timezone: str,
     sport: str,
@@ -703,8 +703,8 @@ def normalize(
         ),
         "sport": sport,
         "timezone": timezone,
-        "start_date": min(first, race_date).isoformat(),
-        "race_date": race_date.isoformat(),
+        "start_date": (min(first, race_date) if race_date else first).isoformat(),
+        "race_date": race_date.isoformat() if race_date else None,
         "phases": phase_spans(weeks, race_date),
         "weeks": weeks,
         "principles": [],
@@ -716,11 +716,12 @@ def normalize(
     return content, warnings
 
 
-def phase_spans(weeks: list[dict[str, Any]], race_date: date) -> list[dict[str, str]]:
+def phase_spans(weeks: list[dict[str, Any]], race_date: date | None) -> list[dict[str, str]]:
     """Consecutive weeks of one phase form a block on the road-to-race-day bar."""
     spans: list[dict[str, str]] = []
     for w in weeks:
-        end = min(date.fromisoformat(w["start_date"]) + timedelta(days=6), race_date).isoformat()
+        week_end = date.fromisoformat(w["start_date"]) + timedelta(days=6)
+        end = (min(week_end, race_date) if race_date else week_end).isoformat()
         if spans and spans[-1]["phase"] == w["phase"]:
             spans[-1]["end_date"] = end
         else:
@@ -732,7 +733,7 @@ def phase_spans(weeks: list[dict[str, Any]], race_date: date) -> list[dict[str, 
     return spans
 
 
-def sanity_warnings(weeks: list[dict[str, Any]], race_date: date) -> list[str]:
+def sanity_warnings(weeks: list[dict[str, Any]], race_date: date | None) -> list[str]:
     """The engine's checks, as advice: the athlete's plan is never rewritten."""
     out: list[str] = []
     previous: float | None = None
@@ -747,7 +748,7 @@ def sanity_warnings(weeks: list[dict[str, Any]], race_date: date) -> list[str]:
         rest = any(s["kind"] == "rest" for s in w["sessions"])
         if len(days) >= 7 and not rest:
             out.append(f"Week {w['index']} has no rest day.")
-    if weeks:
+    if weeks and race_date:  # a plan outside any race has no race day to check against
         last = date.fromisoformat(weeks[-1]["start_date"]) + timedelta(days=6)
         if last < race_date - timedelta(days=21):
             out.append(
