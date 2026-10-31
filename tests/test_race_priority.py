@@ -24,14 +24,20 @@ def race_day(plus_days: int) -> str:
     return (TODAY + timedelta(days=plus_days)).isoformat()
 
 
+def phases(plan: dict[str, Any]) -> list[str]:
+    return [w["phase"] for w in plan["weeks"]]
+
+
+def hours(plan: dict[str, Any], i: int) -> float:
+    return float(plan["weeks"][i]["target_hours"])
+
+
 def test_own_priority_sets_the_taper() -> None:
     a = build_plan(ctx_for(mission(race_date=race_day(140))))
     b = build_plan(ctx_for(with_priority(mission(race_date=race_day(140)), "B")))
     c = build_plan(ctx_for(with_priority(mission(race_date=race_day(140)), "C")))
-    phases = lambda plan: [w["phase"] for w in plan["weeks"]]  # noqa: E731
     assert phases(a).count("taper") >= 2  # a 50K mountain race tapers for weeks
     assert phases(b).count("taper") == 0 and phases(c).count("taper") == 0  # race week only
-    hours = lambda plan, i: plan["weeks"][i]["target_hours"]  # noqa: E731
     assert hours(c, -1) > hours(b, -1)  # race week: trained through > mini-taper
     assert hours(b, -2) > hours(a, -2)  # the week before: still loading > already tapering
     assert any("B race" in x for x in b["assumptions"]) and any(
