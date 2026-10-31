@@ -172,6 +172,13 @@ def test_complete_mission_records_history_and_locks_layers() -> None:
                     "finish_minutes": 702,
                     "rating": 4,
                     "lessons": ["Start the bike easier", "  "],
+                    "race_day": {
+                        "carbs_g_per_hour": 85,
+                        "gi_issues": "severe",
+                        "pacing": "faded",
+                        "low_point_km": 140,
+                        "heat": "hot",
+                    },
                 }
             },
         )
@@ -197,6 +204,10 @@ def test_complete_mission_records_history_and_locks_layers() -> None:
         entry = history["items"][0]
         assert entry["source"] == "mission" and entry["mission_id"] == created["id"]
         assert entry["finish_minutes"] == 702 and entry["sport"] == "triathlon"
+        assert (
+            entry["race_day"]["gi_issues"] == "severe"
+            and entry["race_day"]["carbs_g_per_hour"] == 85
+        )
 
         locked = await h.client.put(
             f"{path}/layers/fuel", headers=headers(user, version="*"), json=FUEL_LAYER

@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
-from app.schemas.race_mission import Sport, StrictModel, _calendar_date
+from app.schemas.race_mission import RaceDayData, Sport, StrictModel, _calendar_date
 
 ResultSource = Literal["athlete", "mission", "strava"]
 
@@ -32,6 +32,7 @@ class RaceResultInput(StrictModel):
     gear_notes: str | None = Field(default=None, max_length=600)
     notes: str | None = Field(default=None, max_length=2000)
     lessons: list[str] = Field(default_factory=list, max_length=10)
+    race_day: RaceDayData | None = None
 
     @field_validator("race_date", mode="before")
     @classmethod
