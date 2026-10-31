@@ -29,6 +29,10 @@ from app.race.engine.common import (
 
 TAPER_FACTORS = {1: [0.55], 2: [0.72, 0.5], 3: [0.82, 0.65, 0.5]}
 TAPER_LONG = {1: [0.4], 2: [0.6, 0.35], 3: [0.7, 0.5, 0.35]}
+# B race: a mini-taper (the race week only, lighter). C race: trained through.
+PRIORITY_TAPER = {"B": ([0.75], [0.5]), "C": ([0.9], [0.0])}
+INTENSE = {"intervals", "tempo", "hills", "race_sim", "long", "back_to_back", "brick", "test"}
+PRIORITY_NAME = {"A": "A race", "B": "B race", "C": "C race"}
 RAMP = {"new": 1.06, "some": 1.07, "experienced": 1.08, "elite": 1.10}
 DEFAULT_DAYS = {"new": 4, "some": 5, "experienced": 5, "elite": 6}
 LEVEL_VOLUME = {"new": 0.75, "some": 0.9, "experienced": 1.0, "elite": 1.3}
@@ -203,7 +207,15 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
     assumptions.append(finish.note + f": {hm(finish_min)}")
     assumptions.append(f"Long session builds from {hm(long_start)} toward {hm(long_peak)}")
 
+    priority = str(ctx.goal.get("priority") or "A")
     taper_n = 1 if finish_min < 120 else 2 if finish_min < 330 else 3
+    if priority in PRIORITY_TAPER:
+        taper_n = 1
+        assumptions.append(
+            "B race: a mini-taper in race week; it counts as a key session, not the season's peak"
+            if priority == "B"
+            else "C race: trained through — it replaces the long session that week"
+        )
     taper_n = min(taper_n, max(n_weeks - 1, 1)) if n_weeks > 1 else 1
     load_weeks = n_weeks - taper_n
     if load_weeks >= 12:
@@ -254,7 +266,10 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
             level_hours = min(peak, level_hours * ramp)
         hours.append(round(level_hours, 2))
     peak_reached = max(hours) if hours else current
-    for factor in TAPER_FACTORS[taper_n] if n_weeks > 1 else [0.5]:
+    taper_factors = (
+        PRIORITY_TAPER[priority][0] if priority in PRIORITY_TAPER else TAPER_FACTORS[taper_n]
+    )
+    for factor in taper_factors if n_weeks > 1 else [0.5]:
         hours.append(round(peak_reached * factor, 2))
     hours = hours[:n_weeks]
 
@@ -270,7 +285,9 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
             else:
                 value = (longs[-1] if longs else long_start) * 0.7
         else:
-            factors = TAPER_LONG[taper_n]
+            factors = (
+                PRIORITY_TAPER[priority][1] if priority in PRIORITY_TAPER else TAPER_LONG[taper_n]
+            )
             value = long_peak * factors[min(i - load_weeks, len(factors) - 1)]
         longs.append(value)
 
@@ -288,11 +305,13 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
         lighter = i < load_weeks and i % 4 == 3 and i < load_weeks - 1
         wk = _Week(i + 1, start, phase, plan_start, race)
         long_min = int(_round(min(longs[i], hours[i] * 60 * 0.5), 5))
+        # A C race is trained through: its race week trains like a normal week.
+        through = priority == "C" and phase == "race"
         _fill_week(
             wk,
             fam,
             lvl,
-            phase,
+            "build" if through else phase,
             minutes=int(hours[i] * 60),
             long_min=long_min,
             days=days,
@@ -303,6 +322,8 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
             race_sim=(phase == "specific" and i % 2 == 1),
             back_to_back=(back_to_back_event and phase == "specific"),
         )
+        if through:
+            wk.sessions = [s for s in wk.sessions if s["kind"] not in ("long", "back_to_back")]
         if phase == "race":
             _race_days(wk, ctx, finish_min)
         if not wk.sessions:
@@ -328,6 +349,8 @@ def build_plan(ctx: RaceContext) -> dict[str, Any]:
                 "sessions": sorted(wk.sessions, key=lambda s: (s["date"], s["kind"] == "rest")),
             }
         )
+    taper_start = first_monday + timedelta(weeks=load_weeks)
+    _fit_other_races(weeks, ctx, plan_start, race, taper_start, priority, warnings, assumptions)
     for index, week in enumerate(weeks, start=1):
         week["index"] = index
     phases = _phase_ranges(weeks, race)
@@ -856,6 +879,10 @@ def _race_days(wk: _Week, ctx: RaceContext, finish_min: int) -> None:
 
 
 def _race_sport(ctx: RaceContext) -> str:
+    return _race_sport_for(ctx.sport)
+
+
+def _race_sport_for(sport: str) -> str:
     return {
         "trail_running": "trail_running",
         "road_running": "running",
@@ -868,7 +895,7 @@ def _race_sport(ctx: RaceContext) -> str:
         "nordic_skiing": "skiing",
         "rowing": "rowing",
         "hybrid": "hybrid",
-    }.get(ctx.sport, "other")
+    }.get(sport, "other")
 
 
 def _focus(fam: Family, phase: str, lighter: bool, long_min: int) -> str:
@@ -920,3 +947,107 @@ def _phase_ranges(weeks: list[dict[str, Any]], race: date) -> list[dict[str, Any
                 }
             )
     return ranges[:8]
+
+
+def _fit_other_races(
+    weeks: list[dict[str, Any]],
+    ctx: RaceContext,
+    plan_start: date,
+    race: date,
+    taper_start: date,
+    priority: str,
+    warnings: list[str],
+    assumptions: list[str],
+) -> None:
+    """Place the athlete's other races inside this plan (user-service#31).
+
+    B (or a second A): mini-taper — the three days before turn easy and short,
+    the race is a key session, the day after is recovery. C: trained through —
+    the race replaces that week's long session. Conflicts are said, not hidden.
+    """
+    title = str(ctx.event.get("name") or "this race")
+    for other in ctx.other_missions:
+        event, goal = other.get("event") or {}, other.get("goal") or {}
+        if other.get("state", "active") != "active" or not event.get("race_date"):
+            continue
+        day = date.fromisoformat(str(event["race_date"]))
+        if not (plan_start <= day < race):
+            continue
+        name = str(event.get("name") or "Race")
+        kind = str(goal.get("priority") or "A")
+        weeks_apart = (race - day).days // 7
+        if kind == "A":
+            warnings.append(
+                f"{name} and {title} are both A races, {weeks_apart} week(s) apart. This plan treats "
+                f"{name} as a B race (mini-taper) — change priorities if that's wrong."
+            )
+            kind = "B"
+        if kind == "B" and day >= taper_start and priority == "A":
+            warnings.append(
+                f"{name} (B) falls in the taper for {title}: you will arrive at {title} less fresh."
+            )
+        week = next((w for w in weeks if w["start_date"] <= day.isoformat() <= _week_end(w)), None)
+        if week is None:
+            continue
+        sessions = [s for s in week["sessions"] if s["date"] != day.isoformat()]
+        if kind == "B":
+            for offset in (1, 2, 3):
+                before = (day - timedelta(days=offset)).isoformat()
+                for s in sessions:
+                    if s["date"] == before and s["kind"] in INTENSE:
+                        s.update(
+                            kind="easy",
+                            title="Easy (mini-taper)",
+                            duration_minutes=min(int(s.get("duration_minutes") or 40), 40),
+                            distance_km=None,
+                            elevation_m=None,
+                            intensity="easy",
+                            key=False,
+                            structure=[],
+                            purpose=f"Arrive at {name} fresh — keep it short and easy.",
+                        )
+            after = (day + timedelta(days=1)).isoformat()
+            sessions = [s for s in sessions if s["date"] != after]
+            if after <= _week_end(week) and after < race.isoformat():
+                sessions.append(
+                    {
+                        "id": f"w{week['index']}-recover-{kind.lower()}",
+                        "date": after,
+                        "sport": "rest",
+                        "kind": "rest",
+                        "title": "Recovery after the race",
+                        "purpose": "Rest or a gentle walk; eat and sleep well.",
+                        "duration_minutes": 0,
+                        "intensity": "rest",
+                    }
+                )
+        else:  # C: trained through, the race is this week's long effort
+            sessions = [s for s in sessions if s["kind"] not in ("long", "back_to_back")]
+        sessions.append(
+            {
+                "id": f"w{week['index']}-race-{kind.lower()}",
+                "date": day.isoformat(),
+                "sport": _race_sport_for(str(event.get("sport") or "trail_running")),
+                "kind": "race",
+                "title": f"{name} ({PRIORITY_NAME[kind]})",
+                "purpose": (
+                    "A key race: race it, then recover."
+                    if kind == "B"
+                    else "Train through it: treat it as your long run and a rehearsal — fuel, gear, pacing."
+                ),
+                "distance_km": event.get("distance_km"),
+                "intensity": "race" if kind == "B" else "steady",
+                "key": True,
+            }
+        )
+        week["sessions"] = sorted(sessions, key=lambda s: (s["date"], s["kind"] == "rest"))
+        week["target_hours"] = round(
+            sum((s.get("duration_minutes") or 0) for s in week["sessions"] if s["kind"] != "race")
+            / 60,
+            1,
+        )
+        assumptions.append(f"{name} on {day_text(day)} is a {PRIORITY_NAME[kind]} inside this plan")
+
+
+def _week_end(week: dict[str, Any]) -> str:
+    return (date.fromisoformat(week["start_date"]) + timedelta(days=6)).isoformat()
