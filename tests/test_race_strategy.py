@@ -18,7 +18,7 @@ CHECKPOINTS = [
 
 def course() -> CourseSummary:
     # 50 km: climbing in the first half, descending in the second.
-    profile = [
+    profile: list[tuple[float, float, float | None, float | None]] = [
         (float(k), float(k + 1), 60.0 if k < 25 else -60.0, 6.0 if k < 25 else -6.0)
         for k in range(50)
     ]
