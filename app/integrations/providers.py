@@ -142,6 +142,40 @@ class StravaProvider:
                 break
         return SyncResult(sessions=sessions)
 
+    # ── Routes (training#19): list the athlete's routes, export one as GPX ──
+    _ATHLETE_URL = "https://www.strava.com/api/v3/athlete"
+    _ROUTES_URL = "https://www.strava.com/api/v3/athletes/{athlete}/routes"
+    _GPX_URL = "https://www.strava.com/api/v3/routes/{route}/export_gpx"
+    GPX_LIMIT = 4 * 1024 * 1024
+
+    async def routes(self, access_token: str) -> list[dict[str, Any]]:
+        headers = {"Authorization": f"Bearer {access_token}"}
+        athlete = await _get_json(self._ATHLETE_URL, {}, headers)
+        rows = await _get_json(
+            self._ROUTES_URL.format(athlete=int(athlete["id"])), {"per_page": 50}, headers
+        )
+        return [r for r in (_strava_route(row) for row in rows or []) if r]
+
+    async def route_gpx(self, access_token: str, route_id: str) -> bytes:
+        headers = {"Authorization": f"Bearer {access_token}"}
+        return await _get_bytes(self._GPX_URL.format(route=route_id), headers, self.GPX_LIMIT)
+
+
+def _strava_route(row: dict[str, Any]) -> dict[str, Any] | None:
+    route_id = str(row.get("id_str") or row.get("id") or "")
+    if not route_id.isdigit():
+        return None
+    kind = {1: "ride", 2: "run"}.get(int(row.get("type") or 0), "other")
+    return {
+        "id": route_id,
+        "name": str(row.get("name") or "Strava route")[:160],
+        "distance_km": round(float(row.get("distance") or 0) / 1000, 2),
+        "elevation_gain_m": round(float(row.get("elevation_gain") or 0)),
+        "kind": kind,
+        "private": bool(row.get("private")),
+        "updated_at": row.get("updated_at"),
+    }
+
 
 class WhoopProvider:
     """Whoop recovery (sleep / HRV / resting HR / recovery score) for A4."""
@@ -225,6 +259,20 @@ async def _get_json(url: str, params: dict[str, Any], headers: dict[str, str]) -
             503, "provider_unreachable", f"{_name(url)} could not be reached — try again."
         ) from exc
     return _checked(resp, url).json()
+
+
+async def _get_bytes(url: str, headers: dict[str, str], limit: int) -> bytes:
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.get(url, headers=headers)
+    except httpx.HTTPError as exc:
+        raise AppError(
+            503, "provider_unreachable", f"{_name(url)} could not be reached — try again."
+        ) from exc
+    content = _checked(resp, url).content
+    if len(content) > limit:
+        raise AppError(413, "payload_too_large", "That route is larger than 4 MiB.")
+    return content
 
 
 def _oauth_token(payload: dict[str, Any]) -> TokenSet:

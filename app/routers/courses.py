@@ -9,12 +9,13 @@ import httpx
 import jwt
 from anyio import CapacityLimiter, WouldBlock, to_thread
 from fastapi import APIRouter, Depends, Header, Request, Response
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 
 from app import courses as store
 from app.course_processing import CourseProcessingError
-from app.deps import BearerTokenDep, CurrentUserDep, SessionDep, SettingsDep
+from app.crypto import get_token_cipher
+from app.deps import BearerTokenDep, CurrentUserDep, ProviderRegistryDep, SessionDep, SettingsDep
 from app.errors import AppError
 
 router = APIRouter()
@@ -104,6 +105,54 @@ async def upload(
         ) from None
     finally:
         limiter.release()
+    generation = authorization["generation"]
+    assert isinstance(generation, int)
+    result = await store.save(
+        session, current.user_id, mission_id, generation, int(expected[1:-1]), gpx, snapshot
+    )
+    response.headers.update({"Cache-Control": "no-store", "ETag": f'"{result["version"]}"'})
+    return result
+
+
+class StravaCourse(BaseModel):
+    route_id: str = Field(pattern=r"^[0-9]{1,30}$")
+
+
+@router.post("/v1/training/missions/{mission_id}/course/from-strava")
+async def course_from_strava(
+    mission_id: uuid.UUID,
+    body: StravaCourse,
+    current: CurrentUserDep,
+    session: SessionDep,
+    settings: SettingsDep,
+    registry: ProviderRegistryDep,
+    response: Response,
+    authorization: AccessDep,
+    expected: Annotated[str, Header(alias="If-Match", pattern=r'^"[0-9]{1,10}"$')],
+) -> dict[str, object]:
+    """Attach one of the athlete's Strava routes as the course — no file needed."""
+    if authorization["state"] != "active":
+        raise AppError(409, "mission_archived", "Archived missions cannot accept a new course.")
+    from app.integrations import service as integrations
+
+    gpx_bytes = await integrations.strava_route_gpx(
+        session,
+        registry,
+        get_token_cipher(settings),
+        user_id=current.user_id,
+        route_id=body.route_id,
+    )
+    upload = store.CourseUpload(
+        content_base64=base64.b64encode(gpx_bytes).decode(),
+        source_url=f"https://www.strava.com/routes/{body.route_id}",
+    )
+    try:
+        gpx, snapshot = await to_thread.run_sync(store.prepare, upload)
+    except CourseProcessingError as error:
+        raise AppError(
+            422, error.code, "This Strava route could not be processed as a course."
+        ) from None
+    snapshot["source"] = "strava_route"
     generation = authorization["generation"]
     assert isinstance(generation, int)
     result = await store.save(

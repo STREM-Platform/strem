@@ -64,6 +64,20 @@ async def connect_source(
     return next(IntegrationSource(**s) for s in sources if s["id"] == provider)  # type: ignore[arg-type]
 
 
+@router.get("/integrations/strava/routes")
+async def strava_routes(
+    current: CurrentUserDep,
+    session: SessionDep,
+    settings: SettingsDep,
+    registry: ProviderRegistryDep,
+) -> dict[str, object]:
+    """The athlete's Strava routes, to use as a race course (training#19)."""
+    cipher = get_token_cipher(settings)
+    return {
+        "items": await service.strava_routes(session, registry, cipher, user_id=current.user_id)
+    }
+
+
 @router.delete("/integrations/{provider}", status_code=status.HTTP_204_NO_CONTENT)
 async def disconnect_source(provider: str, current: CurrentUserDep, session: SessionDep) -> None:
     await service.disconnect(session, user_id=current.user_id, provider=provider)
