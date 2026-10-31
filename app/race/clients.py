@@ -177,6 +177,18 @@ class RaceServices:
         )
         return dict(result)
 
+    async def put_base_plan(self, body: dict[str, Any]) -> dict[str, Any]:
+        """The athlete's own plan outside any race (training-service#23)."""
+        result = await self._request(
+            "PUT",
+            self.training_base,
+            "/training/plan/base",
+            json=body,
+            headers={"If-Match": "*"},
+            missing_ok=False,
+        )
+        return dict(result)
+
     async def put_layer(
         self, mission_id: uuid.UUID, kind: str, body: dict[str, Any]
     ) -> dict[str, Any]:

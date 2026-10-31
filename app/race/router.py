@@ -190,6 +190,31 @@ async def adapt(
     )
 
 
+@router.post("/race/plan/import")
+async def import_athlete_plan(
+    body: PlanImportRequest,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    ai: RaceAIDep,
+    response: Response,
+) -> dict[str, Any]:
+    """Read the athlete's own plan with no race attached (training-service#23)."""
+    _no_store(response)
+    return await importer.import_athlete_plan(services, ai, body)
+
+
+@router.post("/race/plan/import/commit")
+async def commit_athlete_import(
+    body: ImportCommit,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    response: Response,
+) -> dict[str, Any]:
+    """Save the reviewed draft as the athlete's plan outside any race."""
+    _no_store(response)
+    return await importer.commit_athlete_import(services, body.content)
+
+
 @router.post("/race/{mission_id}/plan/import")
 async def import_plan(
     mission_id: uuid.UUID,

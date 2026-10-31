@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.errors import AppError
 from app.race import plan_import as pi
@@ -62,11 +65,42 @@ def attachments(sources: list[pi.ImportSource]) -> list[dict[str, Any]]:
     return blocks
 
 
+@dataclass
+class Target:
+    """What the imported plan is fitted to: one race, or the athlete with no race."""
+
+    context: str
+    today: date
+    race_date: date | None
+    timezone: str
+    sport: str
+    title: str
+
+
 async def import_plan(
     services: RaceServices, ai: RaceAI, mission_id: uuid.UUID, body: pi.PlanImportRequest
 ) -> dict[str, Any]:
     ctx = await load_context(services, mission_id)
-    context = render(ctx)
+    target = Target(
+        context=render(ctx),
+        today=ctx.today,
+        race_date=ctx.race_date,
+        timezone=str(ctx.event.get("timezone") or "UTC"),
+        sport=ctx.sport,
+        title=str(ctx.event.get("name") or "your race"),
+    )
+    return await read_plan(ai, target, body)
+
+
+async def import_athlete_plan(
+    services: RaceServices, ai: RaceAI, body: pi.PlanImportRequest
+) -> dict[str, Any]:
+    """The athlete's own plan with no race attached (training-service#23)."""
+    return await read_plan(ai, await athlete_target(services), body)
+
+
+async def read_plan(ai: RaceAI, target: Target, body: pi.PlanImportRequest) -> dict[str, Any]:
+    context = target.context
     visual = [s for s in body.sources if s.kind in ("image", "pdf")]
     texts = [s for s in body.sources if s.kind in ("csv", "text")]
     raw: pi.RawPlan | None = None
@@ -123,12 +157,12 @@ async def import_plan(
 
     content, warnings = pi.normalize(
         raw,
-        today=ctx.today,
-        race_date=ctx.race_date,
+        today=target.today,
+        race_date=target.race_date,
         start_date=body.start_date,
-        timezone=str(ctx.event.get("timezone") or "UTC"),
-        sport=ctx.sport,
-        title=str(ctx.event.get("name") or "your race"),
+        timezone=target.timezone,
+        sport=target.sport,
+        title=target.title,
     )
 
     review: dict[str, Any] | None = None
@@ -169,4 +203,78 @@ async def commit_import(
     await services.mission(mission_id)
     return await services.put_plan(
         mission_id, {"content": content, "origin": "athlete", "model": None}
+    )
+
+
+async def commit_athlete_import(services: RaceServices, content: dict[str, Any]) -> dict[str, Any]:
+    """Save the reviewed draft as the athlete's plan outside any race."""
+    return await services.put_base_plan({"content": content, "origin": "athlete", "model": None})
+
+
+async def athlete_target(services: RaceServices) -> Target:
+    """Context for a plan with no race: who the athlete is, what they do, what is ahead."""
+    user = await services.user() or {}
+    profile = await services.athlete_profile() or {}
+    try:
+        missions = await services.missions()
+    except AppError:
+        missions = []  # races are optional context here
+    sessions = await services.sessions(limit=80)
+    timezone = str(user.get("timezone") or "UTC")
+    try:
+        today = datetime.now(ZoneInfo(timezone)).date()
+    except (ZoneInfoNotFoundError, ValueError):
+        timezone, today = "UTC", datetime.now(UTC).date()
+    upcoming = sorted(
+        (
+            m
+            for m in missions
+            if m.get("state") == "active"
+            and str((m.get("event") or {}).get("race_date", "")) >= today.isoformat()
+        ),
+        key=lambda m: str(m["event"]["race_date"]),
+    )
+    lines = [f"TODAY: {today.isoformat()}", "", "## ATHLETE [athlete]"]
+    for key in (
+        "experience",
+        "weekly_hours",
+        "weekly_km",
+        "longest_km",
+        "weight_kg",
+        "primary_sport",
+        "notes",
+    ):
+        if profile.get(key) not in (None, "", []):
+            lines.append(f"- {key.replace('_', ' ')}: {profile[key]}")
+    lines += ["", "## UPCOMING RACES [athlete]"]
+    if upcoming:
+        for m in upcoming[:6]:
+            event, goal = m.get("event") or {}, m.get("goal") or {}
+            lines.append(
+                f"- {event.get('name')} · {event.get('race_date')} · {event.get('sport')} · "
+                f"{event.get('distance_km') or '?'} km · priority {goal.get('priority', 'A')}"
+            )
+    else:
+        lines.append("- none: this plan is the athlete's own training outside any race")
+    lines += ["", "## RECENT TRAINING [recorded]"]
+    if sessions:
+        for s in sessions[:20]:
+            lines.append(
+                f"- {str(s.get('logged_at', ''))[:10]} {s.get('session_type')} "
+                f"{s.get('duration_minutes')} min {s.get('distance_km') or ''}".rstrip()
+            )
+    else:
+        lines.append("- no logged or imported sessions yet")
+    sport = (
+        str((upcoming[0].get("event") or {}).get("sport"))
+        if upcoming
+        else str(profile.get("primary_sport") or "running")
+    )
+    return Target(
+        context="\n".join(lines),
+        today=today,
+        race_date=None,
+        timezone=timezone,
+        sport=sport,
+        title="your own training",
     )

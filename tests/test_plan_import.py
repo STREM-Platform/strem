@@ -344,3 +344,36 @@ def test_grid_with_days_across_the_top_reads_one_week_per_row() -> None:
         (2, 5, "long"),
     ]
     assert raw.week_labels[1] == ("base", None)
+
+
+def test_plan_outside_any_race_imports_and_saves_as_the_base_plan() -> None:
+    class Services(FakeServices):
+        base_doc: dict[str, Any] | None = None
+
+        async def put_base_plan(self, body: dict[str, Any]) -> dict[str, Any]:
+            self.base_doc = body
+            return {"version": 1, **body}
+
+    m = mission()
+    fake, ai = Services(m), VisionAI(fail="No AI provider key is configured on this server.")
+
+    async def scenario() -> None:
+        async with race_app(fake, ai) as client:
+            headers = auth_header(uuid.uuid4())
+            draft = await client.post(
+                "/v1/ai/race/plan/import",
+                headers=headers,
+                json={"sources": [{"kind": "text", "text": GRID_PLAN}], "start_date": "2026-11-02"},
+            )
+            assert draft.status_code == 200, draft.text
+            body = draft.json()
+            assert body["content"]["race_date"] is None and body["sessions"] == 12
+            assert not any("race day" in w for w in body["warnings"])  # no race to check against
+            saved = await client.post(
+                "/v1/ai/race/plan/import/commit", headers=headers, json={"content": body["content"]}
+            )
+            assert (
+                saved.status_code == 200 and fake.base_doc and fake.base_doc["origin"] == "athlete"
+            )
+
+    asyncio.run(scenario())
