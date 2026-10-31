@@ -28,6 +28,7 @@ import { BuildPanel } from "@/components/mission/build-panel";
 import { SessionRow, sessionStatus } from "@/components/plan/session-row";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { addDays, capitalize, dayLabel, km, mondayOf, todayIn, weekdayShort } from "@/lib/race/format";
+import { raceConflicts } from "@/lib/race/priority";
 import { useRace } from "@/lib/race/race-context";
 import { useBuilder } from "@/lib/race/use-builder";
 
@@ -120,6 +121,9 @@ export default function PlanScreen() {
         </Card>
       ) : null}
       {race.timelineError ? <ErrorBanner message={race.timelineError} onRetry={() => void race.refreshTimeline()} /> : null}
+      {raceConflicts(missions, today).map((c) => (
+        <Notice key={c} icon="alert" tone="attention" title="Races clash" body={c} action={<TextLink label="Change priorities" onPress={() => router.push("/(app)/missions")} />} />
+      ))}
       <BuildPanel states={builder.states} />
       {week ? (
         <>

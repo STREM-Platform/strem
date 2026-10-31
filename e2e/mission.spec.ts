@@ -200,3 +200,25 @@ test("bring my own plan with no race and see it as my plan", async ({ page, requ
   expect(plan.content.weeks).toHaveLength(8);
   expect(plan.content.weeks.every((w: { source: string }) => w.source === "base")).toBe(true);
 });
+
+test("change a race's priority from My races and see the clash warning go away", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic Peak 50K");
+  const earlier = new Date(`${raceDay().iso}T12:00:00Z`);
+  earlier.setUTCDate(earlier.getUTCDate() - 42);
+  const tuneUp = await request.post(`${api}/race-missions`, {
+    headers: { ...headers, "Idempotency-Key": `e2e_${randomUUID().replaceAll("-", "")}` },
+    data: { event: { name: "Synthetic Tune-up 25K", race_date: earlier.toISOString().slice(0, 10), timezone: "Europe/Sofia", location_name: "Test Valley", distance_km: 25, sport: "trail_running" }, goal: { outcome: "finish_confidently" } },
+  });
+  expect(tuneUp.status()).toBe(201);
+  await page.goto("/missions");
+  await expect(page.getByText("Races clash")).toBeVisible();
+  // The earlier race (listed first) becomes the B race.
+  await page.getByRole("button", { name: "A race — change priority" }).first().click();
+  await page.getByRole("radio", { name: /^B race/ }).click();
+  await expect(page.getByText("Now a B race")).toBeVisible();
+  await page.getByRole("button", { name: "Re-plan around this", exact: true }).click();
+  await expect(page.getByText(/re-planned|No race plan to change yet/i)).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("Races clash")).toHaveCount(0);
+  const missions = await (await request.get(`${api}/race-missions`, { headers })).json();
+  expect(missions.items.map((m: { goal: { priority?: string } }) => m.goal.priority ?? "A").sort()).toEqual(["A", "B"]);
+});
