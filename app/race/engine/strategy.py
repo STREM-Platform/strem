@@ -10,7 +10,19 @@ from __future__ import annotations
 from typing import Any
 
 from app.race.context import CourseSummary, RaceContext
-from app.race.engine.common import effort_km, estimate_finish, family, hm
+from app.race.engine.common import (
+    effort_km,
+    estimate_finish,
+    expected_temperature,
+    family,
+    hm,
+    level,
+)
+from app.race.engine.fuel import carb_target, fluid_target, sodium_target
+
+# Minutes stopped at a station, by what it offers (crew/drop bag dominate).
+STOP_MINUTES = {"drop_bag": 6, "crew": 5, "food": 3, "medical": 1, "water": 1, "toilet": 1}
+SOFT_BOTTLE_ML = 500
 
 
 def _segments_from_course(course: CourseSummary) -> list[dict[str, Any]]:
@@ -121,6 +133,7 @@ def build_strategy(ctx: RaceContext) -> dict[str, Any]:
                 },
             }
         )
+    checkpoint_section, checkpoint_warnings, stops = _checkpoint_plan(ctx, total, fam)
     cutoff = ctx.event.get("cutoff_minutes")
     metrics = [
         {
@@ -142,7 +155,15 @@ def build_strategy(ctx: RaceContext) -> dict[str, Any]:
         metrics.append(
             {"label": "Average speed", "value": f"{km / (total / 60):.1f}", "unit": "km/h"}
         )
-    warnings: list[str] = []
+    warnings: list[str] = list(checkpoint_warnings)
+    if stops:
+        metrics.append(
+            {
+                "label": "Time at aid stations",
+                "value": hm(stops),
+                "note": "Planned stops, included in the finish",
+            }
+        )
     if cutoff:
         buffer = cutoff - total
         metrics.append(
@@ -230,6 +251,8 @@ def build_strategy(ctx: RaceContext) -> dict[str, Any]:
         },
         {"id": "mental", "title": "Mental plan", "kind": "checklist", "items": mental},
     ]
+    if checkpoint_section is not None:
+        sections.insert(0, checkpoint_section)
     if fam == "tri":
         sections.insert(
             1,
@@ -267,5 +290,138 @@ def build_strategy(ctx: RaceContext) -> dict[str, Any]:
         "sections": sections,
         "warnings": warnings,
         "assumptions": [finish.note + f": {hm(total)}"],
-        "sources": [f"STREM race engine: {basis}"],
+        "sources": [f"STREM race engine: {basis}"]
+        + (["Checkpoints and aid stations you entered"] if checkpoint_section else []),
     }
+
+
+def _profile_between(course: CourseSummary | None, a: float, b: float) -> tuple[float, float]:
+    """Climb and descent between two course distances, from the km profile."""
+    gain = loss = 0.0
+    for start, end, change, _grade in course.profile if course else []:
+        overlap = max(0.0, min(b, end) - max(a, start))
+        if overlap <= 0 or end <= start or change is None:
+            continue
+        share = change * overlap / (end - start)
+        gain += max(share, 0)
+        loss += max(-share, 0)
+    return gain, loss
+
+
+def _clock(start: str | None, minutes: float) -> str | None:
+    if not start:
+        return None
+    hours, mins = (int(x) for x in start.split(":"))
+    total = hours * 60 + mins + int(round(minutes))
+    day, rest = divmod(total, 24 * 60)
+    text = f"{rest // 60:02d}:{rest % 60:02d}"
+    return text + (f" (+{day}d)" if day else "")
+
+
+def _checkpoint_plan(
+    ctx: RaceContext, total: int, fam: str
+) -> tuple[dict[str, Any] | None, list[str], int]:
+    """Leg-by-leg plan between checkpoints: arrival, cutoff margin, what to carry
+    and what to do at each station (ai#46). None when no checkpoints are known."""
+    checkpoints = [c for c in ctx.event.get("checkpoints") or [] if c.get("km") is not None]
+    km = ctx.distance_km
+    if not checkpoints or not km:
+        return None, [], 0
+    stations = [c for c in checkpoints if 0 < float(c["km"]) < km]
+    stops = [
+        max((STOP_MINUTES.get(s, 0) for s in c.get("services") or []), default=1)
+        + (2 if "food" in (c.get("services") or []) and "crew" in (c.get("services") or []) else 0)
+        for c in stations
+    ]
+    moving_total = max(total - sum(stops), total * 0.8)
+    points = [{"name": "Start", "km": 0.0}, *stations, {"name": "Finish", "km": km}]
+    legs = []
+    for a, b in zip(points, points[1:], strict=False):
+        dist = max(float(b["km"]) - float(a["km"]), 0.1)
+        gain, loss = _profile_between(ctx.course, float(a["km"]), float(b["km"]))
+        legs.append(
+            (a, b, dist, gain, loss, max(effort_km(dist, gain) - 0.02 * loss / 10, dist * 0.6))
+        )
+    scale = moving_total / sum(leg[5] for leg in legs)
+    lvl = level(ctx)
+    carbs, _ = carb_target(total, lvl, fam)
+    fluid, _ = fluid_target(expected_temperature(ctx), ctx.weight_kg)
+    sodium = sodium_target(expected_temperature(ctx), total)
+    start_time = ctx.event.get("start_time")
+    rows: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    elapsed = 0.0
+    for i, (a, b, dist, gain, _loss, weight) in enumerate(legs):
+        minutes = weight * scale
+        elapsed += minutes
+        hours = minutes / 60
+        refill = "water" in (b.get("services") or []) or b["name"] == "Finish"
+        carry_ml = int(round(fluid * hours / 50) * 50)
+        carry = f"{int(carbs * hours)} g carbs · {carry_ml} ml"
+        values: dict[str, Any] = {
+            "distance_km": round(dist, 1),
+            "gain_m": round(gain),
+            "split": hm(minutes),
+            "arrive": hm(elapsed),
+            "clock": _clock(start_time, elapsed) or "–",
+            "carry": carry,
+        }
+        todo: list[str] = []
+        cutoff = b.get("cutoff_minutes")
+        if cutoff:
+            margin = cutoff - elapsed
+            values["cutoff_margin"] = hm(margin) if margin >= 0 else f"−{hm(-margin)}"
+            if margin < 0:
+                warnings.append(
+                    f"At your target pace you reach {b['name']} {hm(-margin)} after its cutoff — the target finish is not realistic for this race."
+                )
+            elif margin < max(30, elapsed * 0.1):
+                warnings.append(
+                    f"Only {hm(margin)} margin to the {b['name']} cutoff: keep stops short and don't bank on the second half."
+                )
+                todo.append("Tight cutoff — in and out")
+        if b["name"] != "Finish":
+            services = b.get("services") or []
+            if refill:
+                todo.append(f"Refill ~{min(carry_ml, SOFT_BOTTLE_ML * 3)} ml")
+            if "food" in services:
+                todo.append("Eat something real (salty + carbs)")
+            if "crew" in services:
+                todo.append("Crew: swap bottles and restock gels")
+            if "drop_bag" in services:
+                todo.append("Drop bag: restock, dry socks, layers for what's next")
+            if sodium and hours >= 1:
+                todo.append(f"~{int(sodium * hours)} mg sodium until the next station")
+            if not refill and i + 1 < len(legs):
+                nxt = legs[i + 1]
+                todo.append(f"No water here — carry for {hm(nxt[5] * scale)} more")
+            stop = stops[i] if i < len(stops) else 0
+            if stop:
+                elapsed += stop
+                todo.append(f"Plan {stop} min here")
+        rows.append(
+            {
+                "id": f"leg-{i + 1}",
+                "title": f"{a['name']} → {b['name']} (km {float(b['km']):g})",
+                "detail": " · ".join(todo) or "Hold even effort; eat and drink on schedule.",
+                "values": values,
+                "priority": "high"
+                if cutoff and "cutoff_margin" in values and values["cutoff_margin"].startswith("−")
+                else "normal",
+            }
+        )
+    columns = ["distance_km", "gain_m", "split", "arrive", "clock", "carry"]
+    if any("cutoff_margin" in r["values"] for r in rows):
+        columns.insert(5, "cutoff_margin")
+    section = {
+        "id": "checkpoints",
+        "title": "Checkpoint plan",
+        "kind": "table",
+        "description": (
+            "Leg by leg between your checkpoints: arrival, margin to each cutoff, what to carry and "
+            "what to do at each station. Stops are included in the finish time."
+        ),
+        "columns": columns,
+        "items": rows,
+    }
+    return section, warnings, sum(stops)

@@ -127,6 +127,9 @@ def _layer_from_ai(ai_layer: AILayer, today: date) -> dict[str, Any]:
     }
 
 
+KEEP_SECTIONS = {"checkpoints"}
+
+
 def apply_layer_guardrails(kind: str, engine: dict[str, Any], ai: dict[str, Any]) -> dict[str, Any]:
     result = dict(ai)
     # 1. Safety warnings from the engine are never dropped.
@@ -185,6 +188,13 @@ def apply_layer_guardrails(kind: str, engine: dict[str, Any], ai: dict[str, Any]
             target = {k: v for k, v in section.items() if k != "items"} | {"items": []}
             result["sections"].append(target)
         target["items"].extend(missing)
+    # 5. The checkpoint plan is computed from the athlete's own checkpoints: it stays whole.
+    for section in engine.get("sections") or []:
+        if section["id"] in KEEP_SECTIONS:
+            result["sections"] = [
+                s for s in result.get("sections") or [] if s["id"] != section["id"]
+            ]
+            result["sections"].insert(0, section)
     result["sources"] = [
         "STREM race engine baseline",
         "Personalized by the AI race team from your context",
