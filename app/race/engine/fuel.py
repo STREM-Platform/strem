@@ -20,6 +20,7 @@ from app.race.engine.common import (
     level,
     slug,
 )
+from app.race.engine.memory import memory_section, race_memory
 
 
 def carb_target(minutes: int, lvl: str, fam: str) -> tuple[int, int]:
@@ -78,6 +79,20 @@ def build_fuel(ctx: RaceContext) -> dict[str, Any]:
         f"Duration about {hm(minutes)} ({finish.note.lower()})",
         f"Fluid for {fluid_label}",
     ]
+    # The athlete's own races outrank the guideline ranges (ai#45).
+    memory = race_memory(ctx.races)
+    if memory.gi_limit and carbs and carbs >= memory.gi_limit[0]:
+        capped = max(carbs_start, memory.gi_limit[0] - 10)
+        assumptions.append(
+            f"{memory.gi_limit[0]} g/h upset your stomach at {memory.gi_limit[1]}: target set to "
+            f"{capped} g/h (guideline {carbs}); raise it only after it works in long sessions"
+        )
+        carbs = capped
+    elif memory.tolerated and carbs:
+        assumptions.append(f"You handled {memory.tolerated[0]} g/h at {memory.tolerated[1]}")
+    if memory.cramps:
+        sodium = min(sodium + 100, 800)
+        assumptions.append(f"Sodium nudged up: you cramped at {memory.cramps[0]}")
     if weight:
         assumptions.append(f"Body weight {weight:g} kg (your profile)")
     else:
@@ -130,6 +145,9 @@ def build_fuel(ctx: RaceContext) -> dict[str, Any]:
         sections.append(_race_timeline(ctx, minutes, carbs, fluid, sodium, fam))
     sections.append(_pre_race(ctx, weight, minutes))
     sections.append(_rehearsals(ctx, carbs, carbs_start, minutes, temp))
+    remembered = memory_section(memory, "fuel")
+    if remembered:
+        sections.insert(1 if carbs else 0, remembered)
     if multi_day:
         sections.append(
             {

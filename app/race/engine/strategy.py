@@ -19,6 +19,7 @@ from app.race.engine.common import (
     level,
 )
 from app.race.engine.fuel import carb_target, fluid_target, sodium_target
+from app.race.engine.memory import memory_section, race_memory
 
 # Minutes stopped at a station, by what it offers (crew/drop bag dominate).
 STOP_MINUTES = {"drop_bag": 6, "crew": 5, "food": 3, "medical": 1, "water": 1, "toilet": 1}
@@ -110,10 +111,13 @@ def build_strategy(ctx: RaceContext) -> dict[str, Any]:
     scale = total / sum(weights) if sum(weights) else 0
     rows = []
     elapsed = 0.0
+    memory = race_memory(ctx.races)
     for index, (seg, weight) in enumerate(zip(segments, weights, strict=False), start=1):
         seg_min = weight * scale
         if index == 1 and len(segments) > 2:
             effort = "Start deliberately easy — the first 20% should feel too slow"
+            if memory.faded:
+                effort += f" (you faded at {memory.faded[0][0]}: hold back even more)"
         elif index == len(segments):
             effort = "Whatever is left: hold form, then empty the tank in the final km"
         else:
@@ -156,6 +160,11 @@ def build_strategy(ctx: RaceContext) -> dict[str, Any]:
             {"label": "Average speed", "value": f"{km / (total / 60):.1f}", "unit": "km/h"}
         )
     warnings: list[str] = list(checkpoint_warnings)
+    if len(memory.faded) >= 2:
+        warnings.append(
+            f"You faded in {len(memory.faded)} of your recent races ({', '.join(n for n, _ in memory.faded[:3])}): "
+            "the plan's first third is the part to protect."
+        )
     if stops:
         metrics.append(
             {
@@ -253,6 +262,9 @@ def build_strategy(ctx: RaceContext) -> dict[str, Any]:
     ]
     if checkpoint_section is not None:
         sections.insert(0, checkpoint_section)
+    remembered = memory_section(memory, "strategy")
+    if remembered:
+        sections.insert(1 if checkpoint_section else 0, remembered)
     if fam == "tri":
         sections.insert(
             1,

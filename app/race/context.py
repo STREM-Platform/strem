@@ -398,6 +398,10 @@ def render(ctx: RaceContext) -> str:
                     out.append(f"    {key.replace('_', ' ')}: {race[key]}")
             for lesson in race.get("lessons") or []:
                 out.append(f"    lesson: {lesson}")
+            day = race.get("race_day") or {}
+            facts = [f"{k.replace('_', ' ')} {v}" for k, v in day.items() if v not in (None, "")]
+            if facts:
+                out.append("    race day: " + ", ".join(facts))
         known = {str(r.get("external_id")) for r in ctx.races}
         for session in ctx.race_sessions[:10]:
             if f"strava:{session.get('id')}" in known:
