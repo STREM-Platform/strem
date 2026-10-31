@@ -211,6 +211,18 @@ class Preparation(StrictModel):
         return _calendar_date(value)
 
 
+class RaceDayData(StrictModel):
+    """What actually happened on race day, in a shape the race team can learn from (ai#45)."""
+
+    carbs_g_per_hour: int | None = Field(default=None, ge=0, le=200)
+    fluid_ml_per_hour: int | None = Field(default=None, ge=0, le=2000)
+    gi_issues: Literal["none", "mild", "severe"] | None = None
+    cramps: bool | None = None
+    pacing: Literal["even", "negative_split", "faded", "blew_up"] | None = None
+    low_point_km: float | None = Field(default=None, ge=0, le=10000)
+    heat: Literal["cold", "mild", "warm", "hot"] | None = None
+
+
 class RaceResultSummary(StrictModel):
     status: Literal["finished", "dnf", "dns"]
     finish_minutes: int | None = Field(default=None, ge=1, le=43200)
@@ -218,6 +230,7 @@ class RaceResultSummary(StrictModel):
     rating: int | None = Field(default=None, ge=1, le=5)
     notes: str | None = Field(default=None, max_length=2000)
     lessons: list[str] = Field(default_factory=list, max_length=10)
+    race_day: RaceDayData | None = None
     completed_at: datetime | None = None
 
     @field_validator("lessons")

@@ -167,6 +167,7 @@ async def record_mission_result(
         rating=result.rating,
         notes=result.notes,
         lessons=result.lessons,
+        race_day=result.race_day,
     )
     now = datetime.now(UTC)
     record = await session.scalar(
