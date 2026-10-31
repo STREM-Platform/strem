@@ -177,9 +177,7 @@ def build_season_plan(
             {
                 "index": len(weeks) + 1,
                 "start_date": week_start.isoformat(),
-                "phase": "recovery"
-                if lighter and focus in ("base", "build")
-                else PHASE.get(focus, "base"),
+                "phase": PHASE.get(focus, "base"),
                 "focus": f"{FOCUS_TITLE.get(focus, 'Season')} week"
                 + (" · lighter" if lighter else ""),
                 "target_hours": round(sum(s["duration_minutes"] for s in sessions_out) / 60, 1),
