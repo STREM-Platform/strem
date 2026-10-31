@@ -17,6 +17,7 @@ import { Icon } from "@/components/ui/icon";
 import { Body, Button, Card, ErrorBanner, Notice, Overline, Row, StatTile, TextLink, Title } from "@/components/ui/kit";
 import { C, LAYER_COLOR, disp, mono, ui } from "@/constants/theme";
 import { readBase64 } from "@/lib/files";
+import { StravaRoutesSheet } from "@/components/lab/strava-routes";
 import { ApiError } from "@/lib/api/client";
 import { courses, type CoursePoint, type MissionCourse } from "@/lib/api/courses";
 import { km } from "@/lib/race/format";
@@ -191,6 +192,7 @@ export function CourseExplorer({ saved }: { saved: MissionCourse }) {
 }
 
 export function CoursePanel({ missionId, saved, onChange }: { missionId: string; saved: MissionCourse | null | undefined; onChange: (course: MissionCourse | null) => void }) {
+  const [stravaOpen, setStravaOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState("");
@@ -237,6 +239,23 @@ export function CoursePanel({ missionId, saved, onChange }: { missionId: string;
         ) : null}
       </View>
       {error ? <ErrorBanner message={error} /> : null}
+      <StravaRoutesSheet
+        visible={stravaOpen}
+        busy={busy}
+        onClose={() => setStravaOpen(false)}
+        onPick={(route) => {
+          setBusy(true);
+          setError(null);
+          courses
+            .fromStrava(missionId, saved?.version ?? 0, route.id)
+            .then((data) => {
+              setStravaOpen(false);
+              onChange(data);
+            })
+            .catch((err) => setError(err instanceof ApiError ? err.message : "The Strava route could not be attached. Retry."))
+            .finally(() => setBusy(false));
+        }}
+      />
       {saved ? <CourseExplorer key={`${saved.mission_id}:${saved.version}`} saved={saved} /> : null}
       {saved ? (
         <TextLink label={showFile ? "Hide file options" : "Course file & source"} icon={showFile ? "chevronUp" : "chevronDown"} onPress={() => setShowFile((v) => !v)} color={C.textMuted} />
@@ -246,6 +265,7 @@ export function CoursePanel({ missionId, saved, onChange }: { missionId: string;
           <Input label="Organizer source link (optional)" value={source} onChangeText={setSource} autoCapitalize="none" placeholder="https://…" />
           <Row gap={10} wrap>
             <Button label={busy ? "Processing course…" : saved ? "Replace GPX / ZIP" : "Upload GPX / ZIP"} icon="upload" loading={busy} onPress={() => void upload()} />
+            <Button label="From Strava" icon="route" kind="secondary" onPress={() => setStravaOpen(true)} />
             {saved ? (
               <Button
                 label="Remove course"

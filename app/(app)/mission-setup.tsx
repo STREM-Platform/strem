@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { StravaRoutesSheet } from "@/components/lab/strava-routes";
 import { BuildPanel } from "@/components/mission/build-panel";
 import { Choices, DatePicker, Input } from "@/components/ui/fields";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -10,7 +11,8 @@ import { Body, Button, Card, Chip, ErrorBanner, IconButton, Notice, Overline, Ro
 import { HeroMedia } from "@/components/ui/photo";
 import { C, R, disp, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
-import { enrichApi, type PhotoCandidate, type PlaceResult } from "@/lib/api/race";
+import { courses } from "@/lib/api/courses";
+import { enrichApi, type PhotoCandidate, type PlaceResult, type StravaRoute } from "@/lib/api/race";
 import { raceMissions, type Sport, type Terrain, type Weekday } from "@/lib/api/race-missions";
 import { hm, km, longDate, parseFinishTime, requestKey, todayIn } from "@/lib/race/format";
 import { missionForm, toInput, validate, type FormErrors, type MissionForm } from "@/lib/race/mission-form";
@@ -59,6 +61,9 @@ export default function MissionSetup() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [planSource, setPlanSource] = useState<PlanSource>("generate");
+  // A Strava route picked at setup becomes the course right after the race is created (training#19).
+  const [stravaRoute, setStravaRoute] = useState<StravaRoute | null>(null);
+  const [stravaOpen, setStravaOpen] = useState(false);
   const key = useRef(requestKey());
   const scroll = useRef<ScrollView>(null);
   const finish = useCallback(async () => {
@@ -109,6 +114,13 @@ export default function MissionSetup() {
       const created = await raceMissions.create(toInput(form), key.current);
       setCreatedId(created.id);
       race.setFocus(created.id);
+      if (stravaRoute) {
+        try {
+          await courses.fromStrava(created.id, 0, stravaRoute.id);
+        } catch {
+          // The race exists; the course can be attached later in Race Lab.
+        }
+      }
       scroll.current?.scrollTo({ y: 0, animated: true });
       // An imported (or postponed) plan skips the generated one; the rest of the race kit still builds.
       void builder.build(created.id, planSource === "generate" ? undefined : BUILD_ORDER.filter((k) => k !== "plan"));
@@ -144,6 +156,32 @@ export default function MissionSetup() {
           <Overline>{editing ? "Edit mission" : "New Race Mission"}</Overline>
           <Title size={wide ? 44 : 38}>{createdId ? (doneBuilding ? "Your race is ready" : "Building your race") : STEP_TITLE[step]}</Title>
           {step === "sport" ? <SportStep value={form.sport} onPick={(s) => { setForm((f) => ({ ...f, sport: s, legs: sportMeta(s).legs ?? [] })); go("race"); }} /> : null}
+          {step === "race" && !editing ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Start from a Strava route" onPress={() => setStravaOpen(true)} style={({ pressed }) => [styles.stravaPick, pressed && { opacity: 0.85 }]}>
+              <Icon name="route" size={18} color={C.text} />
+              <View style={{ flex: 1 }}>
+                <Text style={[ui(14, 700), { color: C.text }]}>{stravaRoute ? stravaRoute.name : "Start from a Strava route"}</Text>
+                <Text style={[ui(12, 500), { color: C.textMuted }]}>
+                  {stravaRoute ? `${km(stravaRoute.distance_km)} km · +${stravaRoute.elevation_gain_m} m — becomes the course` : "Fills distance and climbing, and attaches the course"}
+                </Text>
+              </View>
+              <Icon name={stravaRoute ? "checkCircle" : "chevron"} size={18} color={stravaRoute ? C.accent : C.textDim} />
+            </Pressable>
+          ) : null}
+          <StravaRoutesSheet
+            visible={stravaOpen}
+            onClose={() => setStravaOpen(false)}
+            onPick={(route) => {
+              setStravaRoute(route);
+              setForm((f) => ({
+                ...f,
+                name: f.name.trim() ? f.name : route.name,
+                distance: route.distance_km ? String(route.distance_km) : f.distance,
+                elevation: route.elevation_gain_m ? String(route.elevation_gain_m) : f.elevation,
+              }));
+              setStravaOpen(false);
+            }}
+          />
           {step === "race" ? <RaceStep form={form} set={set} errors={errors} /> : null}
           {step === "demands" ? <DemandsStep form={form} set={set} errors={errors} /> : null}
           {step === "goal" ? <GoalStep form={form} set={set} errors={errors} /> : null}
@@ -605,6 +643,7 @@ function PreviewCard({ form }: { form: MissionForm }) {
 }
 
 const styles = StyleSheet.create({
+  stravaPick: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.lineStrong },
   root: { flex: 1, backgroundColor: C.ink },
   top: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingBottom: 10 },
   progress: { flex: 1, flexDirection: "row", gap: 4 },
