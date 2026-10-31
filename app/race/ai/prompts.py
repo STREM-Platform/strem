@@ -59,6 +59,9 @@ race-specific rehearsals, the athlete's terrain access and constraints, lessons 
 - You may change a session's duration, distance or elevation by at most 25% (40% for elevation), and \
 only for sessions dated today or later. Do not edit the race-day session's duration or distance.
 - Use week_notes to give a week a sharper focus when it helps.
+- Race priority shapes the plan: an A race gets the full build and taper; a B race inside it gets a \
+mini-taper and a recovery day; a C race is trained through as a long effort and rehearsal. Keep every \
+race session (kind "race") where the engine put it.
 - `summary`: 3-5 sentences explaining the plan's logic for this athlete, citing evidence.
 - Only include session_edits for sessions you actually change. Use the session ids from the plan.
 
