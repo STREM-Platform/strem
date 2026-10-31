@@ -48,8 +48,6 @@ async def accept_legal(
         seen.add(item.document_type)
 
     for item in body.acceptances:
-        await legal.record_acceptance(
-            session, current.user_id, item.document_type, item.version
-        )
+        await legal.record_acceptance(session, current.user_id, item.document_type, item.version)
     await session.commit()
     return await legal.get_status(session, current.user_id)

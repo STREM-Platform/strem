@@ -256,3 +256,47 @@ def test_auth_validation_headers_and_owner_forgery() -> None:
         ).status_code == 400
 
     run(scenario)
+
+
+def test_checkpoints_are_stored_in_course_order_and_validated() -> None:
+    async def scenario(h: Harness) -> None:
+        auth = headers(uuid.uuid4())
+        event = {
+            **PAYLOAD["event"],
+            "checkpoints": [
+                {"name": "Hut", "km": 11.5, "services": ["water", "food"], "cutoff_minutes": 150},
+                {
+                    "name": "Pass",
+                    "km": 21,
+                    "services": ["water", "crew", "drop_bag"],
+                    "cutoff_minutes": 330,
+                },
+            ],
+        }
+        created = await h.client.post(
+            "/v1/race-missions", headers=auth, json={**PAYLOAD, "event": event}
+        )
+        assert created.status_code == 201, created.text
+        stored = created.json()["event"]["checkpoints"]
+        assert [c["name"] for c in stored] == ["Hut", "Pass"] and stored[1]["services"] == [
+            "water",
+            "crew",
+            "drop_bag",
+        ]
+        for bad in (
+            [{"name": "B", "km": 20}, {"name": "A", "km": 10}],  # out of order
+            [{"name": "Far", "km": 45}],  # beyond the 30 km race
+            [
+                {"name": "A", "km": 10, "cutoff_minutes": 200},
+                {"name": "B", "km": 20, "cutoff_minutes": 100},
+            ],
+            [{"name": "A", "km": 10, "services": ["helicopter"]}],
+        ):
+            rejected = await h.client.post(
+                "/v1/race-missions",
+                headers=auth,
+                json={**PAYLOAD, "event": {**PAYLOAD["event"], "checkpoints": bad}},
+            )
+            assert rejected.status_code == 400, bad
+
+    run(scenario)

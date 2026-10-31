@@ -79,6 +79,19 @@ class RaceLeg(StrictModel):
     label: str | None = Field(default=None, max_length=60)
 
 
+CheckpointService = Literal["water", "food", "crew", "drop_bag", "medical", "toilet"]
+
+
+class Checkpoint(StrictModel):
+    """An aid station or checkpoint on the course (ai#46), entered or imported."""
+
+    name: str = Field(min_length=1, max_length=80)
+    km: float = Field(ge=0, le=10000)
+    services: list[CheckpointService] = Field(default_factory=list, max_length=6)
+    cutoff_minutes: int | None = Field(default=None, ge=1, le=43200, strict=True)
+    notes: str | None = Field(default=None, max_length=200)
+
+
 class RaceEvent(StrictModel):
     name: str = Field(min_length=2, max_length=160)
     race_date: date
@@ -99,6 +112,7 @@ class RaceEvent(StrictModel):
     website_url: str | None = Field(default=None, max_length=300)
     description: str | None = Field(default=None, max_length=1000)
     legs: list[RaceLeg] | None = Field(default=None, max_length=10)
+    checkpoints: list[Checkpoint] | None = Field(default=None, max_length=40)
 
     @field_validator("race_date", "end_date", mode="before")
     @classmethod
@@ -123,6 +137,15 @@ class RaceEvent(StrictModel):
     def consistent_shape(self) -> Self:
         if self.end_date is not None and self.end_date < self.race_date:
             raise ValueError("end_date cannot be before race_date")
+        if self.checkpoints:
+            kms = [c.km for c in self.checkpoints]
+            if kms != sorted(kms) or len(set(kms)) != len(kms):
+                raise ValueError("Checkpoints must be in course order, one per distance")
+            if kms[-1] > self.distance_km + 0.5:
+                raise ValueError("A checkpoint lies beyond the race distance")
+            cutoffs = [c.cutoff_minutes for c in self.checkpoints if c.cutoff_minutes]
+            if cutoffs != sorted(cutoffs):
+                raise ValueError("Checkpoint cutoffs must increase along the course")
         if (self.latitude is None) != (self.longitude is None):
             raise ValueError("Provide latitude and longitude together")
         return self
