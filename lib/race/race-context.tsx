@@ -13,9 +13,12 @@ import { ApiError, SessionExpiredError } from "@/lib/api/client";
 import { courses, type MissionCourse } from "@/lib/api/courses";
 import { raceMissions, type RaceMission } from "@/lib/api/race-missions";
 import {
+  athletePlanApi,
   layersApi,
   planApi,
   raceAi,
+  type AthletePlan,
+  type AthleteProgress,
   type Brief,
   type LayerKind,
   type MissionLayer,
@@ -48,6 +51,12 @@ interface RaceState {
   briefError: string | null;
   refresh: (parts?: DataPart[], options?: { briefRefresh?: boolean }) => Promise<void>;
   replacePlan: (plan: MissionPlan) => void;
+  /** The athlete's plan across races (and without one); undefined until first loaded. */
+  timeline: AthletePlan | null | undefined;
+  timelineProgress: AthleteProgress | null;
+  timelineError: string | null;
+  refreshTimeline: () => Promise<void>;
+  replaceTimeline: (plan: AthletePlan) => void;
   replaceLayer: (layer: MissionLayer) => void;
   replaceMission: (mission: RaceMission) => void;
   replaceCourse: (course: MissionCourse | null) => void;
@@ -80,6 +89,9 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
   const generation = useRef(0);
+  const [timeline, setTimeline] = useState<AthletePlan | null | undefined>(undefined);
+  const [timelineProgress, setTimelineProgress] = useState<AthleteProgress | null>(null);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   const handleExpiry = useCallback(
     async (err: unknown) => {
@@ -128,9 +140,34 @@ export function RaceProvider({ children }: { children: ReactNode }) {
 
   const mission = useMemo(() => missions.find((m) => m.id === focusId) ?? null, [missions, focusId]);
 
+  const refreshTimeline = useCallback(async () => {
+    setTimelineError(null);
+    try {
+      const [next, nextProgress] = await Promise.all([athletePlanApi.get(), athletePlanApi.progress()]);
+      setTimeline(next);
+      setTimelineProgress(nextProgress);
+    } catch (err) {
+      setTimelineError(describe(err, "Your plan could not load. Retry."));
+      setTimeline((current) => current ?? null);
+      await handleExpiry(err);
+    }
+  }, [handleExpiry]);
+
+  // The athlete's plan follows every race: reload when the set of races changes.
+  const raceKey = missions.map((m) => `${m.id}:${m.event.race_date}:${m.goal.priority}`).join("|");
+  useEffect(() => {
+    if (loading) return;
+    const timer = setTimeout(() => void refreshTimeline(), 0);
+    return () => clearTimeout(timer);
+  }, [loading, raceKey, refreshTimeline]);
+
   const refresh = useCallback(
     async (parts: DataPart[] = ["plan", "progress", "layers", "brief", "course"], options: { briefRefresh?: boolean } = {}) => {
-      if (!mission) return;
+      if (!mission) {
+        // No race: the athlete's own plan still loads.
+        if (parts.includes("plan") || parts.includes("progress")) await refreshTimeline();
+        return;
+      }
       const current = generation.current;
       const id = mission.id;
       const core = parts.filter((p) => p !== "brief" && p !== "course");
@@ -188,9 +225,10 @@ export function RaceProvider({ children }: { children: ReactNode }) {
           })(),
         );
       }
+      if (parts.includes("plan") || parts.includes("progress")) tasks.push(refreshTimeline());
       await Promise.all(tasks);
     },
-    [mission, handleExpiry],
+    [mission, handleExpiry, refreshTimeline],
   );
 
   // A different focus mission starts from empty data (reset during render, not
@@ -241,6 +279,11 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     briefError,
     refresh,
     replacePlan: setPlan,
+    timeline,
+    timelineProgress,
+    timelineError,
+    refreshTimeline,
+    replaceTimeline: setTimeline,
     replaceLayer: (layer) => setLayers((current) => ({ ...current, [layer.kind]: layer })),
     replaceMission: (next) => setMissions((current) => current.map((m) => (m.id === next.id ? next : m))),
     replaceCourse: setCourse,

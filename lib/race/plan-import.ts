@@ -10,7 +10,7 @@ export function shiftDraft(content: PlanContent, newStart: string): PlanContent 
   if (!delta) return content;
   return {
     ...content,
-    start_date: addDays(content.start_date, delta) < content.race_date ? addDays(content.start_date, delta) : content.race_date,
+    start_date: !content.race_date || addDays(content.start_date, delta) < content.race_date ? addDays(content.start_date, delta) : content.race_date,
     // The "week 1 starts …" note no longer holds once the athlete picks the start.
     assumptions: content.assumptions.filter((a) => !/week 1 starts/i.test(a)),
     phases: content.phases.map((p) => ({ ...p, start_date: addDays(p.start_date, delta), end_date: addDays(p.end_date, delta) })),
@@ -50,7 +50,7 @@ export function repeatBlock(content: PlanContent, times: number | "race"): PlanC
   const block = content.weeks;
   if (!block.length) return content;
   const first = block[0].start_date;
-  const raceWeek = mondayOf(content.race_date);
+  const raceWeek = content.race_date ? mondayOf(content.race_date) : "9999-12-31";
   const fits = (k: number) => addDays(first, 7 * k) < raceWeek && block.length + k <= 80;
   const total = times === "race" ? (() => { let k = block.length; while (fits(k)) k++; return k; })() : Math.min(80, block.length * (times + 1));
   if (total <= block.length) return content;
@@ -67,7 +67,7 @@ export function repeatBlock(content: PlanContent, times: number | "race"): PlanC
   });
   const phases: PlanContent["phases"] = [];
   for (const w of weeks) {
-    const end = addDays(w.start_date, 6) < content.race_date ? addDays(w.start_date, 6) : content.race_date;
+    const end = !content.race_date || addDays(w.start_date, 6) < content.race_date ? addDays(w.start_date, 6) : content.race_date;
     const open = phases[phases.length - 1];
     if (open && open.phase === w.phase) open.end_date = end;
     else phases.push({ phase: w.phase, start_date: w.start_date, end_date: end, goal: open?.goal ?? content.phases[0]?.goal ?? "As written in your plan" });

@@ -71,4 +71,12 @@ describe("imported plan review", () => {
     expect(filled.phases).toEqual([{ phase: "base", start_date: "2026-11-02", end_date: "2027-04-11", goal: "As written in your plan" }]);
     expect(filled.assumptions.at(-1)).toMatch(/1-week block repeats through 23 weeks/);
   });
+
+  it("works for a plan with no race (the athlete's own)", () => {
+    const own = { ...removeSession(draft, "c"), race_date: null as unknown as string };
+    expect(shiftDraft(own, "2026-11-09").start_date).toBe("2026-11-09");
+    const eight = repeatBlock(own, 7);
+    expect(eight.weeks).toHaveLength(8);
+    expect(eight.phases[0].end_date).toBe(planEnd(eight));
+  });
 });

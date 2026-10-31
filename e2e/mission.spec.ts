@@ -156,7 +156,7 @@ test("import my own plan from pasted text, review it and train from it", async (
 
   await page.getByRole("button", { name: "Save as my plan", exact: true }).click();
   // Back on the Plan tab, the saved plan is marked as the athlete's own.
-  await expect(page.getByRole("link", { name: "Why this plan" })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole("link", { name: "Why this week" })).toBeVisible({ timeout: 30000 });
   await expect(page.getByLabel("Your plan", { exact: true })).toBeVisible();
   const saved = await (await request.get(`${api}/race-missions`, { headers })).json();
   const plan = await (await request.get(`${api}/training/missions/${saved.items[0].id}/plan`, { headers })).json();
@@ -180,4 +180,23 @@ test("switch to another race from inside Race Lab", async ({ page, request }) =>
   await expect(page.getByRole("heading", { name: "Execute race day" })).toBeVisible();
   await page.goto("/plan");
   await expect(page.getByRole("button", { name: `Switch race. Current: ${other}` }).or(page.getByText(other).first())).toBeVisible();
+});
+
+test("bring my own plan with no race and see it as my plan", async ({ page, request }) => {
+  await page.goto("/plan");
+  await expect(page.getByText("No plan yet")).toBeVisible();
+  await page.getByRole("button", { name: "Import my plan", exact: true }).click();
+  const text = ["Day\tMorning\tEvening", "Monday\tFull Rest\t-", "Tuesday\tSwim A\tStrength A", "Thursday\tEasy run 45 min\t-", "Saturday\tLong run 1h30\t-"].join("\n");
+  await page.getByLabel("…or paste your plan", { exact: true }).fill(text);
+  await page.getByRole("button", { name: "Read my plan (1)", exact: true }).click();
+  await expect(page.getByText(/→ .* · your own plan$/)).toBeVisible({ timeout: 30000 });
+  await page.getByRole("button", { name: "Repeat for 8 weeks", exact: true }).click();
+  await expect(page.getByText("Your plan — 8 weeks")).toBeVisible();
+  await page.getByRole("button", { name: "Save as my plan", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: "Your training" })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("Your own plan").first()).toBeVisible();
+  const plan = await (await request.get(`${api}/training/plan`, { headers })).json();
+  expect(plan.content.weeks).toHaveLength(8);
+  expect(plan.content.weeks.every((w: { source: string }) => w.source === "base")).toBe(true);
 });

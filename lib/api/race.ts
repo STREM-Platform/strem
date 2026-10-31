@@ -389,6 +389,56 @@ export const layersApi = {
   },
 };
 
+/** One week of the athlete's plan, with the plan it comes from (training-service#23). */
+export interface TimelineWeek extends PlanWeek {
+  source: "race" | "base";
+  mission_id?: string | null;
+  origin: Origin;
+}
+
+export interface TimelineRace {
+  mission_id: string;
+  name: string;
+  race_date: string;
+  priority: "A" | "B" | "C";
+  sport: string;
+  state: "active" | "completed";
+  has_plan: boolean;
+}
+
+/** The athlete's plan: every race plan and their own plan on one calendar. */
+export interface AthletePlan {
+  as_of: string;
+  content: (Omit<PlanContent, "weeks" | "race_date"> & { race_date?: string | null; weeks: TimelineWeek[] }) | null;
+  races: TimelineRace[];
+  base_version?: number | null;
+  next_race?: TimelineRace | null;
+}
+
+export type AthleteProgress = Omit<MissionProgress, "mission_id">;
+
+export type SessionChange = { status?: PlanSession["status"]; athlete_note?: string | null; rpe?: number | null; date?: string };
+
+/** Timeline session ids carry their source: `b-…` (own plan) or `m<8 hex>-…` (a race plan). */
+export function isTimelineId(id: string): boolean {
+  return id.startsWith("b-") || /^m[0-9a-f]{8}-/.test(id);
+}
+
+export const athletePlanApi = {
+  get() {
+    return request<AthletePlan>("/training/plan", auth);
+  },
+  progress() {
+    return request<AthleteProgress>("/training/plan/progress", auth);
+  },
+  patchSession(sessionId: string, body: SessionChange) {
+    return request<AthletePlan>(`/training/plan/sessions/${sessionId}`, { ...auth, method: "PATCH", body });
+  },
+  deleteBase() {
+    return request<void>("/training/plan/base", { ...auth, method: "DELETE" });
+  },
+};
+
 export const planApi = {
   get(missionId: string) {
     return optional(request<MissionPlan>(`/training/missions/${missionId}/plan`, auth), ["plan_not_found"]);
@@ -455,6 +505,13 @@ export interface PlanImportDraft {
 export const raceAi = {
   importPlan(missionId: string, sources: ImportSource[], startDate?: string | null) {
     return request<PlanImportDraft>(`/ai/race/${missionId}/plan/import`, { ...slow, method: "POST", body: { sources, ...(startDate ? { start_date: startDate } : {}) } });
+  },
+  /** A plan with no race attached: it becomes the athlete's own plan. */
+  importAthletePlan(sources: ImportSource[], startDate?: string | null) {
+    return request<PlanImportDraft>("/ai/race/plan/import", { ...slow, method: "POST", body: { sources, ...(startDate ? { start_date: startDate } : {}) } });
+  },
+  commitAthleteImport(content: PlanContent) {
+    return request<unknown>("/ai/race/plan/import/commit", { ...auth, method: "POST", body: { content } });
   },
   commitImport(missionId: string, content: PlanContent) {
     return request<MissionPlan>(`/ai/race/${missionId}/plan/import/commit`, { ...auth, method: "POST", body: { content } });

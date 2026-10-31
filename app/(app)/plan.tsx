@@ -9,10 +9,12 @@ import {
   Body,
   Button,
   Card,
+  Chip,
   Data,
   EmptyState,
   ErrorBanner,
   IconButton,
+  Notice,
   OriginBadge,
   Overline,
   Page,
@@ -23,7 +25,6 @@ import {
   Title,
 } from "@/components/ui/kit";
 import { BuildPanel } from "@/components/mission/build-panel";
-import { RaceSwitcher } from "@/components/mission/race-switcher";
 import { SessionRow, sessionStatus } from "@/components/plan/session-row";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { addDays, capitalize, dayLabel, km, mondayOf, todayIn, weekdayShort } from "@/lib/race/format";
@@ -32,35 +33,32 @@ import { useBuilder } from "@/lib/race/use-builder";
 
 export default function PlanScreen() {
   const race = useRace();
-  const { mission, plan, progress } = race;
+  const { mission, missions, plan, timeline, timelineProgress: progress } = race;
   const router = useRouter();
-  // The picked week belongs to one plan; switching missions falls back to this week.
-  const [picked, setPicked] = useState<{ mission: string; index: number } | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
   const [adaptOpen, setAdaptOpen] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const refresh = useCallback(() => race.refresh(["plan", "progress", "brief"], { briefRefresh: true }), [race]);
   const builder = useBuilder(refresh);
-  const today = todayIn(mission?.event.timezone);
-  const weeks = useMemo(() => plan?.content.weeks ?? [], [plan]);
+  const content = timeline?.content ?? null;
+  const today = todayIn(content?.timezone ?? mission?.event.timezone);
+  const weeks = useMemo(() => content?.weeks ?? [], [content]);
   const currentIndex = useMemo(() => {
     const monday = mondayOf(today);
     const i = weeks.findIndex((w) => w.start_date === monday);
     return i >= 0 ? i : today < (weeks[0]?.start_date ?? today) ? 0 : Math.max(weeks.length - 1, 0);
   }, [weeks, today]);
-  const index = picked && picked.mission === plan?.mission_id ? picked.index : currentIndex;
-  const setWeekIndex = (value: number | null) => setPicked(value == null || !plan ? null : { mission: plan.mission_id, index: value });
+  const index = picked != null && picked < weeks.length ? picked : currentIndex;
+  const setWeekIndex = (value: number | null) => setPicked(value);
   const week = weeks[index];
   const statusById = useMemo(() => new Map((progress?.sessions ?? []).map((s) => [s.id, s])), [progress]);
   const weekProgress = progress?.weeks.find((w) => w.index === week?.index);
+  const races = useMemo(() => new Map((timeline?.races ?? []).map((r) => [r.mission_id, r])), [timeline]);
+  const upcoming = (timeline?.races ?? []).filter((r) => r.state === "active" && r.race_date >= today);
+  const weekRace = week?.mission_id ? races.get(week.mission_id) : undefined;
+  const generate = mission ? () => void builder.build(mission.id, ["plan"]) : undefined;
 
-  if (!mission) {
-    return (
-      <Page>
-        <EmptyState title="No race yet" body="Start a Race Mission and your plan appears here." action={<Button label="Start a Race Mission" onPress={() => router.push("/(app)/mission-setup")} />} />
-      </Page>
-    );
-  }
-  if (race.dataLoading && !plan) {
+  if (timeline === undefined) {
     return (
       <Page>
         <Skeleton height={36} width="60%" />
@@ -69,20 +67,25 @@ export default function PlanScreen() {
       </Page>
     );
   }
-  if (!plan) {
+  if (!content || !weeks.length) {
     return (
       <Page>
-        <Overline>Training plan</Overline>
-        <Title size={40}>{mission.event.name}</Title>
-        {race.dataError ? <ErrorBanner message={race.dataError} onRetry={() => void race.refresh()} /> : null}
+        <Overline>Your plan</Overline>
+        <Title size={40}>{mission ? mission.event.name : "Train with a plan"}</Title>
+        {race.timelineError ? <ErrorBanner message={race.timelineError} onRetry={() => void race.refreshTimeline()} /> : null}
         <EmptyState
           icon="calendar"
-          title="Your plan isn't built yet"
-          body="Your AI race team can build every week from today to race day around your availability, fitness and the course — or bring the plan you already follow and it will fit it to this race."
+          title="No plan yet"
+          body={
+            mission
+              ? "Your AI race team can build every week to race day around your availability, fitness and the course — or bring the plan you already follow."
+              : "Bring the plan you already follow — it doesn't need a race. Add a race any time and the race team plans around it."
+          }
           action={
             <Row gap={10} wrap style={{ justifyContent: "center" }}>
-              <Button label="Generate it for me" icon="sparkles" loading={builder.running} onPress={() => void builder.build(mission.id, ["plan"])} />
-              <Button label="Import my plan" icon="upload" kind="secondary" onPress={() => router.push("/(app)/plan-import")} />
+              {generate ? <Button label="Generate it for me" icon="sparkles" loading={builder.running} onPress={generate} /> : null}
+              <Button label="Import my plan" icon="upload" kind={generate ? "secondary" : "primary"} onPress={() => router.push("/(app)/plan-import")} />
+              {!missions.length ? <Button label="Add a race" icon="flag" kind="ghost" onPress={() => router.push("/(app)/mission-setup")} /> : null}
             </Row>
           }
         />
@@ -92,28 +95,31 @@ export default function PlanScreen() {
   }
 
   const allDays = week ? Array.from({ length: 7 }, (_, i) => addDays(week.start_date, i)) : [];
-  const preDays = allDays.filter((d) => d < plan.content.start_date);
-  const days = allDays.filter((d) => d >= plan.content.start_date);
-  // The first week can start mid-week: its calendar-week volume includes days before the plan.
-  const partialWeek = preDays.length > 0;
+  const days = allDays;
+  const isLast = index === weeks.length - 1;
+  const why = week?.mission_id && plan?.mission_id === week.mission_id ? plan.content : null;
   return (
     <Page>
-      <Row align="flex-start">
-        <View style={{ flex: 1, gap: 6 }}>
-          <RaceSwitcher />
-          <Title size={38}>{plan.content.headline}</Title>
-        </View>
-      </Row>
-      <Row gap={8} wrap>
-        <OriginBadge origin={plan.origin} model={plan.model} />
-        <TextLink label={showWhy ? "Hide the reasoning" : "Why this plan"} icon={showWhy ? "chevronUp" : "chevronDown"} onPress={() => setShowWhy((v) => !v)} />
-      </Row>
-      {showWhy ? <WhyCard summary={plan.content.summary} principles={plan.content.principles} assumptions={plan.content.assumptions} warnings={plan.content.warnings} /> : null}
-      <Card pad={16} style={{ gap: 6 }}>
-        <Text style={[ui(13, 700), { color: C.textMuted }]}>Road to race day</Text>
-        <PhaseBar phases={plan.content.phases.map((p) => ({ phase: p.phase, start: p.start_date, end: p.end_date }))} today={today} color={LAYER_COLOR.training} />
-      </Card>
-      {race.dataError ? <ErrorBanner message={race.dataError} onRetry={() => void race.refresh()} /> : null}
+      <Overline>Your plan</Overline>
+      <Title size={38}>{timeline?.next_race ? `Road to ${timeline.next_race.name}` : "Your training"}</Title>
+      {upcoming.length ? (
+        <Row gap={8} wrap>
+          {upcoming.slice(0, 4).map((r) => (
+            <RaceMarker key={r.mission_id} name={r.name} date={r.race_date} priority={r.priority} />
+          ))}
+        </Row>
+      ) : (
+        <Body muted size={13}>
+          No race ahead — this is your own plan. Add a race and the race team plans around it.
+        </Body>
+      )}
+      {content.phases.length ? (
+        <Card pad={16} style={{ gap: 6 }}>
+          <Text style={[ui(13, 700), { color: C.textMuted }]}>Road ahead</Text>
+          <PhaseBar phases={content.phases.map((p) => ({ phase: p.phase, start: p.start_date, end: p.end_date }))} today={today} color={LAYER_COLOR.training} />
+        </Card>
+      ) : null}
+      {race.timelineError ? <ErrorBanner message={race.timelineError} onRetry={() => void race.refreshTimeline()} /> : null}
       <BuildPanel states={builder.states} />
       {week ? (
         <>
@@ -132,6 +138,24 @@ export default function PlanScreen() {
           </Row>
           {index !== currentIndex ? <Button label="Back to this week" kind="ghost" size="sm" onPress={() => setWeekIndex(null)} /> : null}
           <Card pad={18} style={{ gap: 12 }}>
+            <Row gap={8} wrap>
+              <Chip
+                label={weekRace ? `${weekRace.priority} · ${weekRace.name}` : "Your own plan"}
+                icon={weekRace ? "flag" : "user"}
+                color={weekRace ? C.text : C.textMuted}
+              />
+              {week.source === "race" ? <OriginBadge origin={week.origin} /> : null}
+              {why || week.source === "base" ? (
+                <TextLink label={showWhy ? "Hide the reasoning" : "Why this week"} icon={showWhy ? "chevronUp" : "chevronDown"} onPress={() => setShowWhy((v) => !v)} />
+              ) : null}
+            </Row>
+            {showWhy ? (
+              why ? (
+                <WhyCard summary={why.summary} principles={why.principles} assumptions={why.assumptions} warnings={why.warnings} />
+              ) : (
+                <Body muted size={13}>{content.summary || "Weeks no race plan covers follow the plan you brought."}</Body>
+              )
+            ) : null}
             <Body>{week.focus}</Body>
             <Row gap={18} wrap>
               <Target label="Planned" value={week.target_hours != null ? `${week.target_hours} h` : "–"} />
@@ -139,32 +163,17 @@ export default function PlanScreen() {
               {week.target_elevation_m ? <Target label="Climbing" value={`${week.target_elevation_m} m`} /> : null}
               {week.long_session ? <Target label="Long session" value={week.long_session} /> : null}
             </Row>
-            {weekProgress && weekProgress.timing !== "future" && partialWeek ? (
-              <Text style={[ui(12, 600), { color: C.textMuted }]}>
-                This week so far: {hours(weekProgress.actual.hours)} h in {weekProgress.actual.sessions} session{weekProgress.actual.sessions === 1 ? "" : "s"} · the plan adds {hours(weekProgress.planned.hours)} h from {dayLabel(plan.content.start_date)}
-              </Text>
-            ) : weekProgress && weekProgress.timing !== "future" ? (
+            {weekProgress && weekProgress.timing !== "future" ? (
               <View style={{ gap: 6 }}>
-                <Row>
-                  <Text style={[ui(12, 600), { color: C.textMuted }]}>
-                    Done {hours(weekProgress.actual.hours)} h of {hours(weekProgress.planned.hours)} h · {weekProgress.actual.sessions} session{weekProgress.actual.sessions === 1 ? "" : "s"}
-                  </Text>
-                </Row>
+                <Text style={[ui(12, 600), { color: C.textMuted }]}>
+                  Done {hours(weekProgress.actual.hours)} h of {hours(weekProgress.planned.hours)} h · {weekProgress.actual.sessions} session{weekProgress.actual.sessions === 1 ? "" : "s"}
+                </Text>
                 <Meter value={weekProgress.planned.hours ? weekProgress.actual.hours / weekProgress.planned.hours : null} color={LAYER_COLOR.training} label="Week completion" />
               </View>
             ) : null}
             {week.notes ? <Body muted size={13}>{week.notes}</Body> : null}
           </Card>
           <View style={{ gap: 8 }}>
-            {preDays.length ? (
-              <View style={[styles.day, styles.preDays]}>
-                <Icon name="calendar" size={16} color={C.textDim} />
-                <Text style={[ui(13, 500), { color: C.textMuted, flex: 1 }]}>
-                  {weekdayShort(preDays[0])}
-                  {preDays.length > 1 ? `–${weekdayShort(preDays[preDays.length - 1])}` : ""} · before your plan, which starts {dayLabel(plan.content.start_date)}
-                </Text>
-              </View>
-            ) : null}
             {days.map((day) => {
               const sessions = week.sessions.filter((s) => s.date === day);
               return (
@@ -183,15 +192,37 @@ export default function PlanScreen() {
               );
             })}
           </View>
+          {isLast ? (
+            <Notice
+              icon="calendar"
+              title={`Your plan ends ${dayLabel(addDays(week.start_date, 6))}`}
+              body={timeline?.next_race && timeline.next_race.race_date > addDays(week.start_date, 6) ? `${timeline.next_race.name} is on ${dayLabel(timeline.next_race.race_date)} — build or bring the next block.` : "Bring your next block, or add a race and let the race team plan it."}
+            />
+          ) : null}
         </>
       ) : null}
       <Row gap={10} wrap>
-        <Button label="Adapt my plan" icon="sliders" kind="secondary" onPress={() => setAdaptOpen(true)} />
+        {week?.source === "race" && week.mission_id ? <Button label="Adapt this race plan" icon="sliders" kind="secondary" onPress={() => setAdaptOpen(true)} /> : null}
         <Button label="Import my plan" icon="upload" kind="ghost" onPress={() => router.push("/(app)/plan-import")} />
-        <Button label={plan.origin === "athlete" ? "Generate a plan instead" : "Rebuild plan"} icon="refresh" kind="ghost" loading={builder.running} onPress={() => void builder.build(mission.id, ["plan"])} />
+        {generate ? (
+          <Button label={plan ? `Rebuild plan for ${mission?.event.name}` : `Generate a plan for ${mission?.event.name}`} icon="refresh" kind="ghost" loading={builder.running} onPress={generate} />
+        ) : null}
       </Row>
-      <AdaptSheet visible={adaptOpen} onClose={() => setAdaptOpen(false)} missionId={mission.id} onAccepted={() => void refresh()} />
+      {week?.mission_id ? <AdaptSheet visible={adaptOpen} onClose={() => setAdaptOpen(false)} missionId={week.mission_id} onAccepted={() => void refresh()} /> : null}
     </Page>
+  );
+}
+
+function RaceMarker({ name, date, priority }: { name: string; date: string; priority: "A" | "B" | "C" }) {
+  const tone = priority === "A" ? C.flame : priority === "B" ? C.accent : C.textMuted;
+  return (
+    <View style={[styles.marker, { borderColor: `${tone}55` }]} accessibilityLabel={`${priority} race ${name}, ${dayLabel(date)}`}>
+      <Text style={[ui(11, 900), { color: tone }]}>{priority}</Text>
+      <Text style={[ui(12, 700), { color: C.text }]} numberOfLines={1}>
+        {name}
+      </Text>
+      <Text style={[ui(11, 600), { color: C.textMuted }]}>{dayLabel(date, false)}</Text>
+    </View>
   );
 }
 
@@ -241,6 +272,6 @@ function WhyCard({ summary, principles, assumptions, warnings }: { summary: stri
 const styles = StyleSheet.create({
   day: { flexDirection: "row", gap: 12, padding: 10, borderRadius: 18, backgroundColor: C.night, borderWidth: 1, borderColor: C.line },
   today: { borderColor: C.lineStrong, backgroundColor: C.surface },
-  preDays: { alignItems: "center", paddingHorizontal: 14, paddingVertical: 12, borderStyle: "dashed" },
   dayLabel: { width: 40, alignItems: "center", paddingTop: 6 },
+  marker: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, backgroundColor: C.surface, maxWidth: 260 },
 });
