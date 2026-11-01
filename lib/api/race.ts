@@ -394,9 +394,30 @@ export const layersApi = {
 
 /** One week of the athlete's plan, with the plan it comes from (training-service#23). */
 export interface TimelineWeek extends PlanWeek {
-  source: "race" | "base";
+  source: "race" | "season" | "base";
   mission_id?: string | null;
+  season_id?: string | null;
   origin: Origin;
+}
+
+export type SeasonFocus = "base" | "build" | "race_season" | "off_season" | "recovery";
+
+export interface TimelineSeason {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  focus: SeasonFocus;
+  has_plan: boolean;
+  current: boolean;
+}
+
+export interface SeasonInput {
+  name: string;
+  start_date: string;
+  end_date: string;
+  focus: SeasonFocus;
+  notes?: string | null;
 }
 
 export interface TimelineRace {
@@ -414,6 +435,7 @@ export interface AthletePlan {
   as_of: string;
   content: (Omit<PlanContent, "weeks" | "race_date"> & { race_date?: string | null; weeks: TimelineWeek[] }) | null;
   races: TimelineRace[];
+  seasons?: TimelineSeason[];
   base_version?: number | null;
   next_race?: TimelineRace | null;
 }
@@ -424,7 +446,7 @@ export type SessionChange = { status?: PlanSession["status"]; athlete_note?: str
 
 /** Timeline session ids carry their source: `b-…` (own plan) or `m<8 hex>-…` (a race plan). */
 export function isTimelineId(id: string): boolean {
-  return id.startsWith("b-") || /^m[0-9a-f]{8}-/.test(id);
+  return id.startsWith("b-") || /^[ms][0-9a-f]{8}-/.test(id);
 }
 
 export const athletePlanApi = {
@@ -439,6 +461,25 @@ export const athletePlanApi = {
   },
   deleteBase() {
     return request<void>("/training/plan/base", { ...auth, method: "DELETE" });
+  },
+};
+
+/** Seasons of the athlete's year, each with its own plan (training#18). */
+export const seasonsApi = {
+  async list(): Promise<(TimelineSeason & { plan?: PlanContent | null })[]> {
+    return (await request<{ items: (TimelineSeason & { plan?: PlanContent | null })[] }>("/training/seasons", auth)).items;
+  },
+  create(body: SeasonInput) {
+    return request<unknown>("/training/seasons", { ...auth, method: "POST", body });
+  },
+  update(id: string, body: SeasonInput) {
+    return request<unknown>(`/training/seasons/${id}`, { ...auth, method: "PATCH", body });
+  },
+  remove(id: string) {
+    return request<void>(`/training/seasons/${id}`, { ...auth, method: "DELETE" });
+  },
+  build(id: string) {
+    return request<{ origin: Origin; model?: string | null; ai_reason?: string | null }>(`/ai/race/seasons/${id}/build`, { ...slow, method: "POST", body: {} });
   },
 };
 
@@ -513,8 +554,8 @@ export const raceAi = {
   importAthletePlan(sources: ImportSource[], startDate?: string | null) {
     return request<PlanImportDraft>("/ai/race/plan/import", { ...slow, method: "POST", body: { sources, ...(startDate ? { start_date: startDate } : {}) } });
   },
-  commitAthleteImport(content: PlanContent) {
-    return request<unknown>("/ai/race/plan/import/commit", { ...auth, method: "POST", body: { content } });
+  commitAthleteImport(content: PlanContent, seasonId?: string | null) {
+    return request<unknown>("/ai/race/plan/import/commit", { ...auth, method: "POST", body: { content, ...(seasonId ? { season_id: seasonId } : {}) } });
   },
   commitImport(missionId: string, content: PlanContent) {
     return request<MissionPlan>(`/ai/race/${missionId}/plan/import/commit`, { ...auth, method: "POST", body: { content } });
@@ -575,7 +616,20 @@ export const enrichApi = {
   },
 };
 
+export interface StravaRoute {
+  id: string;
+  name: string;
+  distance_km: number;
+  elevation_gain_m: number;
+  kind: "run" | "ride" | "other";
+  private: boolean;
+  updated_at?: string | null;
+}
+
 export const sourcesApi = {
+  async stravaRoutes(): Promise<StravaRoute[]> {
+    return (await request<{ items: StravaRoute[] }>("/integrations/strava/routes", auth)).items;
+  },
   async list(): Promise<IntegrationSource[]> {
     return (await request<{ items: IntegrationSource[] }>("/integrations/sources", auth)).items;
   },
