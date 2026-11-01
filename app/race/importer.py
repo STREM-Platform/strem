@@ -19,9 +19,11 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from app.errors import AppError
 from app.race import plan_import as pi
 from app.race.ai.client import AIUnavailable, RaceAI, strict_schema
+from app.race.ai.personalize import personalize_plan
 from app.race.ai.prompts import RACE_TEAM
 from app.race.clients import RaceServices
 from app.race.context import render
+from app.race.engine.season import build_season_plan
 from app.race.service import load_context
 
 REVIEW_RULES = (
@@ -206,9 +208,59 @@ async def commit_import(
     )
 
 
-async def commit_athlete_import(services: RaceServices, content: dict[str, Any]) -> dict[str, Any]:
-    """Save the reviewed draft as the athlete's plan outside any race."""
-    return await services.put_base_plan({"content": content, "origin": "athlete", "model": None})
+async def commit_athlete_import(
+    services: RaceServices, content: dict[str, Any], season_id: uuid.UUID | None = None
+) -> dict[str, Any]:
+    """Save the reviewed draft as the athlete's plan outside any race — or as a season's plan."""
+    body = {"content": content, "origin": "athlete", "model": None}
+    if season_id is not None:
+        return await services.put_season_plan(season_id, body)
+    return await services.put_base_plan(body)
+
+
+async def build_season(
+    services: RaceServices, ai: RaceAI, season_id: uuid.UUID, *, use_ai: bool = True
+) -> dict[str, Any]:
+    """The race team drafts a season's plan from the athlete's evidence (#18)."""
+    season = next((s for s in await services.seasons() if str(s.get("id")) == str(season_id)), None)
+    if season is None:
+        raise AppError(404, "season_not_found", "Season not found.")
+    target = await athlete_target(services)
+    profile = await services.athlete_profile() or {}
+    sessions = await services.sessions(limit=120)
+    engine = build_season_plan(
+        season,
+        today=target.today,
+        profile=profile,
+        sessions=sessions,
+        sport=target.sport,
+        timezone=target.timezone,
+    )
+    if not engine["weeks"]:
+        raise AppError(409, "season_over", "This season has no weeks left to plan.")
+    content, origin, model, reason = engine, "engine", None, None
+    status = ai.status()
+    if use_ai and status.available:
+        context = (
+            target.context
+            + f"\n\n## SEASON [athlete]\n- {season.get('name')}: {season.get('start_date')} to "
+            f"{season.get('end_date')}, focus {season.get('focus')}"
+            + (f" — {season['notes']}" if season.get("notes") else "")
+        )
+        try:
+            content = await personalize_plan(ai, context, engine, target.today)
+            origin, model = "ai", ai.model
+        except AIUnavailable as exc:
+            reason = exc.reason
+        except (ValueError, KeyError, TypeError):
+            reason = "The AI output did not pass validation; the engine plan was kept."
+    elif use_ai:
+        reason = status.reason
+    content = {**content, "race_date": None, "phases": pi.phase_spans(content["weeks"], None)}
+    saved = await services.put_season_plan(
+        season_id, {"content": content, "origin": origin, "model": model}
+    )
+    return {"season": saved, "origin": origin, "model": model, "ai_reason": reason}
 
 
 async def athlete_target(services: RaceServices) -> Target:

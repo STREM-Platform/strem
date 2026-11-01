@@ -46,6 +46,12 @@ class AdaptRequest(BaseModel):
 
 class ImportCommit(BaseModel):
     content: dict[str, Any]
+    # Plans with no race can belong to a season (training#18).
+    season_id: uuid.UUID | None = None
+
+
+class SeasonBuild(BaseModel):
+    use_ai: bool = True
 
 
 def _no_store(response: Response) -> None:
@@ -212,7 +218,21 @@ async def commit_athlete_import(
 ) -> dict[str, Any]:
     """Save the reviewed draft as the athlete's plan outside any race."""
     _no_store(response)
-    return await importer.commit_athlete_import(services, body.content)
+    return await importer.commit_athlete_import(services, body.content, body.season_id)
+
+
+@router.post("/race/seasons/{season_id}/build")
+async def build_season(
+    season_id: uuid.UUID,
+    body: SeasonBuild,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    ai: RaceAIDep,
+    response: Response,
+) -> dict[str, Any]:
+    """The race team drafts this season's plan from the athlete's evidence (training#18)."""
+    _no_store(response)
+    return await importer.build_season(services, ai, season_id, use_ai=body.use_ai)
 
 
 @router.post("/race/{mission_id}/plan/import")

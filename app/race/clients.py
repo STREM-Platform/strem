@@ -177,6 +177,20 @@ class RaceServices:
         )
         return dict(result)
 
+    async def seasons(self) -> list[dict[str, Any]]:
+        body = await self._request("GET", self.training_base, "/training/seasons")
+        return list((body or {}).get("items", []))
+
+    async def put_season_plan(self, season_id: uuid.UUID, body: dict[str, Any]) -> dict[str, Any]:
+        result = await self._request(
+            "PUT",
+            self.training_base,
+            f"/training/seasons/{season_id}/plan",
+            json=body,
+            missing_ok=False,
+        )
+        return dict(result)
+
     async def put_base_plan(self, body: dict[str, Any]) -> dict[str, Any]:
         """The athlete's own plan outside any race (training-service#23)."""
         result = await self._request(
