@@ -217,6 +217,14 @@ def build_tools(ctx: RaceContext) -> list[BaseTool]:
         """Expected race-day weather (forecast close to the race, typical climate otherwise)."""
         return _out("assumption", ctx.conditions or {"available": False})
 
+    @tool
+    def search_memory(query: str) -> str:
+        """What the athlete told the race team before (injuries, preferences, constraints,
+        goals, lessons), matching a word or phrase, e.g. 'knee', 'work', 'gel'."""
+        needle = query.lower()
+        hits = [m for m in ctx.memories if needle in m["text"].lower() or needle == m["kind"]]
+        return _out("athlete", hits or ctx.memories)
+
     return [
         training,
         long_sessions,
@@ -227,4 +235,5 @@ def build_tools(ctx: RaceContext) -> list[BaseTool]:
         layer,
         plan_week,
         conditions,
+        search_memory,
     ]

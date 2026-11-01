@@ -67,6 +67,8 @@ class RaceContext:
     recovery: list[dict[str, Any]] = field(default_factory=list)
     conditions: dict[str, Any] | None = None
     other_missions: list[dict[str, Any]] = field(default_factory=list)
+    # Athlete memory (ai#59): durable facts from conversations, newest first.
+    memories: list[dict[str, Any]] = field(default_factory=list)
 
     # ── Convenience accessors ────────────────────────────────────────────────
     @property
@@ -381,6 +383,12 @@ def core_lines(ctx: RaceContext) -> list[str]:
             ),
         ]
         out.extend(line for line in rows if line)
+    if ctx.memories:
+        out.append("\n## ATHLETE MEMORY [athlete] (told to the race team; newest first)")
+        out.extend(
+            f"- [{m['kind']}] {m['text']} (from {m['source']}, {m['source_date']})"
+            for m in ctx.memories
+        )
     return out
 
 
