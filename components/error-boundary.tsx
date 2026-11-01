@@ -2,8 +2,8 @@ import { Component, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { PrimaryButton } from "@/components/form";
-import { Trail, disp, ui } from "@/constants/theme";
+import { Button } from "@/components/ui/kit";
+import { C, disp, ui } from "@/constants/theme";
 import { captureError } from "@/lib/monitoring";
 
 interface ErrorBoundaryState {
@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
         <Text style={styles.body}>
           That is on us, not you. Try again — your progress is safe.
         </Text>
-        <PrimaryButton label="Try again" onPress={this.reset} style={styles.button} />
+        <Button label="Try again" size="lg" onPress={this.reset} style={styles.button} />
       </View>
     );
   }
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Trail.bg,
+    backgroundColor: C.ink,
     padding: 24,
     gap: 14,
   },
@@ -62,14 +62,14 @@ const styles = StyleSheet.create({
   },
   title: {
     ...disp(24, 800),
-    color: Trail.text,
+    color: C.text,
     lineHeight: 28,
     textAlign: "center",
   },
   body: {
     ...ui(15, 500),
     lineHeight: 22,
-    color: Trail.textMuted,
+    color: C.textMuted,
     textAlign: "center",
   },
   button: {

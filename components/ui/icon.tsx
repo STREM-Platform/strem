@@ -1,7 +1,7 @@
 /**
  * Shared stroke-icon driven by the compact `PATHS` set in `constants/theme`.
  *
- * Web `currentColor` has no RN equivalent, so `color` defaults to the Trail text token;
+ * Web `currentColor` has no RN equivalent, so `color` defaults to the text token;
  * call sites pass an explicit color as the kit does. Multi-stroke icons (paths
  * stored as an array) render as stacked <Path>s.
  */
@@ -10,7 +10,7 @@ import { memo } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { PATHS, Trail, type IconName } from "@/constants/theme";
+import { C, PATHS, type IconName } from "@/constants/theme";
 
 export type { IconName };
 
@@ -28,7 +28,7 @@ interface IconProps {
 export const Icon = memo(function Icon({
   name,
   size = 20,
-  color = Trail.text,
+  color = C.text,
   sw = 2,
   fill = false,
   style,
