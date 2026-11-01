@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Proposed for founder review, 2026-11-01 (`strem-docs#36`). Founder direction: the AI
+Accepted by the founder, 2026-11-01 (`strem-docs#36`). Founder direction: the AI
 layer should be built mainly with LangGraph/LangChain, and it must use all the
 context the athlete gives — "that is the main idea".
 
