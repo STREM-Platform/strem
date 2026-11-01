@@ -7,5 +7,9 @@ asyncpg>=0.29
 alembic>=1.13
 pyjwt>=2.8
 httpx>=0.27
-# The Race OS race team: Claude with structured outputs and server-side fallback.
-anthropic>=0.109
+# The race team's model layer (ADR 0010): LangChain chat models for Claude and GPT,
+# LangGraph for orchestration in the next phases.
+langchain-core>=1.7,<2
+langchain-anthropic>=1.7,<2
+langchain-openai>=1.7,<2
+langgraph>=1.2,<2
