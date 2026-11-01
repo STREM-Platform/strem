@@ -326,6 +326,46 @@ export interface Proposal {
   }[];
 }
 
+/** Race-team cockpit (mobile#119): engine calls per specialist + what changed. */
+export type SpecialistRole = "coach" | "fuel" | "course" | "gear" | "logistics" | "strategy";
+export interface CockpitEvidence {
+  label: string;
+  value: string;
+  source: string;
+}
+export interface CockpitAction {
+  label: string;
+  /** `plan`, `proposal` or `race?tab=<layer>`. */
+  target: string;
+}
+export interface CockpitSpecialist {
+  role: SpecialistRole;
+  layer: string;
+  status: "on_track" | "attention" | "missing";
+  call: string;
+  confidence: "high" | "medium" | "low";
+  evidence: CockpitEvidence[];
+  action: CockpitAction;
+  ask: string;
+}
+export interface CockpitFeedItem {
+  kind: "proposal" | "training" | "checkin" | "conditions" | "milestone";
+  role: SpecialistRole;
+  title: string;
+  detail: string;
+  when?: string | null;
+  severity?: "info" | "attention" | "critical";
+  evidence: CockpitEvidence[];
+  action: CockpitAction;
+}
+export interface Cockpit {
+  days_to_race: number;
+  specialists: CockpitSpecialist[];
+  feed: CockpitFeedItem[];
+  summary: { on_track: number; attention: number; missing: number };
+  ai: AIStatus;
+}
+
 export interface Knowledge {
   mission: { name: string; version: number };
   sources: { label: string; last: string }[];
@@ -578,6 +618,9 @@ export const raceAi = {
   },
   knowledge(missionId: string) {
     return request<Knowledge>(`/ai/race/${missionId}/knowledge`, slow);
+  },
+  cockpit(missionId: string) {
+    return request<Cockpit>(`/ai/race/${missionId}/cockpit`, slow);
   },
   conditions(missionId: string) {
     return request<{ conditions: Conditions | null }>(`/ai/race/${missionId}/conditions`, slow);

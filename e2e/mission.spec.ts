@@ -328,3 +328,22 @@ test("importing races from Strava without a connection says to connect first", a
   await page.getByRole("button", { name: "Connected sources" }).click();
   await expect(page).toHaveURL(/\/integrations/);
 });
+
+test("the race team cockpit shows each specialist's call and asks about it", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic Cockpit Race");
+  await page.goto("/team");
+  await expect(page.getByRole("heading", { name: "Your race team" })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("Specialists")).toBeVisible();
+  for (const role of ["Coach", "Fuel", "Course", "Gear", "Logistics", "Strategy"]) {
+    await expect(page.getByLabel(new RegExp(`^${role}: `))).toBeVisible();
+  }
+  await expect(page.getByText("No course file yet. Add the GPX so pacing follows the real climbs.")).toBeVisible();
+  // The AI is offline in this fixture: asking puts the question in the composer instead of sending.
+  await page.getByRole("button", { name: "Ask Course" }).click();
+  await expect(page.getByLabel("Message your race team")).toHaveValue("What should I know about this course before I have the GPX?");
+  await page.getByRole("tab", { name: /^Conversation/ }).click();
+  await expect(page.getByRole("heading", { name: "Ask your race team" })).toBeVisible();
+
+  await page.goto(`/team?ask=${encodeURIComponent("About my long run: ")}`);
+  await expect(page.getByLabel("Message your race team")).toHaveValue("About my long run: ");
+});
