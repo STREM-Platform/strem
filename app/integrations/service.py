@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -244,3 +245,53 @@ async def list_recovery(
         .limit(limit)
     )
     return list(rows)
+
+
+async def strava_routes(
+    session: AsyncSession, registry: dict[str, Provider], cipher: TokenCipher, *, user_id: uuid.UUID
+) -> list[dict[str, Any]]:
+    """The athlete's Strava routes (training#19)."""
+    client, token = await _strava(session, registry, cipher, user_id)
+    try:
+        return list(await client.routes(token))  # type: ignore[attr-defined]
+    except AppError as error:
+        raise _scope_error(error) from None
+
+
+async def strava_route_gpx(
+    session: AsyncSession,
+    registry: dict[str, Provider],
+    cipher: TokenCipher,
+    *,
+    user_id: uuid.UUID,
+    route_id: str,
+) -> bytes:
+    client, token = await _strava(session, registry, cipher, user_id)
+    try:
+        return bytes(await client.route_gpx(token, route_id))  # type: ignore[attr-defined]
+    except AppError as error:
+        raise _scope_error(error) from None
+
+
+async def _strava(
+    session: AsyncSession, registry: dict[str, Provider], cipher: TokenCipher, user_id: uuid.UUID
+) -> tuple[Provider, str]:
+    client = _require_provider(registry, "strava")
+    if not hasattr(client, "routes"):
+        raise AppError(404, "unknown_provider", "Strava routes are not available on this server.")
+    row = await session.get(ConnectedSource, (user_id, "strava"))
+    if row is None:
+        raise AppError(404, "not_connected", "Connect Strava first.")
+    token = await _access_token(session, client, cipher, row)
+    await session.commit()  # keep a refreshed token
+    return client, token
+
+
+def _scope_error(error: AppError) -> AppError:
+    if error.code == "provider_rejected":
+        return AppError(
+            403,
+            "strava_scope_missing",
+            "Strava didn't share your routes. Reconnect Strava and allow access to routes.",
+        )
+    return error
