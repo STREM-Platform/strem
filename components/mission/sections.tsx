@@ -3,6 +3,7 @@
 import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ConsistencyCalendar, LoadTrend, fullWeeks } from "@/components/mission/visuals";
 import { Meter, ProgressionLine, VolumeBars } from "@/components/ui/charts";
 import { Icon, type IconName } from "@/components/ui/icon";
 import {
@@ -287,6 +288,18 @@ export function TrackerSection({ plan, progress }: { plan: MissionPlan | null; p
           <Card pad={16} style={{ flex: 1 }}>
             <Text style={[ui(14, 700), { color: C.text, marginBottom: 6 }]}>Long-session progression</Text>
             <ProgressionLine points={longest} color={LAYER_COLOR.training} />
+          </Card>
+        ) : null}
+      </View>
+      <View style={{ flexDirection: medium ? "row" : "column", gap: 12 }}>
+        {plan && progress.sessions.length ? (
+          <Card pad={16} style={{ flex: 1.3 }}>
+            <ConsistencyCalendar progress={progress} today={progress.as_of.slice(0, 10)} />
+          </Card>
+        ) : null}
+        {fullWeeks(progress).filter((w) => w.volume.hours > 0).length >= 2 ? (
+          <Card pad={16} style={{ flex: 1 }}>
+            <LoadTrend progress={progress} />
           </Card>
         ) : null}
       </View>

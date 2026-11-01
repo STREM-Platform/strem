@@ -370,3 +370,16 @@ test("a 10-second check-in gives a transparent read and a three-day pattern asks
   expect(proposals.items[0].reason).toContain("Soreness 4/5 or higher three days in a row");
   await expect(page.getByText("Trends")).toBeVisible();
 });
+
+test("race cards show phase and readiness per layer; Mission shows the consistency calendar", async ({ page, request }) => {
+  const { id } = await createMissionViaApi(request, "Synthetic Visual Race");
+  expect((await request.post(`${api}/ai/race/${id}/build`, { headers, data: { use_ai: false } })).ok()).toBeTruthy();
+  await page.goto("/missions");
+  await expect(page.getByText(/week \d+ of \d+/).first()).toBeVisible({ timeout: 30000 });
+  for (const layer of ["Training", "Fuel", "Gear", "Logistics", "Strategy"]) {
+    await expect(page.getByLabel(new RegExp(`^${layer} ([0-9]+%|not started)$`)).first()).toBeVisible();
+  }
+  await page.goto("/home");
+  await expect(page.getByText("Consistency calendar")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("Missed or skipped")).toBeVisible();
+});
