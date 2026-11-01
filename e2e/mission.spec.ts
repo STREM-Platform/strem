@@ -294,6 +294,15 @@ test("a past race's stomach trouble shapes the fuel plan", async ({ page, reques
   await expect(page.getByText("70 g/h was too much at Synthetic Gut 50K")).toBeVisible();
 });
 
+test("Strava routes picker explains when Strava isn't available", async ({ page, request }) => {
+  await createMissionViaApi(request, "Synthetic Strava Race");
+  await page.goto("/race?tab=course");
+  await page.getByRole("button", { name: "From Strava", exact: true }).click();
+  await expect(page.getByText("Your Strava routes")).toBeVisible();
+  // This fixture has no Strava app configured: the sheet says so instead of spinning.
+  await expect(page.getByRole("dialog").getByRole("alert")).toBeVisible({ timeout: 15000 });
+});
+
 test("create a season, let the race team draft its plan, and train from it", async ({ page, request }) => {
   await page.goto("/plan");
   await expect(page.getByText("No plan yet")).toBeVisible();

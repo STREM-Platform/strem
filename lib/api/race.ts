@@ -616,7 +616,20 @@ export const enrichApi = {
   },
 };
 
+export interface StravaRoute {
+  id: string;
+  name: string;
+  distance_km: number;
+  elevation_gain_m: number;
+  kind: "run" | "ride" | "other";
+  private: boolean;
+  updated_at?: string | null;
+}
+
 export const sourcesApi = {
+  async stravaRoutes(): Promise<StravaRoute[]> {
+    return (await request<{ items: StravaRoute[] }>("/integrations/strava/routes", auth)).items;
+  },
   async list(): Promise<IntegrationSource[]> {
     return (await request<{ items: IntegrationSource[] }>("/integrations/sources", auth)).items;
   },

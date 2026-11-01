@@ -43,7 +43,8 @@ export function stravaAuthUrl(): string {
     redirect_uri: stravaRedirectUri(),
     response_type: "code",
     approval_prompt: "auto",
-    scope: "activity:read_all",
+    // Routes (training#19) need read_all; activities need activity:read_all.
+    scope: "read_all,activity:read_all",
   });
   return `https://www.strava.com/oauth/authorize?${params.toString()}`;
 }
