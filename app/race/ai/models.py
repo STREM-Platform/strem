@@ -14,10 +14,13 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any
+from collections.abc import Awaitable, Callable, Sequence
+from typing import Any, TypeVar
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import Runnable
+from langchain_core.tools import BaseTool
 from pydantic import SecretStr
 
 from app.race.ai.client import AIStatus, AIUnavailable
@@ -27,6 +30,7 @@ log = logging.getLogger(__name__)
 FALLBACK_BETA = "server-side-fallback-2026-06-01"
 # A refused Anthropic request is retried on this model inside the same call.
 FALLBACK_MODEL = "claude-opus-4-8"
+T = TypeVar("T")
 BILLING_CODES = {"insufficient_quota", "credit_balance_exhausted", "billing_hard_limit_reached"}
 
 
@@ -120,20 +124,31 @@ class LangChainRaceAI:
             }
         return self.chat.model_copy(update=update)
 
-    async def _run(self, build: Any, messages: list[AnyMessage]) -> Any:
-        """Invoke `build()` (a fresh runnable) and turn provider failures into reasons."""
+    def tool_model(
+        self, tools: Sequence[BaseTool], *, max_tokens: int = 2500, effort: str = "low"
+    ) -> Runnable[Any, AIMessage]:
+        """The chat model with retrieval tools bound (the race team graph's specialists)."""
+        model = self._configured(max_tokens, effort)
+        return model.bind_tools(list(tools)) if tools else model
+
+    async def guarded(self, call: Callable[[], Awaitable[T]]) -> T:
+        """Run one model call and turn provider failures into honest reasons."""
         status = self.status()
         if not status.available:
             raise AIUnavailable(status.reason or "AI is temporarily unavailable.")
         try:
-            return await build().ainvoke(messages)
+            return await call()
         except AIUnavailable:
             raise
         except Exception as exc:  # provider SDK errors differ; classify by shape
             if self._reasoning and _status(exc) == 400 and "reasoning" in str(exc).lower():
                 self._reasoning = False
-                return await build().ainvoke(messages)
+                return await call()
             raise self._error(exc) from exc
+
+    async def _run(self, build: Any, messages: list[AnyMessage]) -> Any:
+        """Invoke `build()` (a fresh runnable, so a learnt setting applies on retry)."""
+        return await self.guarded(lambda: build().ainvoke(messages))
 
     def _error(self, exc: Exception) -> AIUnavailable:
         name = type(exc).__name__
@@ -166,7 +181,7 @@ class LangChainRaceAI:
         return AIUnavailable("The AI request was rejected.")
 
     @staticmethod
-    def _checked(message: AIMessage) -> AIMessage:
+    def checked(message: AIMessage) -> AIMessage:
         meta = message.response_metadata or {}
         details = meta.get("incomplete_details") or {}
         if meta.get("stop_reason") == "refusal" or message.additional_kwargs.get("refusal"):
@@ -204,7 +219,7 @@ class LangChainRaceAI:
             ),
             messages,
         )
-        self._checked(result["raw"])
+        self.checked(result["raw"])
         value = result.get("parsed")
         if value is None:
             raw = result["raw"].text
@@ -232,7 +247,7 @@ class LangChainRaceAI:
                 if m["role"] == "user"
                 else AIMessage(content=m["content"])
             )
-        answer = self._checked(await self._run(lambda: self._configured(max_tokens, effort), turns))
+        answer = self.checked(await self._run(lambda: self._configured(max_tokens, effort), turns))
         text = answer.text.strip()
         if not text:
             raise AIUnavailable("The AI returned an empty answer.")
