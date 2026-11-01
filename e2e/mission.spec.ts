@@ -293,3 +293,12 @@ test("a past race's stomach trouble shapes the fuel plan", async ({ page, reques
   await expect(page.getByText("From your races")).toBeVisible({ timeout: 30000 });
   await expect(page.getByText("70 g/h was too much at Synthetic Gut 50K")).toBeVisible();
 });
+
+test("importing races from Strava without a connection says to connect first", async ({ page }) => {
+  await page.goto("/history");
+  await page.getByRole("button", { name: "Import from Strava" }).click();
+  await expect(page.getByText("Strava import didn’t run")).toBeVisible();
+  await expect(page.getByText("Connect Strava first, then import your races.")).toBeVisible();
+  await page.getByRole("button", { name: "Connected sources" }).click();
+  await expect(page).toHaveURL(/\/integrations/);
+});
