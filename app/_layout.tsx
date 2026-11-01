@@ -54,11 +54,13 @@ function RouteGuard({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Policy pages stay readable after acceptance; the accept gate itself moves on.
+    const readingPolicy = group === "(legal)" && (segments as string[])[1] !== "accept";
     if (!onboardingCompleted) {
-      if (group !== "(onboarding)" && group !== "(legal)") {
+      if (group !== "(onboarding)" && !readingPolicy) {
         router.replace("/(onboarding)");
       }
-    } else if (group !== "(app)" && group !== "(legal)") {
+    } else if (group !== "(app)" && !readingPolicy) {
       router.replace("/(app)/home");
     }
   }, [phase, onboardingCompleted, legalAccepted, segments, router]);
