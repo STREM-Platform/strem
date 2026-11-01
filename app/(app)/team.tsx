@@ -10,12 +10,13 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FeedItem, SpecialistCard } from "@/components/team/cockpit";
+import { MemoryList } from "@/components/team/memory-list";
 import { RichText } from "@/components/team/rich-text";
 import { Icon } from "@/components/ui/icon";
 import { Body, Button, Card, Chip, EmptyState, ErrorBanner, IconButton, Notice, Overline, Row, Segmented, Title, useLayout } from "@/components/ui/kit";
 import { C, R, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
-import { raceAi, type AIStatus, type ChatMessage, type Cockpit, type Knowledge } from "@/lib/api/race";
+import { memoryApi, raceAi, type AIStatus, type AthleteMemory, type ChatMessage, type Cockpit, type Knowledge } from "@/lib/api/race";
 import { useRace } from "@/lib/race/race-context";
 
 const SUGGESTIONS = [
@@ -41,6 +42,7 @@ export default function TeamScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [cockpit, setCockpit] = useState<Cockpit | null>(null);
+  const [memories, setMemories] = useState<AthleteMemory[] | null>(null);
   // `?ask=` (from a session, layer or chart) opens the conversation with the question ready.
   const params = useLocalSearchParams<{ ask?: string }>();
   const [mode, setMode] = useState<"cockpit" | "chat">(params.ask ? "chat" : "cockpit");
@@ -65,6 +67,7 @@ export default function TeamScreen() {
         raceAi.knowledge(mission.id).catch(() => null),
         raceAi.cockpit(mission.id).catch(() => null),
       ]);
+      memoryApi.list().then(setMemories).catch(() => setMemories(null));
       setMessages(history.items);
       setStatus(history.ai);
       setKnowledge(know);
@@ -99,6 +102,7 @@ export default function TeamScreen() {
         return;
       }
       setMessages((m) => [...m.filter((x) => x.id !== pending.id), { ...pending, id: `${pending.id}-sent` }, reply.message as ChatMessage]);
+      memoryApi.list().then(setMemories).catch(() => undefined);
     } catch (err) {
       setMessages((m) => m.filter((x) => x.id !== pending.id));
       setInput(question);
@@ -180,6 +184,7 @@ export default function TeamScreen() {
                 <SpecialistCard key={s.role} s={s} wide={wide} onAsk={(q) => (offline ? setInput(q) : void send(q))} />
               ))}
             </View>
+            {memories ? <MemoryList items={memories} onChange={setMemories} /> : null}
             {knowledge ? <KnowledgeCard knowledge={knowledge} missionId={mission.id} /> : null}
           </>
         ) : null}
