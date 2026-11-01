@@ -347,3 +347,26 @@ test("the race team cockpit shows each specialist's call and asks about it", asy
   await page.goto(`/team?ask=${encodeURIComponent("About my long run: ")}`);
   await expect(page.getByLabel("Message your race team")).toHaveValue("About my long run: ");
 });
+
+test("a 10-second check-in gives a transparent read and a three-day pattern asks the race team", async ({ page, request }) => {
+  const { id } = await createMissionViaApi(request, "Synthetic Check-in Race");
+  expect((await request.post(`${api}/ai/race/${id}/build`, { headers, data: { use_ai: false } })).ok()).toBeTruthy();
+  const sofia = (offset: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Sofia" }).format(new Date(Date.now() + offset * 86400000));
+  for (const offset of [-2, -1]) {
+    expect((await request.put(`${api}/training/checkins`, { headers, data: { day: sofia(offset), soreness: 4, sleep_quality: 4, energy: 3, illness: false } })).ok()).toBeTruthy();
+  }
+  await page.goto("/checkin");
+  await page.getByRole("radio", { name: "How did you sleep? 4 of 5, Good" }).click();
+  await page.getByRole("radio", { name: "Energy right now 3 of 5, OK" }).click();
+  await page.getByRole("radio", { name: "Legs and muscles 4 of 5, Sore" }).click();
+  await page.getByRole("button", { name: "Save check-in" }).click();
+
+  await expect(page.getByText("Swap quality for easy time")).toBeVisible();
+  await expect(page.getByText("Today’s read · no hidden score")).toBeVisible();
+  await expect(page.getByText("Soreness has stayed high for three days")).toBeVisible();
+  await page.getByRole("button", { name: "Ask the race team to adjust" }).click();
+  await expect(page.getByText("Your race team proposed a change. Review it on the Plan tab before anything moves.")).toBeVisible({ timeout: 30000 });
+  const proposals = await (await request.get(`${api}/ai/race/${id}/proposals?status=pending`, { headers })).json();
+  expect(proposals.items[0].reason).toContain("Soreness 4/5 or higher three days in a row");
+  await expect(page.getByText("Trends")).toBeVisible();
+});

@@ -219,6 +219,16 @@ export interface Checkin {
   updated_at?: string;
 }
 
+export interface RecoverySample {
+  id: string;
+  source: string;
+  date: string;
+  hrv_ms?: number | null;
+  resting_hr?: number | null;
+  sleep_hours?: number | null;
+  recovery_score?: number | null;
+}
+
 export interface RaceResultInput {
   name: string;
   race_date: string;
@@ -684,6 +694,10 @@ export const sourcesApi = {
   },
   sync(provider: string) {
     return request<{ synced_sessions: number; synced_recovery: number }>(`/integrations/${provider}/sync`, { auth: true, method: "POST", timeoutMs: 120000 });
+  },
+  /** Wearable recovery (HRV, resting HR, sleep), newest first. */
+  async recovery(limit = 28): Promise<RecoverySample[]> {
+    return (await request<{ items: RecoverySample[] }>(`/integrations/recovery?limit=${limit}`, auth)).items;
   },
 };
 
