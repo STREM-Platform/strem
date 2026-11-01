@@ -29,3 +29,20 @@ test("login form reaches the configured API and restores the session after reloa
   await page.reload();
   await expect(page.getByRole("button", { name: "Start a Race Mission", exact: true })).toBeVisible();
 });
+
+test("a brand-new account agrees to the policies and moves on", async ({ page, request }) => {
+  const registration = await request.post(`${api}/auth/register`, {
+    data: { email: `legal-${Date.now()}@example.com`, password: "Fresh-Account-123456", display_name: "Fresh" },
+  });
+  expect(registration.status()).toBe(201);
+  const { tokens } = await registration.json();
+  await page.addInitScript((pair) => {
+    localStorage.setItem("strem.access_token", pair.access_token);
+    localStorage.setItem("strem.refresh_token", pair.refresh_token);
+  }, tokens);
+  await page.goto("/");
+  await page.getByRole("button", { name: /I agree/ }).click();
+  await expect(page).not.toHaveURL(/\/accept/, { timeout: 15000 });
+  const legal = await (await request.get(`${api}/users/me/legal`, { headers: { Authorization: `Bearer ${tokens.access_token}` } })).json();
+  expect(legal.needs_acceptance).toBe(false);
+});

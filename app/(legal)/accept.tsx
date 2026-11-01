@@ -28,10 +28,12 @@ export default function LegalAcceptScreen() {
   const insets = useSafeAreaInsets();
   const { refreshLegalStatus } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   const disclaimer = policyFor("medical");
 
   async function accept() {
     setBusy(true);
+    setFailed(false);
     try {
       // The backend is the source of truth for required versions; accept exactly
       // what is pending so a version skew with the bundled copy is handled.
@@ -43,6 +45,7 @@ export default function LegalAcceptScreen() {
       await refreshLegalStatus();
       // RouteGuard reacts to the cleared gate and routes to onboarding / app.
     } catch {
+      setFailed(true);
       Alert.alert(
         "Couldn’t save",
         "We couldn’t record your acceptance. Check your connection and try again.",
@@ -105,6 +108,11 @@ export default function LegalAcceptScreen() {
           By tapping “I agree & continue” you confirm you have read and accept the Terms of
           Service, Privacy Policy, and Medical Disclaimer above.
         </Text>
+        {failed ? (
+          <Text accessibilityRole="alert" style={styles.failed}>
+            We couldn’t record your acceptance. Check your connection and try again.
+          </Text>
+        ) : null}
         <Btn label="I agree & continue" kind="primary" full loading={busy} onPress={accept} />
       </ScrollView>
     </View>
@@ -136,6 +144,7 @@ const styles = StyleSheet.create({
   link: { ...ui(12.5, 700), color: Trail.lime, marginTop: 10 },
 
   list: { marginTop: 16, gap: 10 },
+  failed: { ...ui(13, 600), color: Trail.text, marginBottom: 10 },
   item: {
     flexDirection: "row",
     alignItems: "center",
