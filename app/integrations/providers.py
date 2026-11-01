@@ -220,8 +220,35 @@ def _name(url: str) -> str:
     return "Strava" if "strava" in url else "WHOOP" if "whoop" in url else "The provider"
 
 
+def _errors(resp: httpx.Response) -> list[dict[str, Any]]:
+    """Strava's `{"errors": [{"resource", "field", "code"}]}` detail, if any."""
+    try:
+        body = resp.json()
+    except ValueError:
+        return []
+    errors = body.get("errors") if isinstance(body, dict) else None
+    return [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+
+
 def _checked(resp: httpx.Response, url: str) -> httpx.Response:
     """Provider answers the app can explain, instead of a bare 500."""
+    if resp.status_code == 403:
+        errors = _errors(resp)
+        # Strava disabled the STREM API application itself: reconnecting can't help.
+        if any(e.get("resource") == "Application" and e.get("code") == "Inactive" for e in errors):
+            raise AppError(
+                503,
+                "provider_app_inactive",
+                f"{_name(url)} has paused STREM's access (our {_name(url)} app is inactive). "
+                "Reconnecting won't help — this has to be fixed on STREM's side.",
+            )
+        if any(str(e.get("field", "")).endswith("_permission") for e in errors):
+            raise AppError(
+                403,
+                "strava_scope_missing",
+                f"{_name(url)} didn't share your activities. Connect again and allow "
+                "access to your activities.",
+            )
     if resp.status_code in (400, 401, 403):
         raise AppError(
             400,

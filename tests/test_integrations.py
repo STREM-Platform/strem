@@ -259,6 +259,37 @@ def test_provider_failures_become_clear_errors(monkeypatch) -> None:  # type: ig
             "provider_rejected",
             "Strava did not accept",
         ),
+        (
+            lambda r: httpx.Response(
+                403,
+                json={
+                    "message": "Forbidden",
+                    "errors": [{"resource": "Application", "field": "Status", "code": "Inactive"}],
+                },
+            ),
+            503,
+            "provider_app_inactive",
+            "Reconnecting won't help",
+        ),
+        (
+            lambda r: httpx.Response(
+                403,
+                json={
+                    "message": "Authorization Error",
+                    "errors": [
+                        {
+                            "resource": "AccessToken",
+                            "field": "activity:read_permission",
+                            "code": "missing",
+                        }
+                    ],
+                },
+            ),
+            403,
+            "strava_scope_missing",
+            "allow access to your activities",
+        ),
+        (lambda r: httpx.Response(403, text="nope"), 400, "provider_rejected", "connect again"),
         (lambda r: httpx.Response(429), 503, "provider_rate_limited", "busy"),
         (lambda r: httpx.Response(502), 503, "provider_unavailable", "had an error"),
     ]
