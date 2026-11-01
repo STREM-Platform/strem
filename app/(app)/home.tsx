@@ -12,12 +12,11 @@ import { Body, Button, ErrorBanner, Overline, Skeleton, Title, Wordmark, useLayo
 import { TopoArt } from "@/components/ui/photo";
 import { C, disp, ui } from "@/constants/theme";
 import { todayIn } from "@/lib/race/format";
+import { NEEDS_COURSE } from "@/lib/race/mission-snapshot";
 import { useRace } from "@/lib/race/race-context";
 import { layerStatuses } from "@/lib/race/readiness";
 import { SPORTS } from "@/lib/race/sports";
 import { useBuilder } from "@/lib/race/use-builder";
-
-const NEEDS_COURSE = new Set(["trail_running", "hiking", "skimo", "cycling", "gravel", "mountain_biking", "multisport", "custom"]);
 
 export default function MissionHome() {
   const race = useRace();

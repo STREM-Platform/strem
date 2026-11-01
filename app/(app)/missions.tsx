@@ -6,11 +6,12 @@ import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native
 import { Icon } from "@/components/ui/icon";
 import { PriorityBadge, PrioritySheet } from "@/components/mission/priority";
 import { Body, Button, Chip, IconButton, Notice, Overline, Page, Row, Title } from "@/components/ui/kit";
-import { Ring } from "@/components/ui/charts";
+import { ElevationArea, Meter, Ring } from "@/components/ui/charts";
 import { TopoArt } from "@/components/ui/photo";
-import { C, disp, ui } from "@/constants/theme";
+import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { raceMissions, type RaceMission } from "@/lib/api/race-missions";
-import { daysBetween, hm, km, longDate, todayIn } from "@/lib/race/format";
+import { capitalize, daysBetween, hm, km, longDate, todayIn } from "@/lib/race/format";
+import { useMissionSnapshot } from "@/lib/race/mission-snapshot";
 import { useRace } from "@/lib/race/race-context";
 import { priorityOf, raceConflicts } from "@/lib/race/priority";
 import { sportMeta } from "@/lib/race/sports";
@@ -105,6 +106,8 @@ function MissionCard({ mission, focused, onPress, onEdit, onPriority }: { missio
   // How much of the preparation window (commit → race day) has passed.
   const total = Math.max(1, daysBetween(mission.created_at.slice(0, 10), e.race_date));
   const elapsed = Math.min(1, Math.max(0, 1 - days / total));
+  const snap = useMissionSnapshot(mission);
+  const meters = (snap.rows ?? []).filter((r) => r.key !== "course");
   return (
     <View style={[styles.card, focused && styles.cardFocused]}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Focus ${e.name}`} onPress={onPress} style={({ pressed }) => [{ flex: 1 }, pressed && { opacity: 0.92 }]}>
@@ -114,6 +117,11 @@ function MissionCard({ mission, focused, onPress, onEdit, onPriority }: { missio
           <TopoArt seed={e.name.length} />
         )}
         <LinearGradient colors={["rgba(8,9,11,0.35)", "rgba(8,9,11,0.15)", "rgba(8,9,11,0.88)"]} locations={[0, 0.35, 1]} style={StyleSheet.absoluteFill} />
+        {snap.profile ? (
+          <View style={styles.profile} pointerEvents="none" accessibilityLabel="Course profile">
+            <ElevationArea points={snap.profile} color={C.white} height={64} />
+          </View>
+        ) : null}
         <View style={styles.cardInner}>
           <Row gap={10} align="flex-start">
             <View style={styles.sportBadge}>
@@ -124,6 +132,12 @@ function MissionCard({ mission, focused, onPress, onEdit, onPriority }: { missio
               <Text style={[ui(11, 600), { color: "rgba(244,245,246,0.75)" }]}>
                 {priorityOf(mission)} race{focused ? " · focused" : ""}
               </Text>
+              {snap.phase ? (
+                <Text style={[ui(11, 700), { color: C.text }]} numberOfLines={1}>
+                  {capitalize(snap.phase)}
+                  {snap.week ? ` · week ${snap.week.index} of ${snap.week.total}` : ""}
+                </Text>
+              ) : null}
             </View>
             <View style={styles.ringBack}>
               <Ring value={elapsed} size={58} stroke={4} color={focused ? C.accent : C.white} label={`${days} days to race day`}>
@@ -141,6 +155,21 @@ function MissionCard({ mission, focused, onPress, onEdit, onPriority }: { missio
             <Chip icon="route" label={`${km(e.distance_km)} km`} color={C.text} bg="rgba(8,9,11,0.55)" border={C.lineStrong} />
             {e.elevation_gain_m ? <Chip icon="mountain" label={`${e.elevation_gain_m.toLocaleString("en-US")} m+`} color={C.text} bg="rgba(8,9,11,0.55)" border={C.lineStrong} /> : null}
           </Row>
+          {meters.length ? (
+            <Row gap={8} style={{ paddingRight: 46 }}>
+              {meters.map((r) => (
+                <View key={r.key} style={{ flex: 1, gap: 4 }} accessibilityLabel={`${r.label} ${r.pct != null ? `${Math.round(r.pct * 100)}%` : "not started"}`}>
+                  <Row gap={4}>
+                    <Icon name={r.icon} size={11} color={LAYER_COLOR[r.key]} />
+                    <Text style={[ui(10, 700), { color: "rgba(244,245,246,0.8)" }]} numberOfLines={1}>
+                      {r.pct != null ? `${Math.round(r.pct * 100)}%` : "–"}
+                    </Text>
+                  </Row>
+                  <Meter value={r.pct} color={LAYER_COLOR[r.key]} height={4} />
+                </View>
+              ))}
+            </Row>
+          ) : null}
         </View>
       </Pressable>
       <View style={styles.edit}>
@@ -154,12 +183,13 @@ function MissionCard({ mission, focused, onPress, onEdit, onPriority }: { missio
 }
 
 const styles = StyleSheet.create({
-  card: { height: 236, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  card: { height: 276, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
   cardFocused: { borderColor: C.accent, borderWidth: 1.5 },
   cardInner: { flex: 1, padding: 16, gap: 8 },
   sportBadge: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: C.white },
   edit: { position: "absolute", top: 26, right: 90 },
-  priority: { position: "absolute", bottom: 18, right: 16 },
+  priority: { position: "absolute", bottom: 14, right: 16 },
+  profile: { position: "absolute", left: 0, right: 0, bottom: 58, opacity: 0.4 },
   ringBack: { borderRadius: 29, backgroundColor: "rgba(8,9,11,0.6)", marginRight: 0 },
   past: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
 });
