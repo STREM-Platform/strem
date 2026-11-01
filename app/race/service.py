@@ -22,35 +22,18 @@ from app.errors import AppError
 from app.race import memory, store
 from app.race.ai.client import AIUnavailable, RaceAI
 from app.race.ai.models import LangChainRaceAI
-from app.race.ai.personalize import (
-    ai_adapt,
-    ai_brief,
-    personalize_layer,
-    personalize_plan,
-)
+from app.race.ai.personalize import ai_adapt, ai_brief
 from app.race.ai.prompts import RACE_TEAM
 from app.race.clients import RaceServices
 from app.race.context import RaceContext, assemble, render
 from app.race.engine import adapt as engine_adapt
 from app.race.engine.brief import build_brief
 from app.race.engine.cockpit import build_cockpit
-from app.race.engine.fuel import build_fuel
-from app.race.engine.gear import build_gear
-from app.race.engine.logistics import build_logistics
-from app.race.engine.plan import build_plan
-from app.race.engine.strategy import build_strategy
 from app.race.enrich.conditions import race_conditions
-from app.race.graph import review
+from app.race.graph import build, review
 from app.race.graph.team import team_answer
 
-LAYERS = ("plan", "fuel", "gear", "logistics", "strategy")
-ENGINES = {
-    "plan": build_plan,
-    "fuel": build_fuel,
-    "gear": build_gear,
-    "logistics": build_logistics,
-    "strategy": build_strategy,
-}
+LAYERS = build.LAYERS
 
 
 async def conditions_for(ctx: RaceContext) -> dict[str, Any] | None:
@@ -61,114 +44,33 @@ async def conditions_for(ctx: RaceContext) -> dict[str, Any] | None:
     )
 
 
-async def load_context(services: RaceServices, mission_id: uuid.UUID) -> RaceContext:
-    return await assemble(services, mission_id, conditions=conditions_for)
-
-
-def inputs_digest(ctx: RaceContext) -> str:
-    relevant = {
-        "mission": {k: ctx.mission.get(k) for k in ("version", "event", "goal", "preparation")},
-        "weight": (ctx.profile or {}).get("weight_kg"),
-        "course": [ctx.course.distance_km, ctx.course.ascent_m] if ctx.course else None,
-        "races": len(ctx.races),
-    }
-    return hashlib.sha256(json.dumps(relevant, sort_keys=True, default=str).encode()).hexdigest()
-
-
-async def build_layer(
+async def load_context(
     services: RaceServices,
-    ai: RaceAI,
-    ctx: RaceContext,
-    kind: str,
-    *,
-    use_ai: bool = True,
-    context_text: str | None = None,
-) -> dict[str, Any]:
-    if kind not in LAYERS:
-        raise AppError(404, "unknown_layer", f"Layers are: {', '.join(LAYERS)}.")
-    if ctx.mission.get("state") != "active":
-        raise AppError(409, "mission_not_active", "Only an active mission can be rebuilt.")
-    engine = ENGINES[kind](ctx)
-    origin, model, reason = "engine", None, None
-    content = engine
-    status = ai.status()
-    if use_ai and status.available:
-        text = context_text or render(ctx)
-        try:
-            if kind == "plan":
-                content = await personalize_plan(ai, text, engine, ctx.today)
-            else:
-                content = await personalize_layer(ai, kind, text, engine, ctx.today)
-            origin, model = "ai", ai.model
-        except AIUnavailable as exc:
-            reason = exc.reason
-        except (ValueError, KeyError, TypeError):
-            reason = "The AI output did not pass validation; the engine plan was kept."
-    elif use_ai:
-        reason = status.reason
-    body = {
-        "content": content,
-        "origin": origin,
-        "model": model,
-        "inputs_digest": inputs_digest(ctx),
-    }
-    try:
-        stored = (
-            await services.put_plan(ctx.mission_id, body)
-            if kind == "plan"
-            else await services.put_layer(ctx.mission_id, kind, body)
-        )
-    except AppError as exc:
-        if origin == "ai" and exc.status_code in (400, 422):
-            # The owner rejected the AI document: keep the athlete whole with the engine one.
-            body = {**body, "content": engine, "origin": "engine", "model": None}
-            reason = "The AI output was rejected by validation; the engine version was saved."
-            stored = (
-                await services.put_plan(ctx.mission_id, body)
-                if kind == "plan"
-                else await services.put_layer(ctx.mission_id, kind, body)
-            )
-            origin, model = "engine", None
-        else:
-            raise
-    return {
-        "kind": kind,
-        "origin": origin,
-        "model": model,
-        "version": stored.get("version"),
-        "ai_reason": reason,
-        "document": stored,
-    }
+    mission_id: uuid.UUID,
+    db: AsyncSession | None = None,
+    user_id: uuid.UUID | None = None,
+) -> RaceContext:
+    """The athlete's context from the owning services; with a session and user it also
+    carries their memory, so every AI path reads the same core context (ADR 0010)."""
+    ctx = await assemble(services, mission_id, conditions=conditions_for)
+    if db is not None and user_id is not None:
+        ctx.memories = [memory.memory_out(m) for m in await memory.active(db, user_id)]
+    return ctx
 
 
 async def build_layers(
     services: RaceServices,
     ai: RaceAI,
+    db: AsyncSession,
+    user_id: uuid.UUID,
     mission_id: uuid.UUID,
     kinds: list[str],
     *,
     use_ai: bool = True,
 ) -> list[dict[str, Any]]:
-    ctx = await load_context(services, mission_id)
-    text = render(ctx)
-    results: list[dict[str, Any]] = []
-    if "plan" in kinds:
-        results.append(
-            await build_layer(services, ai, ctx, "plan", use_ai=use_ai, context_text=text)
-        )
-    others = [k for k in kinds if k != "plan"]
-    built = await asyncio.gather(
-        *(build_layer(services, ai, ctx, k, use_ai=use_ai, context_text=text) for k in others),
-        return_exceptions=True,
-    )
-    for kind, result in zip(others, built, strict=False):
-        if isinstance(result, BaseException):
-            if isinstance(result, AppError):
-                results.append({"kind": kind, "error": result.code, "message": result.message})
-                continue
-            raise result
-        results.append(result)
-    return results
+    """Race Lab and plan builds through the build graph (ADR 0010 phase 5)."""
+    ctx = await load_context(services, mission_id, db, user_id)
+    return await build.run_builds(services, ai, ctx, kinds, use_ai=use_ai, context_text=render(ctx))
 
 
 def _brief_digest(ctx: RaceContext) -> str:
@@ -195,8 +97,7 @@ async def daily_brief(
     refresh: bool = False,
 ) -> dict[str, Any]:
     """Today's brief, plus the race team's adjustment when training was missed (ai#44)."""
-    ctx = await load_context(services, mission_id)
-    ctx.memories = [memory.memory_out(m) for m in await memory.active(db, user_id)]
+    ctx = await load_context(services, mission_id, db, user_id)
     brief = await _brief(ctx, ai, db, user_id, mission_id, refresh=refresh)
     proposal = await missed_proposal(ctx, ai, db, user_id, mission_id, services)
     if proposal is not None:
@@ -489,7 +390,7 @@ async def propose_adaptation(
     mission_id: uuid.UUID,
     reason: str,
 ) -> dict[str, Any]:
-    ctx = await load_context(services, mission_id)
+    ctx = await load_context(services, mission_id, db, user_id)
     if not ctx.plan:
         raise AppError(409, "plan_missing", "Build the training plan before adapting it.")
     return await _start_review(
@@ -602,7 +503,7 @@ async def decide_proposal(
 ) -> dict[str, Any]:
     row = await _pending(db, user_id, mission_id, proposal_id)
     saver = await review.checkpointer()
-    ctx = await load_context(services, mission_id) if ai is not None else None
+    ctx = await load_context(services, mission_id, db, user_id) if ai is not None else None
     graph = (
         _review_graph(services, ai, db, user_id, mission_id, ctx, proposal_id, saver)
         if ai is not None and ctx is not None
@@ -643,7 +544,7 @@ async def adjust_proposal(
             "ai_unavailable",
             f"Adjusting needs the AI race team. {status.reason or ''}".strip(),
         )
-    ctx = await load_context(services, mission_id)
+    ctx = await load_context(services, mission_id, db, user_id)
     if not ctx.plan:
         raise AppError(409, "plan_missing", "The plan no longer exists.")
     graph = _review_graph(
@@ -673,7 +574,7 @@ async def cockpit(
     mission_id: uuid.UUID,
 ) -> dict[str, Any]:
     """The race-team cockpit (mobile#119): engine calls per specialist + what changed."""
-    ctx = await load_context(services, mission_id)
+    ctx = await load_context(services, mission_id, db, user_id)
     proposals = await list_proposals(db, user_id, mission_id, None)
     state = ai.status()
     return {

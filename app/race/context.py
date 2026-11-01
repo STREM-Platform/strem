@@ -383,11 +383,75 @@ def core_lines(ctx: RaceContext) -> list[str]:
             ),
         ]
         out.extend(line for line in rows if line)
+    out.extend(now_lines(ctx))
     if ctx.memories:
         out.append("\n## ATHLETE MEMORY [athlete] (told to the race team; newest first)")
         out.extend(
             f"- [{m['kind']}] {m['text']} (from {m['source']}, {m['source_date']})"
             for m in ctx.memories
+        )
+    return out
+
+
+CHECKIN_FIELDS = ("sleep_quality", "sleep_hours", "energy", "soreness", "stress", "motivation")
+
+
+def now_lines(ctx: RaceContext) -> list[str]:
+    """Where the athlete is today: plan week and phase, today's sessions, today's
+    check-in and adherence. Part of the core context every AI path reads."""
+    out = ["\n## NOW [calculated]"]
+    content = (ctx.plan or {}).get("content") or {}
+    weeks = content.get("weeks") or []
+    today = ctx.today.isoformat()
+    for week in weeks:
+        try:
+            start = date.fromisoformat(str(week.get("start_date")))
+        except ValueError:
+            continue
+        if start <= ctx.today < start + timedelta(days=7):
+            out.append(
+                f"- Plan week {week.get('index')} of {len(weeks)} ({week.get('phase')}): "
+                f"{week.get('focus')}"
+            )
+            sessions = [
+                s
+                for s in week.get("sessions") or []
+                if s.get("date") == today and s.get("kind") != "rest"
+            ]
+            out.append(
+                "- Today's plan: "
+                + (
+                    "; ".join(
+                        f"{s.get('title')} ({s.get('kind')}, {_hm(s.get('duration_minutes'))}"
+                        + (", key" if s.get("key") else "")
+                        + f", status {s.get('status') or 'planned'})"
+                        for s in sessions
+                    )
+                    or "rest"
+                )
+            )
+            break
+    else:
+        out.append("- No plan week covers today" if weeks else "- No training plan yet")
+    checkin = ctx.checkins[0] if ctx.checkins else None
+    if checkin and checkin.get("day") == today:
+        fields = [f"{k} {checkin[k]}" for k in CHECKIN_FIELDS if checkin.get(k) is not None]
+        if checkin.get("illness"):
+            fields.append("ILL")
+        if checkin.get("pain_note"):
+            fields.append(f"pain: {checkin['pain_note']}")
+        scale = "(1-5; soreness/stress 5 = worst)"
+        out.append(f"- Today's check-in [athlete] {scale}: " + ", ".join(fields))
+    else:
+        out.append("- No check-in today")
+    totals = (ctx.progress or {}).get("totals")
+    if totals:
+        pct = totals.get("consistency_pct")
+        out.append(
+            f"- Adherence: {totals.get('completed')} done, {totals.get('partial')} partial, "
+            f"{totals.get('missed')} missed of {totals.get('planned_to_date')} due; consistency "
+            f"{pct if pct is not None else 'n/a'}%; key sessions "
+            f"{totals.get('key_completed')}/{totals.get('key_planned_to_date')}"
         )
     return out
 
@@ -471,18 +535,7 @@ def render(ctx: RaceContext) -> str:
     if ctx.checkins:
         out.append("\n## CHECK-INS (1-5; soreness/stress 5 = worst) [athlete]")
         for checkin in ctx.checkins[:7]:
-            fields = [
-                f"{k} {checkin[k]}"
-                for k in (
-                    "sleep_quality",
-                    "sleep_hours",
-                    "energy",
-                    "soreness",
-                    "stress",
-                    "motivation",
-                )
-                if checkin.get(k) is not None
-            ]
+            fields = [f"{k} {checkin[k]}" for k in CHECKIN_FIELDS if checkin.get(k) is not None]
             if checkin.get("illness"):
                 fields.append("ILL")
             if checkin.get("pain_note"):
@@ -527,15 +580,6 @@ def render(ctx: RaceContext) -> str:
                     + (f", +{s['elevation_m']} m" if s.get("elevation_m") else "")
                     + f", status {s.get('status')}"
                 )
-    if ctx.progress and ctx.progress.get("totals"):
-        t = ctx.progress["totals"]
-        out.append(
-            f"\n## PLAN ADHERENCE [calculated]: {t.get('completed')} done, "
-            f"{t.get('partial')} partial, "
-            f"{t.get('missed')} missed of {t.get('planned_to_date')} due; consistency "
-            f"{t.get('consistency_pct') if t.get('consistency_pct') is not None else 'n/a'}%; "
-            f"key sessions {t.get('key_completed')}/{t.get('key_planned_to_date')}"
-        )
 
     for kind in ("fuel", "gear", "logistics", "strategy"):
         layer = ctx.layers.get(kind)

@@ -101,6 +101,10 @@ def _coach(ctx: RaceContext, proposals: list[dict[str, Any]]) -> dict[str, Any]:
     longest = ctx.longest_recent_minutes()
     if longest:
         evidence.append(_chip("Longest recent", hm(longest), "recorded"))
+    told = next((m for m in ctx.memories if m["kind"] == "injury"), None)
+    if told:
+        # What the athlete told the race team counts as evidence (ADR 0010 core context).
+        evidence.append(_chip("You told us", str(told["text"])[:80], "athlete"))
     confidence = (
         "high" if ctx.plan and len(recent) == 2 else "medium" if ctx.plan and weeks else "low"
     )
