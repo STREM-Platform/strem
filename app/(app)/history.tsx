@@ -9,7 +9,7 @@ import { Body, Button, Chip, EmptyState, ErrorBanner, IconButton, Notice, Overli
 import { Sheet } from "@/components/ui/sheet";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
-import { historyApi, type RaceResult, type RaceResultInput } from "@/lib/api/race";
+import { historyApi, sourcesApi, type RaceResult, type RaceResultInput } from "@/lib/api/race";
 import type { RaceDayData, Sport } from "@/lib/api/race-missions";
 import { finishTimeText, hm, km, longDate, parseFinishTime } from "@/lib/race/format";
 import { SPORTS, sportMeta } from "@/lib/race/sports";
@@ -20,7 +20,7 @@ export default function HistoryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<RaceResult | "new" | null>(null);
   const [importing, setImporting] = useState(false);
-  const [importNote, setImportNote] = useState<string | null>(null);
+  const [importNote, setImportNote] = useState<{ text: string; connect?: boolean; failed?: boolean } | null>(null);
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -37,11 +37,24 @@ export default function HistoryScreen() {
     setImporting(true);
     setImportNote(null);
     try {
+      // Pull the latest activities first: the import only reads what has been synced (training#29).
+      await sourcesApi.sync("strava");
+    } catch (err) {
+      const notConnected = err instanceof ApiError && err.code === "not_connected";
+      setImportNote({
+        text: notConnected ? "Connect Strava first, then import your races." : err instanceof ApiError ? err.message : "Strava couldn’t be synced. Try again.",
+        connect: notConnected || (err instanceof ApiError && err.code === "strava_scope_missing"),
+        failed: true,
+      });
+      setImporting(false);
+      return;
+    }
+    try {
       const result = await historyApi.importStrava();
-      setImportNote(result.found ? `Found ${result.found} race${result.found === 1 ? "" : "s"} flagged in Strava · ${result.created} added.` : "No Strava activities are marked as races yet. In Strava, set the activity type to “Race” and sync again.");
+      setImportNote({ text: result.found ? `Found ${result.found} race${result.found === 1 ? "" : "s"} flagged in Strava · ${result.created} added.` : "Strava is synced, but none of your activities are marked as races. In Strava, set the workout type to “Race” and import again." });
       await load();
     } catch (err) {
-      setImportNote(err instanceof ApiError ? err.message : "Import failed — is Strava connected?");
+      setImportNote({ text: err instanceof ApiError ? err.message : "Import failed. Try again.", failed: true });
     } finally {
       setImporting(false);
     }
@@ -61,7 +74,15 @@ export default function HistoryScreen() {
         <Button label="Add a race" icon="plus" onPress={() => setEditing("new")} />
         <Button label="Import from Strava" icon="download" kind="secondary" loading={importing} onPress={() => void importStrava()} />
       </Row>
-      {importNote ? <Notice icon="info" title="Strava import" body={importNote} /> : null}
+      {importNote ? (
+        <Notice
+          icon={importNote.failed ? "alert" : "info"}
+          tone={importNote.failed ? "attention" : "default"}
+          title={importNote.failed ? "Strava import didn’t run" : "Strava import"}
+          body={importNote.text}
+          action={importNote.connect ? <Button label="Connected sources" size="sm" kind="secondary" icon="link" onPress={() => router.push("/(app)/integrations")} style={{ alignSelf: "flex-start", marginTop: 6 }} /> : null}
+        />
+      ) : null}
       {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
       {races && !races.length ? <EmptyState icon="trophy" title="No races yet" body="Add your past races — even the ones that went wrong. Those teach the most." /> : null}
       {finished.length ? (

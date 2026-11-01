@@ -88,6 +88,9 @@ def main():
                "COURSE_STORAGE_BASE_URL": "http://127.0.0.1:9514",
                "AI_BASE_URL": "http://127.0.0.1:9515/v1",
                "ANTHROPIC_API_KEY": "",
+               # Test-only key and placeholder Strava app: nothing is ever connected or called.
+               "INTEGRATIONS_ENCRYPTION_KEY": "aXNvbGF0ZWQtYnJvd3Nlci10ZXN0LWZlcm5ldC1rZXk=",
+               "STRAVA_CLIENT_ID": "browser-test", "STRAVA_CLIENT_SECRET": "browser-test",
                "CORS_ALLOW_ORIGINS": "http://localhost:9510",
                "UPSTREAM_TIMEOUT_SECONDS": "15", "EXPO_PUBLIC_API_URL": "http://localhost:9511/v1",
                "EXPO_NO_DOTENV": "1", "CI": "1"}

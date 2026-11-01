@@ -319,3 +319,12 @@ test("create a season, let the race team draft its plan, and train from it", asy
   expect(plan.seasons[0]).toMatchObject({ name: "Winter base", has_plan: true, current: true });
   expect(plan.content.weeks[0].source).toBe("season");
 });
+
+test("importing races from Strava without a connection says to connect first", async ({ page }) => {
+  await page.goto("/history");
+  await page.getByRole("button", { name: "Import from Strava" }).click();
+  await expect(page.getByText("Strava import didn’t run")).toBeVisible();
+  await expect(page.getByText("Connect Strava first, then import your races.")).toBeVisible();
+  await page.getByRole("button", { name: "Connected sources" }).click();
+  await expect(page).toHaveURL(/\/integrations/);
+});
