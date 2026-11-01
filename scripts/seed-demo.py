@@ -9,6 +9,11 @@ deterministic race engine builds them and says so.
 
 Pass --course with a GPX/ZIP you are allowed to use to attach a real course
 (elevation profile, climbs, map). Course files are never committed.
+
+Run it again any day to keep the account current: it logs the plan's sessions
+since the last logged one (missing roughly one in seven, like a real athlete)
+and fills in the last two weeks of check-ins, so the tracker, calendar, trends
+and cockpit always have recent data. Nothing is duplicated.
 """
 
 from __future__ import annotations
@@ -246,6 +251,73 @@ def seed_training(base_url: str, token: str, today: date) -> int:
     return added
 
 
+PLAN_TO_SESSION = {"brick": "cycling"}
+SESSION_TYPES = {
+    "strength", "running", "trail_running", "cycling", "swimming",
+    "mobility", "hybrid", "hiking", "rowing", "skiing",
+}
+
+
+def top_up_training(base_url: str, token: str, mission_id: str, today: date) -> int:
+    """Log the plan's sessions from the day after the latest logged one up to yesterday."""
+    try:
+        plan = request_json("GET", base_url, f"/training/missions/{mission_id}/plan", token=token)
+    except ApiFailure:
+        return 0  # no plan yet: nothing to log against
+    weeks = (plan.get("content") or {}).get("weeks") or []
+    existing = request_json("GET", base_url, "/training/sessions?limit=200", token=token)
+    logged = [str(item.get("logged_at", ""))[:10] for item in existing["items"]]
+    since = max(logged, default=(today - timedelta(days=1)).isoformat())
+    added = 0
+    planned = [s for w in weeks for s in w.get("sessions") or []]
+    for index, session in enumerate(sorted(planned, key=lambda s: s.get("date", ""))):
+        day = str(session.get("date", ""))
+        if not (since < day < today.isoformat()) or session.get("kind") in ("rest", "race"):
+            continue
+        sport = PLAN_TO_SESSION.get(session.get("sport"), session.get("sport"))
+        if sport not in SESSION_TYPES or index % 7 == 3:  # a real athlete misses some
+            continue
+        minutes = int(session.get("duration_minutes") or 45)
+        body: dict[str, Any] = {
+            "session_type": sport,
+            "title": session.get("title") or "Training",
+            "duration_minutes": max(10, round(minutes * (0.92 + (index % 5) * 0.03))),
+            "notes": f"{SEED_NOTE}: logged to plan",
+            "logged_at": datetime.combine(date.fromisoformat(day), time(6, 0), tzinfo=UTC).isoformat(),
+        }
+        if session.get("distance_km"):
+            body["distance_km"] = round(float(session["distance_km"]) * 0.97, 1)
+        if session.get("elevation_m"):
+            body["elevation_m"] = int(session["elevation_m"])
+        request_json("POST", base_url, "/training/sessions", body, token=token)
+        added += 1
+    return added
+
+
+def seed_checkins(base_url: str, token: str, today: date) -> int:
+    """Two weeks of check-ins with a believable rhythm, filling only missing days."""
+    existing = request_json("GET", base_url, "/training/checkins?limit=28", token=token)
+    have = {item["day"] for item in existing["items"]}
+    added = 0
+    for back in range(14, 0, -1):
+        day = today - timedelta(days=back)
+        if day.isoformat() in have:
+            continue
+        rough = back in (5, 6)  # a short bad patch: poor sleep after a hard weekend
+        body = {
+            "day": day.isoformat(),
+            "sleep_quality": 2 if rough else 3 + (back % 3 != 0),
+            "sleep_hours": 5.9 if rough else round(6.8 + (back % 4) * 0.3, 1),
+            "energy": 2 if rough else 3 + (back % 2),
+            "soreness": 3 if day.weekday() in (0, 6) else 2,
+            "stress": 4 if rough else 2 + (back % 3 == 1),
+            "motivation": 4 if rough else 5,
+        }
+        request_json("PUT", base_url, "/training/checkins", body, token=token)
+        added += 1
+    return added
+
+
 def ensure_mission(base_url: str, token: str, today: date) -> tuple[dict[str, Any], bool]:
     active = request_json("GET", base_url, "/race-missions?state=active", token=token)
     for mission in active["items"]:
@@ -408,6 +480,8 @@ def main() -> int:
         built = request_json(
             "POST", base_url, f"/ai/race/{mission_id}/build", {}, token=token, timeout=600
         )
+    topped = top_up_training(base_url, token, mission_id, today)
+    checkins = seed_checkins(base_url, token, today)
 
     print("")
     print("Demo account ready.")
@@ -417,6 +491,7 @@ def main() -> int:
     print(f"Mission:  {MISSION_NAME} ({'created' if created else 'existing'}) {mission_id}")
     print(f"Cover:    {(mission.get('cover') or {}).get('title') or 'none'}")
     print(f"History:  {races} race(s) added | Training: {sessions} session(s) added")
+    print(f"Kept current: {topped} plan session(s) logged | {checkins} check-in(s) added")
     if course:
         print(f"Course:   {course}")
     if built:
