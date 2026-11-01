@@ -4,8 +4,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import jwt
+from langgraph.checkpoint.memory import InMemorySaver
 
 from app.config import Settings
+from app.race.graph import review
 
 TEST_SETTINGS = Settings(
     database_url="sqlite+aiosqlite://",
@@ -13,6 +15,8 @@ TEST_SETTINGS = Settings(
     jwt_algorithm="HS256",
     user_service_base_url="http://user.test/v1",
 )
+# Review threads (ADR 0010 phase 4) live in memory in tests, not in Postgres.
+review._checkpointer = InMemorySaver()
 
 
 def auth_header(user_id: uuid.UUID, email: str = "alex@strem.app") -> dict[str, str]:

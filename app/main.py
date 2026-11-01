@@ -15,12 +15,16 @@ from app.config import get_settings
 from app.db import configure
 from app.errors import register_error_handlers
 from app.observability import configure_logging, install_request_logging
+from app.race.graph import review
 from app.race.router import router as race_router
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     configure(get_settings().database_url)
+    # Prepare the review checkpointer before any request: its Postgres setup builds
+    # indexes CONCURRENTLY, which waits on every open transaction (ADR 0010 phase 4).
+    await review.checkpointer()
     yield
 
 
