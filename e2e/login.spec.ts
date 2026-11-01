@@ -51,3 +51,34 @@ test("a brand-new account agrees to the policies and moves on", async ({ page, r
   const legal = await (await request.get(`${api}/users/me/legal`, { headers: { Authorization: `Bearer ${tokens.access_token}` } })).json();
   expect(legal.needs_acceptance).toBe(false);
 });
+
+test("a new athlete goes from the welcome hero through About you into the app", async ({ page, request }) => {
+  const registration = await request.post(`${api}/auth/register`, {
+    data: { email: `welcome-${randomUUID()}@example.com`, password: `Test-${randomUUID()}-only`, display_name: "Fresh" },
+  });
+  const { tokens } = await registration.json();
+  const headers = { Authorization: `Bearer ${tokens.access_token}` };
+  const legal = await (await request.get(`${api}/users/me/legal`, { headers })).json();
+  await request.post(`${api}/users/me/legal/accept`, { headers, data: {
+    acceptances: legal.documents.map((doc: { document_type: string; required_version: string }) => ({ document_type: doc.document_type, version: doc.required_version })),
+  } });
+  await page.addInitScript((pair) => {
+    localStorage.setItem("strem.access_token", pair.access_token);
+    localStorage.setItem("strem.refresh_token", pair.refresh_token);
+  }, tokens);
+  await page.goto("/");
+  await expect(page.getByText("Meet your race team")).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button", { name: "Get started" }).click();
+
+  const next = page.getByRole("button", { name: "Continue" });
+  await page.getByLabel("What should we call you?").fill("Mira");
+  await page.getByRole("radio", { name: "Some races done" }).click();
+  await page.getByRole("radio", { name: "4 days a week" }).click();
+  await expect(next).toBeDisabled();
+  await page.getByRole("button", { name: "Because the mountains make me feel alive" }).click();
+  await expect(page.getByText("Mira, remember why you’re here: because the mountains make me feel alive.", { exact: false })).toBeVisible();
+  await next.click();
+  await expect(page).not.toHaveURL(/onboarding|identity|welcome/, { timeout: 15000 });
+  const profile = await (await request.get(`${api}/users/me`, { headers })).json();
+  expect(profile).toMatchObject({ display_name: "Mira" });
+});
