@@ -709,6 +709,9 @@ def test_brief_chat_adaptation_and_strava_import_flows() -> None:
                 await client.get(f"/v1/ai/race/{m['id']}/knowledge", headers=headers)
             ).json()
             assert "Course GPX" in knowledge["missing"] and knowledge["has_weight"] is True
+            cockpit = (await client.get(f"/v1/ai/race/{m['id']}/cockpit", headers=headers)).json()
+            assert [s["role"] for s in cockpit["specialists"]][:3] == ["coach", "fuel", "course"]
+            assert cockpit["ai"]["available"] is False and sum(cockpit["summary"].values()) == 6
 
     asyncio.run(scenario())
 

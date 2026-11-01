@@ -112,6 +112,20 @@ async def brief(
     return await service.daily_brief(services, ai, db, current.user_id, mission_id, refresh=refresh)
 
 
+@router.get("/race/{mission_id}/cockpit")
+async def cockpit(
+    mission_id: uuid.UUID,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    ai: RaceAIDep,
+    db: SessionDep,
+    response: Response,
+) -> dict[str, Any]:
+    """One call per specialist and what changed — engine-built, works offline."""
+    _no_store(response)
+    return await service.cockpit(services, ai, db, current.user_id, mission_id)
+
+
 @router.get("/race/{mission_id}/knowledge")
 async def knowledge(
     mission_id: uuid.UUID, current: CurrentUserDep, services: ServicesDep, response: Response
