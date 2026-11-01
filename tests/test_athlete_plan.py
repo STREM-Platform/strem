@@ -195,7 +195,8 @@ def test_no_race_only_your_own_plan() -> None:
 
 def test_split_session_ids() -> None:
     assert timeline.split_session_id("b-w1-mon-1") == (None, "w1-mon-1")
-    assert timeline.split_session_id("m1a2b3c4d-w3-sat-long") == ("1a2b3c4d", "w3-sat-long")
+    assert timeline.split_session_id("m1a2b3c4d-w3-sat-long") == ("m1a2b3c4d", "w3-sat-long")
+    assert timeline.split_session_id("s1a2b3c4d-w1-mon-1") == ("s1a2b3c4d", "w1-mon-1")
     with pytest.raises(AppError):
         timeline.split_session_id("w3-sat-long")
 

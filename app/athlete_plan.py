@@ -104,8 +104,9 @@ class TimelineSession(PlanSession):
 class TimelineWeek(PlanWeek):
     index: int = Field(ge=1, le=MAX_WEEKS)
     sessions: list[TimelineSession] = Field(default_factory=list, max_length=28)  # type: ignore[assignment]
-    source: Literal["race", "base"]
+    source: Literal["race", "season", "base"]
     mission_id: uuid.UUID | None = None
+    season_id: uuid.UUID | None = None
     origin: Origin
 
 
@@ -124,10 +125,21 @@ class TimelineRace(BaseModel):
     has_plan: bool
 
 
+class TimelineSeason(BaseModel):
+    id: uuid.UUID
+    name: str
+    start_date: dt.date
+    end_date: dt.date
+    focus: str
+    has_plan: bool
+    current: bool
+
+
 class AthletePlan(BaseModel):
     as_of: dt.date
     content: TimelineContent | None = None
     races: list[TimelineRace] = Field(default_factory=list)
+    seasons: list[TimelineSeason] = Field(default_factory=list)
     base_version: int | None = None
     next_race: TimelineRace | None = None
 
@@ -268,6 +280,10 @@ def prefix_for(mission_id: uuid.UUID | None) -> str:
     return f"m{mission_id.hex[:8]}-" if mission_id else "b-"
 
 
+def season_prefix(season_id: uuid.UUID) -> str:
+    return f"s{season_id.hex[:8]}-"
+
+
 def _sessions(week: dict[str, Any], prefix: str) -> list[dict[str, Any]]:
     return [{**s, "id": f"{prefix}{s['id']}"} for s in week.get("sessions", [])]
 
@@ -277,6 +293,7 @@ def compose(
     plans: dict[uuid.UUID, MissionPlan],
     base: BasePlan | None,
     today: date,
+    seasons: list[Any] | None = None,
 ) -> AthletePlan:
     meta = [
         TimelineRace(**race, has_plan=race["mission_id"] in plans)
@@ -300,10 +317,34 @@ def compose(
         for week in base.content.model_dump(mode="json")["weeks"]:
             start = monday(date.fromisoformat(week["start_date"]))
             candidates.setdefault(start, []).append((None, week, base))
+    # Season plans (#18): a week inside a season follows that season's plan when no race governs it.
+    seasons = seasons or []
+    season_weeks: dict[date, tuple[dict[str, Any], Any]] = {}
+    for season in seasons:
+        if season.plan is None:
+            continue
+        for week in season.plan.model_dump(mode="json")["weeks"]:
+            start = monday(date.fromisoformat(week["start_date"]))
+            if season.start_date - timedelta(days=6) <= start <= season.end_date:
+                season_weeks[start] = (week, season)
+                candidates.setdefault(start, [])
+    season_meta = [
+        TimelineSeason(
+            id=s.id,
+            name=s.name,
+            start_date=s.start_date,
+            end_date=s.end_date,
+            focus=s.focus,
+            has_plan=s.plan is not None,
+            current=s.start_date <= today <= s.end_date,
+        )
+        for s in seasons
+    ]
     if not candidates:
         return AthletePlan(
             as_of=today,
             races=meta,
+            seasons=season_meta,
             base_version=base.version if base else None,
             next_race=next_race,
         )
@@ -314,7 +355,8 @@ def compose(
     for index, start in enumerate(mondays, start=1):
         options = candidates[start]
         racing = [(r, w, p) for r, w, p in options if r is not None]
-        owner: MissionPlan | BasePlan
+        owner: Any
+        season_id = None
         if racing:
             lead, week, owner = min(
                 racing, key=lambda c: (PRIORITY_RANK[c[0].priority], c[0].race_date)
@@ -330,9 +372,15 @@ def compose(
                         x for x in extra if x.get("kind") == "race" and x["date"] not in raced
                     ]
             source, mission_id = "race", lead.mission_id
+        elif start in season_weeks:
+            week, season = season_weeks[start]
+            sessions, source, mission_id = _sessions(week, season_prefix(season.id)), "season", None
+            season_id, owner = season.id, season
         else:
             _, week, owner = options[0]
             sessions, source, mission_id = _sessions(week, "b-"), "base", None
+        if season_id is None:
+            season_id = next((s.id for s in seasons if s.start_date <= start <= s.end_date), None)
         weeks.append(
             {
                 **week,
@@ -341,13 +389,14 @@ def compose(
                 "sessions": sorted(sessions, key=lambda s: s["date"]),
                 "source": source,
                 "mission_id": mission_id,
-                "origin": owner.origin,
+                "season_id": season_id,
+                "origin": getattr(owner, "plan_origin", None) or owner.origin,
             }
         )
     phases: list[dict[str, Any]] = []
     for week in weeks:
         end = (date.fromisoformat(week["start_date"]) + timedelta(days=6)).isoformat()
-        key = (week["phase"], week["mission_id"])
+        key = (week["phase"], week["mission_id"], week["season_id"])
         if phases and phases[-1]["_key"] == key:
             phases[-1]["end_date"] = end
         else:
@@ -383,6 +432,7 @@ def compose(
         as_of=today,
         content=content,
         races=meta,
+        seasons=season_meta,
         base_version=base.version if base else None,
         next_race=next_race,
     )
@@ -400,11 +450,12 @@ def _summary(races: list[TimelineRace], base: BasePlan | None, today: date) -> s
 
 
 def split_session_id(composed: str) -> tuple[str | None, str]:
-    """`m1a2b3c4d-w3-sat-long` → ("1a2b3c4d", "w3-sat-long"); `b-…` → (None, "…")."""
+    """`m1a2b3c4d-w3-long` → ("m1a2b3c4d", "w3-long"): a race plan; `s…` a season plan;
+    `b-…` → (None, "…"): the base plan."""
     if composed.startswith("b-"):
         return None, composed[2:]
-    if len(composed) > 10 and composed[0] == "m" and composed[9] == "-":
-        return composed[1:9], composed[10:]
+    if len(composed) > 10 and composed[0] in "ms" and composed[9] == "-":
+        return composed[:9], composed[10:]
     raise AppError(404, "plan_session_not_found", "That session is not part of your plan.")
 
 

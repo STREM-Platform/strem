@@ -268,9 +268,11 @@ async def delete_plan(
 async def purge_plans(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Called inside the course purge transaction (same generation fence)."""
     from app.athlete_plan import purge_base
+    from app.seasons import purge as purge_seasons
 
     await session.execute(delete(MissionPlanRecord).where(MissionPlanRecord.user_id == user_id))
     await purge_base(session, user_id)
+    await purge_seasons(session, user_id)
 
 
 async def export_plans(session: AsyncSession, user_id: uuid.UUID) -> list[dict[str, object]]:
@@ -285,6 +287,12 @@ async def export_plans(session: AsyncSession, user_id: uuid.UUID) -> list[dict[s
     base = await get_base(session, user_id)
     if base is not None:
         exported.append({"scope": "athlete", **base.model_dump(mode="json")})
+    from app.seasons import list_seasons
+
+    exported += [
+        {"scope": "season", **s.model_dump(mode="json")}
+        for s in await list_seasons(session, user_id)
+    ]
     return exported
 
 
