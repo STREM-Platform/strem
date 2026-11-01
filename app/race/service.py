@@ -16,9 +16,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.errors import AppError
 from app.race import store
 from app.race.ai.client import AIUnavailable, RaceAI
+from app.race.ai.models import LangChainRaceAI
 from app.race.ai.personalize import (
     ai_adapt,
     ai_brief,
@@ -37,6 +39,7 @@ from app.race.engine.logistics import build_logistics
 from app.race.engine.plan import build_plan
 from app.race.engine.strategy import build_strategy
 from app.race.enrich.conditions import race_conditions
+from app.race.graph.team import team_answer
 
 LAYERS = ("plan", "fuel", "gear", "logistics", "strategy")
 ENGINES = {
@@ -274,7 +277,10 @@ async def chat(
     ]
     turns.append({"role": "user", "content": message})
     try:
-        answer = await ai.complete_text(rules=RACE_TEAM, context=render(ctx), messages=turns)
+        if get_settings().race_team_graph and isinstance(ai, LangChainRaceAI):
+            answer = await team_answer(ai, ctx, message, turns[:-1])
+        else:
+            answer = await ai.complete_text(rules=RACE_TEAM, context=render(ctx), messages=turns)
     except AIUnavailable as exc:
         return {"available": False, "reason": exc.reason, "message": None}
     asked = datetime.now(UTC)

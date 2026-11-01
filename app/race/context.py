@@ -258,9 +258,10 @@ def _line(label: str, value: Any) -> str | None:
     return f"- {label}: {value}"
 
 
-def render(ctx: RaceContext) -> str:
-    """Compact, provenance-labelled context. [athlete]=entered by the athlete,
-    [recorded]=imported/logged, [calculated]=derived by STREM, [plan]=current plan."""
+def core_lines(ctx: RaceContext) -> list[str]:
+    """The always-on part of the context: the race, the athlete's intake and profile
+    (goal, constraints, injuries, diet). The race team graph sends only this and
+    fetches the rest with tools (ADR 0010)."""
     event, goal, prep = ctx.event, ctx.goal, ctx.prep
     out: list[str] = [f"TODAY: {ctx.today.isoformat()} ({ctx.days_to_race} days to race day)"]
     out.append("\n## RACE MISSION [athlete]")
@@ -380,7 +381,13 @@ def render(ctx: RaceContext) -> str:
             ),
         ]
         out.extend(line for line in rows if line)
+    return out
 
+
+def render(ctx: RaceContext) -> str:
+    """Compact, provenance-labelled context. [athlete]=entered by the athlete,
+    [recorded]=imported/logged, [calculated]=derived by STREM, [plan]=current plan."""
+    out = core_lines(ctx)
     if ctx.races or ctx.race_sessions:
         out.append("\n## RACE HISTORY")
         for race in ctx.races[:12]:

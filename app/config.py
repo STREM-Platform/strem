@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-6.1-sol"
     openai_base_url: str = "https://api.openai.com/v1"
 
+    # The race team as a LangGraph graph (ADR 0010): router, specialists with
+    # retrieval tools, composer and safety guard. Off until the evals (ai#37) pass.
+    race_team_graph: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:
