@@ -111,16 +111,16 @@ export function Page({
 
 type CardTone = "default" | "raised" | "outline" | "glass" | "accent" | "flame";
 
-export function Card({ children, tone = "default", pad = 18, style, onPress, accessibilityLabel }: { children: ReactNode; tone?: CardTone; pad?: number; style?: StyleProp<ViewStyle>; onPress?: () => void; accessibilityLabel?: string }) {
+export function Card({ children, tone = "default", pad = 18, style, onPress, accessibilityLabel, testID }: { children: ReactNode; tone?: CardTone; pad?: number; style?: StyleProp<ViewStyle>; onPress?: () => void; accessibilityLabel?: string; testID?: string }) {
   const toneStyle = cardTones[tone];
   if (onPress) {
     return (
-      <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [styles.card, toneStyle, { padding: pad }, pressed && styles.pressed, style]}>
+      <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [styles.card, toneStyle, { padding: pad }, pressed && styles.pressed, style]}>
         {children}
       </Pressable>
     );
   }
-  return <View style={[styles.card, toneStyle, { padding: pad }, style]}>{children}</View>;
+  return <View testID={testID} style={[styles.card, toneStyle, { padding: pad }, style]}>{children}</View>;
 }
 
 const cardTones: Record<CardTone, ViewStyle> = {
