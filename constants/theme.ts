@@ -63,29 +63,6 @@ export const LAYER_COLOR: Record<LayerKey, string> = {
   strategy: "#9085e9",
 };
 
-/** Legacy token names kept so older screens adopt the new palette unchanged. */
-export const Trail = {
-  bg: C.ink,
-  bgRaised: C.night,
-  panel: C.surface,
-  panelRaised: C.surface2,
-  panelSoft: C.surface3,
-  line: C.line,
-  lineStrong: C.lineStrong,
-  text: C.text,
-  textMuted: C.textMuted,
-  textDim: C.textDim,
-  lime: C.accent,
-  limeInk: C.accentInk,
-  limeSoft: C.accentSoft,
-  limeLine: C.accentLine,
-  orange: C.serious,
-  orangeSoft: "rgba(236,131,90,0.12)",
-  orangeLine: "rgba(236,131,90,0.32)",
-  sky: LAYER_COLOR.training,
-  skySoft: "rgba(57,135,229,0.12)",
-} as const;
-
 export const R = { sm: 10, md: 16, lg: 22, xl: 30 } as const;
 
 export const FontAssets = {

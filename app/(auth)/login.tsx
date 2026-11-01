@@ -3,8 +3,9 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AuthShell } from "@/components/auth-shell";
-import { FormError, PrimaryButton, TextField } from "@/components/form";
-import { Trail } from "@/constants/theme";
+import { Input } from "@/components/ui/fields";
+import { Button, ErrorBanner } from "@/components/ui/kit";
+import { C } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/session/auth-context";
 import { validateEmail, validatePassword } from "@/lib/validation";
@@ -58,32 +59,32 @@ export default function LoginScreen() {
         </View>
       }
     >
-      <TextField
+      <Input
         label="Email"
         editable={phase !== "loading" && !submitting}
         value={email}
         onChangeText={setEmail}
-        errorText={emailError}
+        error={emailError}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
         textContentType="emailAddress"
         placeholder="you@strem.app"
       />
-      <TextField
+      <Input
         label="Password"
         editable={phase !== "loading" && !submitting}
         value={password}
         onChangeText={setPassword}
-        errorText={passwordError}
+        error={passwordError}
         secureTextEntry
         textContentType="password"
         placeholder="Your password"
       />
 
-      {formError ? <FormError message={formError} /> : null}
+      {formError ? <ErrorBanner message={formError} /> : null}
 
-      <PrimaryButton label="Log in" onPress={onSubmit} loading={submitting} disabled={phase === "loading"} />
+      <Button label="Log in" size="lg" full onPress={onSubmit} loading={submitting} disabled={phase === "loading"} />
     </AuthShell>
   );
 }
@@ -95,12 +96,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   footerText: {
-    color: Trail.textMuted,
+    color: C.textMuted,
     fontSize: 14,
     lineHeight: 18,
   },
   footerLink: {
-    color: Trail.lime,
+    color: C.accent,
     fontSize: 14,
     lineHeight: 18,
     fontWeight: "800",

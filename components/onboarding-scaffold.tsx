@@ -5,8 +5,7 @@ import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { FormError } from "@/components/form";
-import { Button, IconButton, Overline, Wordmark, useLayout } from "@/components/ui/kit";
+import { Button, ErrorBanner, IconButton, Overline, Wordmark, useLayout } from "@/components/ui/kit";
 import { TopoArt } from "@/components/ui/photo";
 import { C, disp, ui } from "@/constants/theme";
 import type { OnboardingScreen } from "@/lib/api/types";
@@ -60,7 +59,7 @@ export function OnboardingScaffold({
         {children ? <View style={{ gap: 16, marginTop: 24, maxWidth: 640 }}>{children}</View> : null}
         {errorText ? (
           <View style={{ marginTop: 16, maxWidth: 640 }}>
-            <FormError message={errorText} />
+            <ErrorBanner message={errorText} />
           </View>
         ) : null}
         <Button label={primaryLabel} iconRight="chevron" size="lg" onPress={onPrimary} disabled={primaryDisabled} loading={submitting} style={{ marginTop: 28, maxWidth: 640, alignSelf: wide ? "flex-start" : "stretch", minWidth: 280 }} />
