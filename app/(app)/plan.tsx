@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/kit";
 import { BuildPanel } from "@/components/mission/build-panel";
 import { ProposalCard } from "@/components/plan/proposal-card";
+import { SeasonStrip } from "@/components/plan/seasons";
 import { SessionRow, sessionStatus } from "@/components/plan/session-row";
 import { C, LAYER_COLOR, disp, ui } from "@/constants/theme";
 import { addDays, capitalize, dayLabel, km, mondayOf, todayIn, weekdayShort } from "@/lib/race/format";
@@ -58,6 +59,7 @@ export default function PlanScreen() {
   const races = useMemo(() => new Map((timeline?.races ?? []).map((r) => [r.mission_id, r])), [timeline]);
   const upcoming = (timeline?.races ?? []).filter((r) => r.state === "active" && r.race_date >= today);
   const weekRace = week?.mission_id ? races.get(week.mission_id) : undefined;
+  const weekSeason = week?.season_id ? (timeline?.seasons ?? []).find((s) => s.id === week.season_id) : undefined;
   const generate = mission ? () => void builder.build(mission.id, ["plan"]) : undefined;
 
   if (timeline === undefined) {
@@ -92,6 +94,7 @@ export default function PlanScreen() {
           }
         />
         <BuildPanel states={builder.states} />
+        <SeasonStrip seasons={timeline?.seasons ?? []} onChanged={() => void race.refreshTimeline()} />
       </Page>
     );
   }
@@ -115,6 +118,7 @@ export default function PlanScreen() {
           No race ahead — this is your own plan. Add a race and the race team plans around it.
         </Body>
       )}
+      <SeasonStrip seasons={timeline?.seasons ?? []} onChanged={() => void race.refreshTimeline()} />
       {content.phases.length ? (
         <Card pad={16} style={{ gap: 6 }}>
           <Text style={[ui(13, 700), { color: C.textMuted }]}>Road ahead</Text>
@@ -148,7 +152,7 @@ export default function PlanScreen() {
           <Card pad={18} style={{ gap: 12 }}>
             <Row gap={8} wrap>
               <Chip
-                label={weekRace ? `${weekRace.priority} · ${weekRace.name}` : "Your own plan"}
+                label={weekRace ? `${weekRace.priority} · ${weekRace.name}` : weekSeason ? weekSeason.name : "Your own plan"}
                 icon={weekRace ? "flag" : "user"}
                 color={weekRace ? C.text : C.textMuted}
               />
