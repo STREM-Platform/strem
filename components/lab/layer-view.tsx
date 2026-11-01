@@ -4,6 +4,7 @@
  * the layer's states (e.g. gear: have it -> tested -> packed) and save at once.
  */
 
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -65,6 +66,7 @@ export function LayerView({
   onRebuild: () => void;
   rebuilding: boolean;
 }) {
+  const router = useRouter();
   const meta = LAYER_META[layer.kind];
   const color = LAYER_COLOR[meta.key];
   const [error, setError] = useState<string | null>(null);
@@ -91,9 +93,10 @@ export function LayerView({
         <Title size={32}>{c.headline}</Title>
         <Row gap={8} wrap>
           <OriginBadge origin={layer.origin} model={layer.model} />
-          <Text style={[ui(12, 600), { color: C.textMuted }]}>
+          <Text style={[ui(12, 600), { color: C.textMuted, flex: 1 }]}>
             {done} of {total} done
           </Text>
+          <TextLink label="Ask the team" icon="message" onPress={() => router.push({ pathname: "/(app)/team", params: { ask: `About my ${meta.label.toLowerCase()} plan (“${c.headline}”): ` } })} />
         </Row>
         <Meter value={total ? done / total : null} color={color} label={`${meta.label} progress`} />
       </View>

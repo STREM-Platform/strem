@@ -112,6 +112,14 @@ export default function SessionScreen() {
           <Chip icon="bolt" label={capitalize(session.intensity)} color={C.text} />
           {session.key ? <Chip icon="star" label="Key session" color={C.accent} border={C.accentLine} bg={C.accentSoft} /> : null}
         </Row>
+        <Button
+          label="Ask the team about this session"
+          icon="message"
+          kind="secondary"
+          size="sm"
+          style={{ alignSelf: "flex-start", marginTop: 4 }}
+          onPress={() => router.push({ pathname: "/(app)/team", params: { ask: `About "${session.title}" on ${longDate(session.date)}: ` } })}
+        />
       </View>
       {error ? <ErrorBanner message={error} /> : null}
       <Card pad={20} style={{ gap: 10 }}>

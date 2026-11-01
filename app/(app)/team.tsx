@@ -1,14 +1,21 @@
-import { useRouter } from "expo-router";
+/**
+ * The race team (mobile#119): a cockpit of specialist calls and what changed,
+ * with the conversation one tap away. Calls are engine-built, so the cockpit
+ * works when the AI is offline; any card, feed item or screen can ask about itself.
+ */
+
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FeedItem, SpecialistCard } from "@/components/team/cockpit";
 import { RichText } from "@/components/team/rich-text";
 import { Icon } from "@/components/ui/icon";
-import { Body, Button, Card, Chip, EmptyState, ErrorBanner, IconButton, Notice, Overline, Row, Title, useLayout } from "@/components/ui/kit";
+import { Body, Button, Card, Chip, EmptyState, ErrorBanner, IconButton, Notice, Overline, Row, Segmented, Title, useLayout } from "@/components/ui/kit";
 import { C, R, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
-import { raceAi, type AIStatus, type ChatMessage, type Knowledge } from "@/lib/api/race";
+import { raceAi, type AIStatus, type ChatMessage, type Cockpit, type Knowledge } from "@/lib/api/race";
 import { useRace } from "@/lib/race/race-context";
 
 const SUGGESTIONS = [
@@ -33,17 +40,35 @@ export default function TeamScreen() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cockpit, setCockpit] = useState<Cockpit | null>(null);
+  // `?ask=` (from a session, layer or chart) opens the conversation with the question ready.
+  const params = useLocalSearchParams<{ ask?: string }>();
+  const [mode, setMode] = useState<"cockpit" | "chat">(params.ask ? "chat" : "cockpit");
   const scroll = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (!params.ask) return;
+    const timer = setTimeout(() => {
+      setInput(params.ask ?? "");
+      setMode("chat");
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [params.ask]);
 
   const load = useCallback(async () => {
     if (!mission) return;
     setLoading(true);
     setError(null);
     try {
-      const [history, know] = await Promise.all([raceAi.history(mission.id), raceAi.knowledge(mission.id).catch(() => null)]);
+      const [history, know, calls] = await Promise.all([
+        raceAi.history(mission.id),
+        raceAi.knowledge(mission.id).catch(() => null),
+        raceAi.cockpit(mission.id).catch(() => null),
+      ]);
       setMessages(history.items);
       setStatus(history.ai);
       setKnowledge(know);
+      setCockpit(calls);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "The race team is unreachable right now.");
     } finally {
@@ -59,6 +84,7 @@ export default function TeamScreen() {
   const send = async (text: string) => {
     if (!mission || !text.trim() || sending) return;
     const question = text.trim();
+    setMode("chat");
     setSending(true);
     setError(null);
     const pending = pendingMessage(question);
@@ -94,14 +120,22 @@ export default function TeamScreen() {
   const offline = status && !status.available;
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.root}>
-      <ScrollView ref={scroll} contentContainerStyle={[styles.content, { paddingTop: insets.top + (wide ? 28 : 16), paddingHorizontal: wide ? 32 : 16, paddingBottom: 220 + insets.bottom }]} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}>
+      <ScrollView ref={scroll} contentContainerStyle={[styles.content, { paddingTop: insets.top + (wide ? 28 : 16), paddingHorizontal: wide ? 32 : 16, paddingBottom: 220 + insets.bottom }]} onContentSizeChange={() => mode === "chat" && scroll.current?.scrollToEnd({ animated: false })}>
         <Row align="flex-start">
           <View style={{ flex: 1, gap: 6 }}>
             <Overline>Race team · {mission.event.name}</Overline>
-            <Title size={38}>Ask your race team</Title>
+            <Title size={38}>{mode === "cockpit" ? "Your race team" : "Ask your race team"}</Title>
           </View>
-          {messages.length ? <IconButton icon="trash" label="Clear conversation" tone="surface" onPress={() => void raceAi.clearChat(mission.id).then(() => setMessages([]))} /> : null}
+          {mode === "chat" && messages.length ? <IconButton icon="trash" label="Clear conversation" tone="surface" onPress={() => void raceAi.clearChat(mission.id).then(() => setMessages([]))} /> : null}
         </Row>
+        <Segmented
+          options={[
+            { value: "cockpit", label: "Cockpit", icon: "grid" },
+            { value: "chat", label: messages.length ? `Conversation · ${messages.filter((m) => m.role === "user").length}` : "Conversation", icon: "message" },
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
         <Row gap={8} wrap>
           {status ? (
             <Chip
@@ -115,12 +149,42 @@ export default function TeamScreen() {
           <Chip icon="lock" label="Sees only your STREM data" />
         </Row>
         {offline ? (
-          <Notice icon="alert" tone="attention" title="The AI race team is offline" body={`${status?.reason ?? "The AI provider is unavailable."} Your plan and every Race Lab layer still work — built by the race engine from your data.`} />
+          <Notice
+            icon="alert"
+            tone="attention"
+            title="The AI race team is offline"
+            body={`${status?.reason ?? "The AI provider is unavailable."} ${mode === "cockpit" ? "These calls come from the race engine and your data, so they still hold." : "Your plan and every Race Lab layer still work — built by the race engine from your data."}`}
+          />
         ) : null}
-        {knowledge ? <KnowledgeCard knowledge={knowledge} missionId={mission.id} /> : null}
         {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
         {loading ? <ActivityIndicator color={C.textMuted} style={{ marginTop: 20 }} /> : null}
-        {!loading && !messages.length ? (
+        {mode === "cockpit" && cockpit ? (
+          <>
+            <Row gap={8} wrap>
+              <Chip icon="flag" label={`${cockpit.days_to_race} days to go`} color={C.text} />
+              {cockpit.summary.attention ? <Chip icon="alert" label={`${cockpit.summary.attention} need you`} color={C.warning} border="rgba(250,178,25,0.35)" bg="rgba(250,178,25,0.1)" /> : null}
+              {cockpit.summary.on_track ? <Chip icon="checkCircle" label={`${cockpit.summary.on_track} on track`} color={C.good} /> : null}
+              {cockpit.summary.missing ? <Chip icon="circle" label={`${cockpit.summary.missing} not started`} /> : null}
+            </Row>
+            {cockpit.feed.length ? (
+              <View style={{ gap: 10 }}>
+                <Text style={[ui(13, 700), { color: C.textMuted }]}>What changed</Text>
+                {cockpit.feed.map((item, i) => (
+                  <FeedItem key={`${item.kind}-${i}`} item={item} onAsk={(q) => (offline ? setInput(q) : void send(q))} />
+                ))}
+              </View>
+            ) : null}
+            <Text style={[ui(13, 700), { color: C.textMuted }]}>Specialists</Text>
+            <View style={styles.grid}>
+              {cockpit.specialists.map((s) => (
+                <SpecialistCard key={s.role} s={s} wide={wide} onAsk={(q) => (offline ? setInput(q) : void send(q))} />
+              ))}
+            </View>
+            {knowledge ? <KnowledgeCard knowledge={knowledge} missionId={mission.id} /> : null}
+          </>
+        ) : null}
+        {mode === "chat" && knowledge && !messages.length ? <KnowledgeCard knowledge={knowledge} missionId={mission.id} /> : null}
+        {mode === "chat" && !loading && !messages.length ? (
           <Card pad={20} style={{ gap: 12 }}>
             <Body>Your race team reads your race, course, plan, every logged and imported session, check-ins, race history and every Race Lab layer — and answers with your numbers, not generic advice.</Body>
             <Text style={[ui(13, 700), { color: C.textMuted }]}>Try asking</Text>
@@ -134,7 +198,7 @@ export default function TeamScreen() {
             </View>
           </Card>
         ) : null}
-        {messages.map((m) => (
+        {(mode === "chat" ? messages : []).map((m) => (
           <View key={m.id} style={[styles.bubble, m.role === "user" ? styles.user : styles.assistant]}>
             {m.role === "assistant" ? (
               <Row gap={6} style={{ marginBottom: 6 }}>
@@ -145,7 +209,7 @@ export default function TeamScreen() {
             {m.role === "assistant" ? <RichText text={m.content} /> : <Text style={[ui(15, 600), { color: C.ink, lineHeight: 22 }]}>{m.content}</Text>}
           </View>
         ))}
-        {sending ? (
+        {sending && mode === "chat" ? (
           <View style={[styles.bubble, styles.assistant]}>
             <Row gap={8}>
               <ActivityIndicator color={C.accent} />
@@ -250,6 +314,7 @@ function KnowledgeCard({ knowledge, missionId }: { knowledge: Knowledge; mission
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.ink },
   content: { width: "100%", maxWidth: 900, alignSelf: "center", gap: 14 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
   suggestion: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 14, borderRadius: 14, backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line },
   bubble: { maxWidth: "92%", padding: 14, borderRadius: R.lg },
   user: { alignSelf: "flex-end", backgroundColor: C.white, borderBottomRightRadius: 6 },
