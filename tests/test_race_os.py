@@ -744,7 +744,7 @@ def test_media_search_ranks_event_first_and_excludes_no_derivatives(
         search = params["gsrsearch"] if params else ""
         page = {
             "pageid": hash(search) % 10000,
-            "title": f"File:{search[:10]}.jpg",
+            "title": f"File:{search[:60]}.jpg",
             "imageinfo": [
                 {
                     "url": (
@@ -791,6 +791,33 @@ def test_slow_openverse_is_paused_after_one_failure(monkeypatch: pytest.MonkeyPa
     asyncio.run(media_mod.search_media("Synthetic 50K", None, None))
     asyncio.run(media_mod.search_media("Synthetic 50K", None, None))
     assert sum("openverse" in url for url in calls) == 1  # the second search skips it
+
+
+def test_media_ranking_follows_the_race_type() -> None:
+    words = media_mod.SPORT_TERMS["trail_running"][1]
+
+    def photo(title: str, depicts: str) -> dict[str, Any]:
+        return {"title": title, "depicts": depicts, "width": 3000, "height": 2000}
+
+    shuffled = [
+        photo("Vitosha Charter", "event"),
+        photo("Sofia Glacier, Caucasus", "location"),
+        photo("Trail runner on a ridge", "atmosphere"),
+        photo("Vitosha view, drawing", "location"),
+        photo("Synthetic Ridge trail race 2024", "event"),
+        photo("Runners above Sofia, Bulgaria", "location"),
+    ]
+    ranked = sorted(shuffled, key=lambda item: media_mod._rank(item, words))
+    assert [p["title"] for p in ranked] == [
+        "Synthetic Ridge trail race 2024",
+        "Runners above Sofia, Bulgaria",
+        "Trail runner on a ridge",
+        "Sofia Glacier, Caucasus",
+        "Vitosha Charter",  # documents and artwork last
+        "Vitosha view, drawing",
+    ]
+    # No sport given: event, location, atmosphere as before.
+    assert media_mod._rank(photo("Anything", "event"), ()) == 0
 
 
 def test_media_ranking_prefers_frames_that_fit_a_hero() -> None:

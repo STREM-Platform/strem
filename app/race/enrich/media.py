@@ -5,6 +5,10 @@ is queried in parallel with a short time box. NoDerivatives licences are
 excluded because display crops can count as adaptations. Every candidate
 carries creator, licence and source page so the app can credit it; whether a
 photo depicts the actual event is the athlete's call, defaulting to atmosphere.
+
+Photos follow the race type (ai#54): queries carry sport terms and candidates
+that visibly show the sport rank first, so a trail race never opens on a
+historical drawing or a namesake glacier on another continent.
 """
 
 from __future__ import annotations
@@ -39,6 +43,23 @@ SCENIC = {
     "swimming": "lake",
     "rowing": "lake",
     "triathlon": "landscape",
+}
+# Sport -> (search term, words that show a photo is about that sport).
+SPORT_TERMS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "trail_running": ("trail running", ("trail", "running", "runner", "ultra", "skyrace")),
+    "road_running": ("marathon runners", ("marathon", "running", "runner", "10k", "half")),
+    "triathlon": ("triathlon", ("triathlon", "triathlete", "ironman")),
+    "duathlon": ("duathlon", ("duathlon", "running", "cycling", "bike")),
+    "cycling": ("road cycling race", ("cycling", "cyclist", "bicycle", "fondo", "peloton")),
+    "gravel": ("gravel cycling", ("gravel", "cycling", "cyclist", "bike")),
+    "mountain_biking": ("mountain bike race", ("mountain bike", "mtb", "biker", "cycling")),
+    "swimming": ("open water swimming", ("swim",)),
+    "hiking": ("hiking trail", ("hiking", "hiker", "trek", "trail")),
+    "skimo": ("ski mountaineering race", ("ski mountaineering", "skimo", "ski touring")),
+    "nordic_skiing": ("cross-country skiing", ("cross-country", "nordic", "loppet", "skiing")),
+    "rowing": ("rowing regatta", ("rowing", "regatta", "kayak", "canoe", "paddl")),
+    "hybrid": ("obstacle course race", ("hyrox", "obstacle", "fitness race")),
+    "multisport": ("adventure race", ("adventure race", "kayak", "trek", "multisport")),
 }
 _TAG = re.compile(r"<[^>]+>")
 
@@ -184,17 +205,25 @@ async def search_openverse(query: str, depicts: str, limit: int = 10) -> list[di
 async def search_media(
     event_name: str | None, location: str | None, sport: str | None, limit: int = 24
 ) -> list[dict[str, Any]]:
-    """Event photos first, then the location, then sport atmosphere."""
+    """Photos of this race in its sport first, then its place, then sport atmosphere."""
+    term, words = SPORT_TERMS.get(sport or "", ("", ()))
+    scenic = SCENIC.get(sport or "", "landscape")
+    place = ", ".join(part.strip() for part in location.split(",")[:2]) if location else ""
     tasks: list[Any] = []
     if event_name:
         tasks.append(search_commons(event_name, "event"))
         tasks.append(search_openverse(event_name, "event"))
-    if location:
-        scenic = SCENIC.get(sport or "", "landscape")
-        place = location.split(",")[0]
+        if term:
+            tasks.append(search_commons(f"{event_name} {term}", "event"))
+    if place:
+        if term:
+            tasks.append(search_commons(f"{place} {term}", "location"))
         tasks.append(search_commons(f"{place} {scenic}", "location"))
-        tasks.append(search_commons(place, "location"))
-    if sport:
+    if term:
+        tasks.append(search_commons(term, "atmosphere", limit=20))
+        tasks.append(search_commons(f"{term} race", "atmosphere"))
+        tasks.append(search_openverse(term, "atmosphere"))
+    elif sport:
         tasks.append(search_commons(f"{sport.replace('_', ' ')} race", "atmosphere"))
     batches = await asyncio.gather(*tasks, return_exceptions=True)
     seen: set[str] = set()
@@ -208,9 +237,42 @@ async def search_media(
                 continue
             seen.add(key)
             ranked.append(item)
-    order = {"event": 0, "location": 1, "atmosphere": 2}
-    ranked.sort(key=lambda item: (order.get(item["depicts"], 3), _cover_fit(item)))
+    ranked.sort(key=lambda item: (_rank(item, words), _cover_fit(item)))
     return ranked[:limit]
+
+
+def shows_sport(item: dict[str, Any], words: tuple[str, ...]) -> bool:
+    text = f"{item.get('title') or ''} {item.get('description') or ''}".lower()
+    return any(word in text for word in words)
+
+
+# Documents and artwork are never a race cover, whatever their title matches.
+NOT_A_PHOTO = (
+    "drawing",
+    "painting",
+    "map of",
+    " map",
+    "logo",
+    "coat of arms",
+    "charter",
+    "poster",
+    "race car",
+    "concept",
+    "stamp",
+    "diagram",
+    "document",
+)
+
+
+def _rank(item: dict[str, Any], words: tuple[str, ...]) -> int:
+    """Event in its sport, place in its sport, sport atmosphere, then the rest."""
+    title = f" {item.get('title') or ''}".lower()
+    if any(word in title for word in NOT_A_PHOTO):
+        return 9
+    order = {"event": 0, "location": 1, "atmosphere": 2}.get(item["depicts"], 3)
+    if not words:
+        return order
+    return order if shows_sport(item, words) else 3 + order
 
 
 def _cover_fit(item: dict[str, Any]) -> int:
