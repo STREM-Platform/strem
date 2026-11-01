@@ -8,6 +8,7 @@ import { describe, expect, it } from "@jest/globals";
 import { LEGAL_POLICIES } from "@/constants/legal";
 import type { LegalStatus } from "@/lib/api/types";
 import { pendingAcceptances } from "@/lib/legal";
+import { inlineRuns, parsePolicy, policyLink } from "@/lib/legal-doc";
 
 function status(
   docs: { type: "terms" | "privacy" | "medical"; required: string; accepted: string | null }[],
@@ -53,5 +54,34 @@ describe("bundled policies", () => {
       expect(p.body.length).toBeGreaterThan(500);
       expect(p.title.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("parsePolicy", () => {
+  it("reads dates, summary, sections and nested lists from every bundled policy", () => {
+    for (const policy of LEGAL_POLICIES) {
+      const doc = parsePolicy(policy.body);
+      expect(doc.meta.Version).toBe(policy.version);
+      expect(doc.summary).toBeTruthy();
+      expect(doc.summary).not.toMatch(/^\*\*/);
+      expect(doc.sections.length).toBeGreaterThanOrEqual(4);
+      expect(doc.blocks.some((b) => b.kind === "heading" && b.text.startsWith("#"))).toBe(false);
+    }
+    const privacy = parsePolicy(LEGAL_POLICIES.find((p) => p.type === "privacy")!.body);
+    const items = privacy.blocks.flatMap((b) => (b.kind === "list" ? b.items : []));
+    expect(items.some((i) => i.depth === 1)).toBe(true);
+  });
+
+  it("splits bold and links, and maps policy links to the in-app viewer", () => {
+    expect(inlineRuns("See the **Terms** and [Privacy Policy](privacy-policy.md#5).")).toEqual([
+      { text: "See the " },
+      { text: "Terms", bold: true },
+      { text: " and " },
+      { text: "Privacy Policy", href: "privacy-policy.md#5" },
+      { text: "." },
+    ]);
+    expect(inlineRuns("*(tracked as HARDEN-09.)*")).toEqual([{ text: "(tracked as HARDEN-09.)", italic: true }]);
+    expect(policyLink("medical-disclaimer.md")).toBe("medical");
+    expect(policyLink("https://example.com")).toBeNull();
   });
 });

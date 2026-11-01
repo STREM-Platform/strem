@@ -41,7 +41,12 @@ test("a brand-new account agrees to the policies and moves on", async ({ page, r
     localStorage.setItem("strem.refresh_token", pair.refresh_token);
   }, tokens);
   await page.goto("/");
-  await page.getByRole("button", { name: /I agree/ }).click();
+  const agree = page.getByRole("button", { name: /I agree/ });
+  await expect(agree).toBeDisabled();
+  await page.getByRole("checkbox", { name: /Terms of Service/ }).click();
+  await expect(agree).toBeDisabled();
+  await page.getByRole("checkbox", { name: /health and fitness data/ }).click();
+  await agree.click();
   await expect(page).not.toHaveURL(/\/accept/, { timeout: 15000 });
   const legal = await (await request.get(`${api}/users/me/legal`, { headers: { Authorization: `Bearer ${tokens.access_token}` } })).json();
   expect(legal.needs_acceptance).toBe(false);
