@@ -30,6 +30,7 @@ from app.race.clients import RaceServices
 from app.race.context import RaceContext, assemble, render
 from app.race.engine import adapt as engine_adapt
 from app.race.engine.brief import build_brief
+from app.race.engine.cockpit import build_cockpit
 from app.race.engine.fuel import build_fuel
 from app.race.engine.gear import build_gear
 from app.race.engine.logistics import build_logistics
@@ -499,6 +500,23 @@ async def decide_proposal(
     row.decided_at = datetime.now(UTC)
     await db.commit()
     return proposal_out(row)
+
+
+async def cockpit(
+    services: RaceServices,
+    ai: RaceAI,
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    mission_id: uuid.UUID,
+) -> dict[str, Any]:
+    """The race-team cockpit (mobile#119): engine calls per specialist + what changed."""
+    ctx = await load_context(services, mission_id)
+    proposals = await list_proposals(db, user_id, mission_id, None)
+    state = ai.status()
+    return {
+        **build_cockpit(ctx, proposals),
+        "ai": {"available": state.available, "model": state.model, "reason": state.reason},
+    }
 
 
 async def knowledge(services: RaceServices, mission_id: uuid.UUID) -> dict[str, Any]:
