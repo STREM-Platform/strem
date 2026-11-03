@@ -4,17 +4,12 @@
 generated here. Enum-valued columns are stored as strings and validated by the
 Pydantic schemas at the API boundary, so the same models work on PostgreSQL and
 the SQLite test database.
-
-The XP ledger, medals, agent consent/autonomy, biomarker and processed-event
-tables belong to features retired in strem-docs#28. No code reads or writes them
-any more; their models stay so Alembic metadata keeps matching the existing
-schema (no drop migration without a separate retention decision).
 """
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, UniqueConstraint, func
+from sqlalchemy import JSON, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -32,10 +27,7 @@ class UserProfile(Base):
     identity_statement: Mapped[str | None] = mapped_column(String(280), nullable=True)
     transformation_goal: Mapped[str | None] = mapped_column(String(40), nullable=True)
     training_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    preferred_modalities: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     weekly_target_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    nutrition_preference: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    tribe_preference: Mapped[str | None] = mapped_column(String(20), nullable=True)
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     onboarding_status: Mapped[str] = mapped_column(
         String(20), default=OnboardingStatusValue.NOT_STARTED.value, nullable=False
@@ -47,67 +39,6 @@ class UserProfile(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-
-class XPLedgerEntry(Base):
-    """An append-only XP award. The ledger is the source of truth for total XP."""
-
-    __tablename__ = "xp_ledger"
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
-    xp_amount: Mapped[int] = mapped_column(Integer, nullable=False)
-    source: Mapped[str] = mapped_column(String(40), nullable=False)
-    source_reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    new_total: Mapped[int] = mapped_column(Integer, nullable=False)
-    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-
-class MedalRecord(Base):
-    """A medal earned by a user (one row per user per medal type)."""
-
-    __tablename__ = "medals"
-    __table_args__ = (UniqueConstraint("user_id", "medal_type", name="uq_medals_user_type"),)
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
-    medal_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-
-class AgentSourceConsent(Base):
-    """A user's decision to let Forge see one data source (A7 consent).
-
-    Only deviations from the catalog defaults are stored; an absent row means the
-    source keeps its default (see `app.agent_prefs.SOURCE_CATALOG`). One row per
-    user per source.
-    """
-
-    __tablename__ = "agent_source_consent"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
-    source_id: Mapped[str] = mapped_column(String(40), primary_key=True)
-    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-
-class AgentAutonomy(Base):
-    """A user's per-capability autonomy setting for Forge (A7).
-
-    Only deviations from `app.agent_prefs.DEFAULT_AUTONOMY` are stored; an absent
-    row means the capability keeps its default. One row per user per capability.
-    """
-
-    __tablename__ = "agent_autonomy"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
-    capability: Mapped[str] = mapped_column(String(40), primary_key=True)
-    level: Mapped[str] = mapped_column(String(10), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -165,46 +96,4 @@ class AthleteProfile(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-
-class Biomarker(Base):
-    """A single lab / blood-result reading entered by the user (issue #63).
-
-    Append-only readings keyed by the auth `user_id`; trends are derived on read.
-    Highly sensitive, so access is gated behind explicit consent + Medical
-    Disclaimer acceptance, and the user can revoke the A7 "biomarkers" source at
-    any time. Forge surfaces trends + context only — never a diagnosis (A8).
-    """
-
-    __tablename__ = "biomarkers"
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True, nullable=False)
-    marker_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    value: Mapped[float] = mapped_column(Float, nullable=False)
-    unit: Mapped[str] = mapped_column(String(20), nullable=False)
-    taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    note: Mapped[str | None] = mapped_column(String(280), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-
-class ProcessedEvent(Base):
-    """A consumed domain event, recorded so redelivery never double-awards XP.
-
-    Keyed by the source stream and the broker message id (the event identity).
-    """
-
-    __tablename__ = "processed_events"
-    __table_args__ = (
-        UniqueConstraint("stream", "message_id", name="uq_processed_events_stream_message"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    stream: Mapped[str] = mapped_column(String(64), nullable=False)
-    message_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    processed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
     )

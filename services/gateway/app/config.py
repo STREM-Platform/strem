@@ -2,7 +2,7 @@
 
 The gateway owns no data — it forwards `/v1` requests to the owning service and
 hands off the caller's bearer token. Each upstream URL already includes the
-`/v1` base path. See strem-docs/architecture/adr/0006-authorize-strem-api-gateway.md.
+`/v1` base path. See docs/adr/0006-authorize-strem-api-gateway.md.
 """
 
 from functools import lru_cache

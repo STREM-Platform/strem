@@ -94,13 +94,11 @@ export type AthleteProfileUpdate = Partial<Omit<AthleteProfile, "is_started">>;
 
 export type TransformationGoal = "build_strength" | "build_endurance" | "hybrid_athlete" | "lean_and_strong" | "build_discipline" | "general_health";
 export type TrainingLevel = "beginner" | "intermediate" | "advanced";
-export type Modality = "strength" | "running" | "mobility" | "nutrition";
 
 export interface OnboardingSubmission {
   identity_statement?: string;
   transformation_goal?: TransformationGoal;
   training_level?: TrainingLevel;
-  preferred_modalities?: Modality[];
   weekly_target_days?: number;
   display_name?: string;
   timezone?: string;

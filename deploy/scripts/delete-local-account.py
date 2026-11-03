@@ -6,8 +6,7 @@ then register again with the same email and walk through onboarding fresh.
 Local development only. It talks to the `postgres` service of this repo's
 Docker Compose stack and refuses anything else; it never touches a deployed
 database. Rows are matched by the account's user id in every service database
-(auth, user, training, AI, and the retired nutrition/community databases when
-present). Nothing is printed except table names and row counts.
+(auth, user, training and AI). Nothing is printed except table names and row counts.
 
     python scripts/delete-local-account.py --email someone@example.com
     python scripts/delete-local-account.py --email someone@example.com --yes
@@ -23,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ["docker", "compose", "--env-file", str(ROOT / ".env"), "-f", str(ROOT / "docker" / "docker-compose.yml")]
-DATABASES = ("strem_auth", "strem_user", "strem_training", "strem_ai", "strem_nutrition", "strem_community")
+DATABASES = ("strem_auth", "strem_user", "strem_training", "strem_ai")
 # Tables keyed by the user id itself rather than a user_id column.
 ID_TABLES = {"strem_auth": ("users",), "strem_user": ("user_profiles",)}
 UUID = re.compile(r"^[0-9a-f-]{36}$")

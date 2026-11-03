@@ -1,17 +1,11 @@
 # STREM local development infrastructure + MVP service stack.
 #
-# Redis backs the gateway's shared rate limiting. No service publishes domain
-# events since strem-docs#28; Redis Streams remains the documented broker choice
-# (strem-docs/architecture/event-driven-strategy.md) when events return.
+# Redis backs the gateway's shared rate limiting.
 #
 # Build contexts are the service folders of this monorepo (../../services/*).
 #
 # Local ports: postgres 5432, redis 6379, gateway 8000, auth 8001, user 8002,
 # training 8003, ai 8006. Each service listens on 8000 inside its container.
-#
-# The pre-pivot nutrition and community services and the XP worker were retired
-# (strem-docs#28). Their databases are still created on first boot and left as
-# they are; dropping them needs a separate retention decision.
 
 x-service-health: &service-health
   interval: 10s

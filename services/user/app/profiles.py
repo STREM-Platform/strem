@@ -46,12 +46,10 @@ def _has_any_answer(profile: UserProfile) -> bool:
         profile.transformation_goal,
         profile.training_level,
         profile.weekly_target_days,
-        profile.nutrition_preference,
-        profile.tribe_preference,
         profile.timezone,
         profile.display_name,
     )
-    return any(value is not None for value in fields) or bool(profile.preferred_modalities)
+    return any(value is not None for value in fields)
 
 
 def _inferred_screen(profile: UserProfile) -> ScreenName | None:
@@ -93,14 +91,8 @@ def apply_onboarding(profile: UserProfile, body: OnboardingRequest) -> None:
         profile.transformation_goal = body.transformation_goal.value
     if body.training_level is not None:
         profile.training_level = body.training_level.value
-    if body.preferred_modalities is not None:
-        profile.preferred_modalities = [m.value for m in body.preferred_modalities]
     if body.weekly_target_days is not None:
         profile.weekly_target_days = body.weekly_target_days
-    if body.nutrition_preference is not None:
-        profile.nutrition_preference = body.nutrition_preference.value
-    if body.tribe_preference is not None:
-        profile.tribe_preference = body.tribe_preference.value
     if body.display_name is not None:
         profile.display_name = body.display_name
     if body.timezone is not None:

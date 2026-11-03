@@ -27,26 +27,6 @@ class TrainingLevel(StrEnum):
     ADVANCED = "advanced"
 
 
-class Modality(StrEnum):
-    STRENGTH = "strength"
-    RUNNING = "running"
-    MOBILITY = "mobility"
-    NUTRITION = "nutrition"
-
-
-class NutritionPreference(StrEnum):
-    GENERAL_CONSISTENCY = "general_consistency"
-    HIGH_PROTEIN = "high_protein"
-    PLANT_BASED = "plant_based"
-    NO_FOCUS = "no_focus"
-
-
-class TribePreference(StrEnum):
-    JOIN_NOW = "join_now"
-    JOIN_LATER = "join_later"
-    SOLO_FOR_NOW = "solo_for_now"
-
-
 class OnboardingStatusValue(StrEnum):
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
