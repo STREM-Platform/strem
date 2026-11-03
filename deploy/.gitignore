@@ -1,0 +1,16 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python helper-script caches
+__pycache__/
+*.pyc
+.venv/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Docker local volumes (named volumes are managed by Docker, not committed)
