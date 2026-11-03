@@ -155,6 +155,45 @@ export interface PlanImportDraft {
   sessions: number;
 }
 
+/** Athlete memory (ai#59): what the athlete told the race team, kept and editable. */
+export type MemoryKind = "injury" | "preference" | "constraint" | "goal" | "lesson" | "context" | "other";
+export interface AthleteMemory {
+  id: string;
+  kind: MemoryKind;
+  text: string;
+  /** `chat` (from a message) or `athlete` (written or corrected by them). */
+  source: string;
+  source_date: string;
+  confidence: number;
+  created_at: string;
+  updated_at: string;
+}
+export interface RaceTeamExport {
+  memory: AthleteMemory[];
+  chat: Record<string, unknown>[];
+  briefs: Record<string, unknown>[];
+  proposals: Record<string, unknown>[];
+}
+
+export const memoryApi = {
+  async list(): Promise<AthleteMemory[]> {
+    return (await request<{ items: AthleteMemory[] }>("/ai/race/memory", auth)).items;
+  },
+  correct(id: string, text: string) {
+    return request<AthleteMemory>(`/ai/race/memory/${id}`, { ...auth, method: "PATCH", body: { text } });
+  },
+  forget(id: string) {
+    return request<void>(`/ai/race/memory/${id}`, { ...auth, method: "DELETE" });
+  },
+  /** Everything the race team holds: memory, chat, briefs and proposals. */
+  exportAll() {
+    return request<RaceTeamExport>("/ai/race/data", auth);
+  },
+  deleteAll() {
+    return request<void>("/ai/race/data", { ...auth, method: "DELETE", body: { confirmation: "FORGET MY RACE TEAM DATA" } });
+  },
+};
+
 export const raceAi = {
   importPlan(missionId: string, sources: ImportSource[], startDate?: string | null) {
     return request<PlanImportDraft>(`/ai/race/${missionId}/plan/import`, { ...slow, method: "POST", body: { sources, ...(startDate ? { start_date: startDate } : {}) } });

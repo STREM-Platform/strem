@@ -5,6 +5,7 @@ import { Platform, Share, Text, View } from "react-native";
 import { Input } from "@/components/ui/fields";
 import { Body, Button, Card, ErrorBanner, IconButton, Notice, Overline, Page, Row, Title } from "@/components/ui/kit";
 import { C, ui } from "@/constants/theme";
+import { memoryApi, type RaceTeamExport } from "@/lib/api/race";
 import { raceMissions, type MissionExport } from "@/lib/api/race-missions";
 import { useRace } from "@/lib/race/race-context";
 
@@ -13,7 +14,7 @@ const PHRASE = "DELETE MY RACE MISSIONS";
 export default function MissionDataScreen() {
   const router = useRouter();
   const race = useRace();
-  const [data, setData] = useState<MissionExport | null>(null);
+  const [data, setData] = useState<(MissionExport & { race_team: RaceTeamExport | null }) | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -23,7 +24,9 @@ export default function MissionDataScreen() {
     setBusy(true);
     setError(null);
     try {
-      setData(await raceMissions.exportData());
+      // The race team's memory, chat, briefs and proposals are part of your data (ADR 0010).
+      const [missions, team] = await Promise.all([raceMissions.exportData(), memoryApi.exportAll().catch(() => null)]);
+      setData({ ...missions, race_team: team });
     } catch {
       setError("Your export could not be loaded. Nothing was changed.");
     } finally {
@@ -50,10 +53,11 @@ export default function MissionDataScreen() {
     setError(null);
     try {
       await raceMissions.deleteData();
+      await memoryApi.deleteAll();
       setData(null);
       setConfirmation("");
       await race.reloadMissions();
-      setMessage("Your missions, Race Lab layers, training plans, course files and revision history were deleted. Your account, training activities and race history were not touched.");
+      setMessage("Your missions, Race Lab layers, training plans, course files, revision history and everything your race team remembered or said were deleted. Your account, training activities and race history were not touched.");
     } catch {
       setError("Deletion was not confirmed. Retry to finish the cleanup — edits may pause until it completes.");
     } finally {
@@ -68,7 +72,7 @@ export default function MissionDataScreen() {
       <View style={{ gap: 6 }}>
         <Overline>Data controls</Overline>
         <Title size={40}>Your mission data</Title>
-        <Body muted>Missions, Race Lab layers, training plans, course files and revision history. Export a copy anytime, or delete it all.</Body>
+        <Body muted>Missions, Race Lab layers, training plans, course files, revision history and what your race team remembers. Export a copy anytime, or delete it all.</Body>
       </View>
       {message ? <Notice icon="checkCircle" tone="accent" title="Deleted" body={message} /> : null}
       {error ? <ErrorBanner message={error} /> : null}
@@ -79,6 +83,7 @@ export default function MissionDataScreen() {
           <>
             <Text style={[ui(13, 500), { color: C.textMuted }]}>
               {data.missions.length} missions · {data.layers?.length ?? 0} layers · {data.plans?.length ?? 0} plans · {data.courses?.length ?? 0} courses · {data.revisions.length} revisions
+              {data.race_team ? ` · ${data.race_team.memory.length} memories · ${data.race_team.chat.length} chat messages` : ""}
             </Text>
             <Button label="Download JSON" icon="download" onPress={() => void download().catch(() => setError("The export couldn't be saved. Try again."))} />
           </>
@@ -87,7 +92,7 @@ export default function MissionDataScreen() {
       <Card tone="flame" pad={18} style={{ gap: 12 }}>
         <Text style={[ui(16, 700), { color: C.text }]}>Delete all mission data</Text>
         <Body muted size={14}>
-          Permanently deletes every active, completed and archived mission with its layers, plans, course files and history. This cannot be undone. Export first if you want a copy.
+          Permanently deletes every active, completed and archived mission with its layers, plans, course files and history, and the race team&rsquo;s memory, chat, briefs and proposals. This cannot be undone. Export first if you want a copy.
         </Body>
         <Input label={`Type ${PHRASE} to confirm`} value={confirmation} onChangeText={setConfirmation} autoCapitalize="characters" />
         <Button label="Permanently delete" kind="danger" icon="trash" loading={busy && Boolean(confirmation)} disabled={confirmation !== PHRASE} onPress={() => void erase()} />

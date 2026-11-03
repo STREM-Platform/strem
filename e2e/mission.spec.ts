@@ -136,6 +136,8 @@ test("export and permanently delete all mission data", async ({ page, request })
   await expect(page.getByRole("button", { name: "Start a Race Mission", exact: true })).toBeVisible();
   const remaining = await (await request.get(`${api}/race-missions`, { headers })).json();
   expect(remaining.items).toHaveLength(0);
+  const raceTeam = await (await request.get(`${api}/ai/race/data`, { headers })).json();
+  expect(raceTeam).toEqual({ memory: [], chat: [], briefs: [], proposals: [] });
 });
 
 test("import my own plan from pasted text, review it and train from it", async ({ page, request }) => {
@@ -338,6 +340,8 @@ test("the race team cockpit shows each specialist's call and asks about it", asy
     await expect(page.getByLabel(new RegExp(`^${role}: `))).toBeVisible();
   }
   await expect(page.getByText("No course file yet. Add the GPX so pacing follows the real climbs.")).toBeVisible();
+  await expect(page.getByText("What your race team remembers")).toBeVisible();
+  await expect(page.getByText(/^Nothing yet. Tell your race team/)).toBeVisible();
   // The AI is offline in this fixture: asking puts the question in the composer instead of sending.
   await page.getByRole("button", { name: "Ask Course" }).click();
   await expect(page.getByLabel("Message your race team")).toHaveValue("What should I know about this course before I have the GPX?");

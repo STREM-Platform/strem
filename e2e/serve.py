@@ -29,6 +29,7 @@ import asyncio, os
 from sqlalchemy.ext.asyncio import create_async_engine
 from app.db import Base
 import app.race.store  # noqa: F401  (registers the race tables)
+import app.race.memory  # noqa: F401  (athlete memory, ai#59)
 
 async def main():
     engine = create_async_engine(os.environ["DATABASE_URL"])
