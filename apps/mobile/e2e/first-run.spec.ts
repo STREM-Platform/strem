@@ -25,10 +25,14 @@ test("a brand-new athlete registers and reaches a first race, plan and brief", a
   const continueStep = () => page.getByRole("button", { name: "Continue", exact: true }).click();
 
   await page.goto("/register");
+  // The router settles on /register once more after first load; type after that.
+  await page.waitForLoadState("networkidle");
   await snap(page, "register");
-  await page.getByLabel("Name", { exact: true }).fill("Mira");
-  await page.getByLabel("Email", { exact: true }).fill(`first-run-${randomUUID()}@example.com`);
-  await page.getByLabel("Password", { exact: true }).fill(`Test-${randomUUID()}-only`);
+  const fields = { Name: "Mira", Email: `first-run-${randomUUID()}@example.com`, Password: `Test-${randomUUID()}-only` };
+  for (const [label, value] of Object.entries(fields)) {
+    await page.getByLabel(label, { exact: true }).fill(value);
+    await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
+  }
   await page.getByRole("button", { name: "Create account", exact: true }).click();
 
   const agree = page.getByRole("button", { name: /I agree/ });
