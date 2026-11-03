@@ -64,6 +64,8 @@ export interface Proposal {
   category: string;
   summary: string;
   safety_note?: string | null;
+  /** What the athlete asked for when adjusting, oldest first (ADR 0010 phase 4). */
+  notes?: string[];
   changes: {
     session_id: string;
     date: string;
@@ -251,5 +253,12 @@ export const raceAi = {
   },
   decide(missionId: string, proposalId: string, decision: "accept" | "reject") {
     return request<Proposal>(`/ai/race/${missionId}/proposals/${proposalId}/${decision}`, { ...auth, method: "POST" });
+  },
+  /** The athlete's words back to the race team: a new draft, still waiting for review. */
+  adjust(missionId: string, proposalId: string, note: string) {
+    return request<Proposal>(`/ai/race/${missionId}/proposals/${proposalId}/adjust`, { ...slow, method: "POST", body: { note } });
+  },
+  async proposals(missionId: string, status?: Proposal["status"]): Promise<Proposal[]> {
+    return (await request<{ items: Proposal[] }>(`/ai/race/${missionId}/proposals${status ? `?status=${status}` : ""}`, auth)).items;
   },
 };

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ProposalCard } from "@/components/plan/proposal-card";
 import { FeedItem, SpecialistCard } from "@/components/team/cockpit";
 import { MemoryList } from "@/components/team/memory-list";
 import { RichText } from "@/components/team/rich-text";
@@ -16,7 +17,7 @@ import { Icon } from "@/components/ui/icon";
 import { Body, Button, Card, Chip, EmptyState, ErrorBanner, IconButton, Notice, Overline, Row, Segmented, Title, useLayout } from "@/components/ui/kit";
 import { C, R, ui } from "@/constants/theme";
 import { ApiError } from "@/lib/api/client";
-import { memoryApi, raceAi, type AIStatus, type AthleteMemory, type ChatMessage, type Cockpit, type Knowledge } from "@/lib/api/race";
+import { memoryApi, raceAi, type AIStatus, type AthleteMemory, type ChatMessage, type Cockpit, type Knowledge, type Proposal } from "@/lib/api/race";
 import { useRace } from "@/lib/race/race-context";
 
 const SUGGESTIONS = [
@@ -43,6 +44,7 @@ export default function TeamScreen() {
   const [loading, setLoading] = useState(true);
   const [cockpit, setCockpit] = useState<Cockpit | null>(null);
   const [memories, setMemories] = useState<AthleteMemory[] | null>(null);
+  const [pending, setPending] = useState<Proposal[]>([]);
   // `?ask=` (from a session, layer or chart) opens the conversation with the question ready.
   const params = useLocalSearchParams<{ ask?: string }>();
   const [mode, setMode] = useState<"cockpit" | "chat">(params.ask ? "chat" : "cockpit");
@@ -68,6 +70,7 @@ export default function TeamScreen() {
         raceAi.cockpit(mission.id).catch(() => null),
       ]);
       memoryApi.list().then(setMemories).catch(() => setMemories(null));
+      raceAi.proposals(mission.id, "pending").then(setPending).catch(() => setPending([]));
       setMessages(history.items);
       setStatus(history.ai);
       setKnowledge(know);
@@ -170,10 +173,13 @@ export default function TeamScreen() {
               {cockpit.summary.on_track ? <Chip icon="checkCircle" label={`${cockpit.summary.on_track} on track`} color={C.good} /> : null}
               {cockpit.summary.missing ? <Chip icon="circle" label={`${cockpit.summary.missing} not started`} /> : null}
             </Row>
+            {pending.map((p) => (
+              <ProposalCard key={p.id} missionId={mission.id} proposal={p} onDecided={() => void load()} />
+            ))}
             {cockpit.feed.length ? (
               <View style={{ gap: 10 }}>
                 <Text style={[ui(13, 700), { color: C.textMuted }]}>What changed</Text>
-                {cockpit.feed.map((item, i) => (
+                {cockpit.feed.filter((item) => !(pending.length && item.kind === "proposal")).map((item, i) => (
                   <FeedItem key={`${item.kind}-${i}`} item={item} onAsk={(q) => (offline ? setInput(q) : void send(q))} />
                 ))}
               </View>

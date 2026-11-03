@@ -387,3 +387,24 @@ test("race cards show phase and readiness per layer; Mission shows the consisten
   await expect(page.getByText("Consistency calendar")).toBeVisible({ timeout: 30000 });
   await expect(page.getByText("Missed or skipped")).toBeVisible();
 });
+
+test("a proposal waits in the cockpit: adjust needs the AI, keep my plan closes it", async ({ page, request }) => {
+  const { id } = await createMissionViaApi(request, "Synthetic Review Race");
+  expect((await request.post(`${api}/ai/race/${id}/build`, { headers, data: { use_ai: false } })).ok()).toBeTruthy();
+  const proposal = await (await request.post(`${api}/ai/race/${id}/adapt`, { headers, data: { reason: "I'm travelling this week" } })).json();
+  expect(proposal.status).toBe("pending");
+
+  await page.goto("/team");
+  await expect(page.getByText("Proposed changes")).toBeVisible({ timeout: 30000 });
+  // The adapt proposal is the newest; a missed-training one may wait too.
+  const card = page.getByTestId(`proposal-${proposal.id}`);
+  await card.getByRole("button", { name: "Adjust", exact: true }).click();
+  await card.getByLabel("Ask for different changes").fill("Keep the Saturday long run");
+  await card.getByRole("button", { name: "Redraft with this" }).click();
+  await expect(card.getByText(/Adjusting needs the AI race team/)).toBeVisible();
+
+  await card.getByRole("button", { name: "Keep my plan" }).click();
+  await expect(page.getByTestId(`proposal-${proposal.id}`)).toHaveCount(0);
+  const pending = await (await request.get(`${api}/ai/race/${id}/proposals?status=pending`, { headers })).json();
+  expect(pending.items.map((p: { id: string }) => p.id)).not.toContain(proposal.id);
+});

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { Input } from "@/components/ui/fields";
 import { Icon } from "@/components/ui/icon";
 import { Body, Button, Card, ErrorBanner, Notice, OriginBadge, Row, TextLink } from "@/components/ui/kit";
 import { C, ui } from "@/constants/theme";
@@ -32,9 +33,43 @@ export function ProposalChanges({ proposal }: { proposal: Proposal }) {
   );
 }
 
-/** A proposal the race team made on its own (e.g. after missed training), inline with accept / keep. */
-export function ProposalCard({ missionId, proposal, onDecided }: { missionId: string; proposal: Proposal; onDecided: (accepted: boolean) => void }) {
+/** Tell the race team what to change; it redrafts and the proposal waits for review again. */
+export function AdjustBox({ missionId, proposal, onAdjusted }: { missionId: string; proposal: Proposal; onAdjusted: (next: Proposal) => void }) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const send = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      onAdjusted(await raceAi.adjust(missionId, proposal.id, note.trim()));
+      setNote("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "The race team couldn't redraft it. Retry.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View style={{ gap: 8 }}>
+      {(proposal.notes ?? []).map((n, i) => (
+        <Row key={i} gap={8} align="flex-start">
+          <Icon name="message" size={14} color={C.textMuted} style={{ marginTop: 2 }} />
+          <Text style={[ui(12.5, 500), { color: C.textMuted, flex: 1 }]}>You asked: “{n}”</Text>
+        </Row>
+      ))}
+      <Input label="Ask for different changes" value={note} onChangeText={setNote} multiline maxLength={600} placeholder="e.g. Keep Saturday's long run, cut the intervals instead" />
+      {error ? <ErrorBanner message={error} /> : null}
+      <Button label="Redraft with this" icon="sparkles" kind="secondary" size="sm" loading={busy} disabled={note.trim().length < 3} onPress={() => void send()} style={{ alignSelf: "flex-start" }} />
+    </View>
+  );
+}
+
+/** A proposal waiting for the athlete: apply, adjust (redraft with their words) or keep the plan. */
+export function ProposalCard({ missionId, proposal: initial, onDecided }: { missionId: string; proposal: Proposal; onDecided: (accepted: boolean) => void }) {
+  const [proposal, setProposal] = useState(initial);
   const [open, setOpen] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
   const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const decide = async (decision: "accept" | "reject") => {
@@ -50,7 +85,7 @@ export function ProposalCard({ missionId, proposal, onDecided }: { missionId: st
     }
   };
   return (
-    <Card pad={18} tone="accent" style={{ gap: 12 }}>
+    <Card testID={`proposal-${proposal.id}`} pad={18} tone="accent" style={{ gap: 12 }}>
       <Row gap={8}>
         <Icon name="refresh" size={18} color={C.accent} />
         <Text style={[ui(14, 800), { color: C.text, flex: 1 }]}>{proposal.category === "missed" ? "Your race team adjusted this week" : "Proposed changes"}</Text>
@@ -64,10 +99,22 @@ export function ProposalCard({ missionId, proposal, onDecided }: { missionId: st
         onPress={() => setOpen((v) => !v)}
       />
       {open ? <ProposalChanges proposal={proposal} /> : null}
+      {adjusting || proposal.notes?.length ? (
+        <AdjustBox
+          missionId={missionId}
+          proposal={proposal}
+          onAdjusted={(next) => {
+            setProposal(next);
+            setOpen(true);
+            setAdjusting(false);
+          }}
+        />
+      ) : null}
       {error ? <ErrorBanner message={error} /> : null}
       <Row gap={10} wrap>
         <Button label="Apply changes" icon="check" size="sm" loading={busy === "accept"} disabled={busy != null} onPress={() => void decide("accept")} />
-        <Button label="Keep my plan" kind="secondary" size="sm" loading={busy === "reject"} disabled={busy != null} onPress={() => void decide("reject")} />
+        {!adjusting && !proposal.notes?.length ? <Button label="Adjust" icon="edit" kind="secondary" size="sm" disabled={busy != null} onPress={() => setAdjusting(true)} /> : null}
+        <Button label="Keep my plan" kind="ghost" size="sm" loading={busy === "reject"} disabled={busy != null} onPress={() => void decide("reject")} />
       </Row>
       <Text style={[ui(11, 500), { color: C.textDim }]}>Nothing changes until you apply it. Missed sessions are never made up.</Text>
     </Card>

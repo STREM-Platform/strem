@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Text } from "react-native";
 
-import { ProposalChanges } from "@/components/plan/proposal-card";
+import { AdjustBox, ProposalChanges } from "@/components/plan/proposal-card";
 import { Choices, Input } from "@/components/ui/fields";
 import { Body, Button, ErrorBanner, Notice, OriginBadge, Row } from "@/components/ui/kit";
 import { Sheet } from "@/components/ui/sheet";
@@ -88,6 +88,7 @@ export function AdaptSheet({ visible, onClose, missionId, onAccepted }: { visibl
           {proposal.ai_reason ? <Text style={[ui(12, 500), { color: C.textDim }]}>AI unavailable: {proposal.ai_reason} These are the race engine’s rule-based changes.</Text> : null}
           {proposal.changes.length === 0 ? <Notice icon="info" title="No changes needed" body="Your plan already fits what you described." /> : null}
           <ProposalChanges proposal={proposal} />
+          <AdjustBox missionId={missionId} proposal={proposal} onAdjusted={setProposal} />
         </>
       )}
     </Sheet>
