@@ -1,0 +1,75 @@
+# Production overlay (#21). On the server, next to docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Images come from GHCR (built by .github/workflows/deploy.yml, tag = git SHA).
+# Nothing is published except Caddy on 80/443, which terminates HTTPS for
+# API_DOMAIN and forwards to the gateway. Secrets come from the server's .env
+# (see .env.prod.example); compose refuses to start when one is missing.
+
+services:
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+
+  redis:
+    ports: !reset []
+
+  auth:
+    image: ghcr.io/baldzhiyski/strem-auth:${TAG:-latest}
+    build: !reset null
+    ports: !reset []
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+
+  user:
+    image: ghcr.io/baldzhiyski/strem-user:${TAG:-latest}
+    build: !reset null
+    ports: !reset []
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+
+  training:
+    image: ghcr.io/baldzhiyski/strem-training:${TAG:-latest}
+    build: !reset null
+    ports: !reset []
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      INTEGRATIONS_ENCRYPTION_KEY: ${INTEGRATIONS_ENCRYPTION_KEY:?set INTEGRATIONS_ENCRYPTION_KEY in .env}
+
+  ai:
+    image: ghcr.io/baldzhiyski/strem-ai:${TAG:-latest}
+    build: !reset null
+    ports: !reset []
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+
+  gateway:
+    image: ghcr.io/baldzhiyski/strem-gateway:${TAG:-latest}
+    build: !reset null
+    ports: !reset []
+    environment:
+      # Only the deployed web app may call the API from a browser.
+      CORS_ALLOW_ORIGINS: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
+      CORS_ALLOW_ORIGIN_REGEX: ""
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
