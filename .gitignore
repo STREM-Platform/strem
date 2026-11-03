@@ -30,3 +30,6 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Eval run artifacts (attach to the PR/issue instead)
+evals/reports/
