@@ -20,7 +20,7 @@ import time
 import httpx
 
 MOBILE = Path(__file__).resolve().parents[1]
-WORKSPACE = MOBILE.parent
+SERVICES = MOBILE.parent.parent / "services"
 children = []
 
 
@@ -96,7 +96,7 @@ def main():
                "UPSTREAM_TIMEOUT_SECONDS": "15", "EXPO_PUBLIC_API_URL": "http://localhost:9511/v1",
                "EXPO_NO_DOTENV": "1", "CI": "1"}
         for service, port in (("auth", 9512), ("user", 9513), ("training", 9514), ("ai", 9515)):
-            repo = WORKSPACE / ("strem-ai-orchestrator" if service == "ai" else f"strem-{service}-service")
+            repo = SERVICES / service
             service_env = {**env, "DATABASE_URL": f"sqlite+aiosqlite:///{Path(directory, service + '.db').as_posix()}"}
             # The orchestrator's history includes Postgres-only migrations; its race
             # tables are created straight from the models for this disposable DB.
@@ -106,7 +106,7 @@ def main():
                     "--port", str(port)], repo, service_env)
             ready(port)
         launch([sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1",
-                "--port", "9511"], WORKSPACE / "strem-api-gateway", env)
+                "--port", "9511"], SERVICES / "gateway", env)
         ready(9511)
         node = shutil.which("node")
         if not node:

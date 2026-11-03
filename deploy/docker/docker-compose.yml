@@ -4,10 +4,7 @@
 # events since strem-docs#28; Redis Streams remains the documented broker choice
 # (strem-docs/architecture/event-driven-strategy.md) when events return.
 #
-# Layout assumption: the service repositories are cloned as siblings of
-# strem-infra under one parent directory, so each service's build context is
-# ../../strem-<service> relative to this file. Service containers are included
-# only now that every repo has a Dockerfile and a GET /health endpoint.
+# Build contexts are the service folders of this monorepo (../../services/*).
 #
 # Local ports: postgres 5432, redis 6379, gateway 8000, auth 8001, user 8002,
 # training 8003, ai 8006. Each service listens on 8000 inside its container.
@@ -65,7 +62,7 @@ services:
     restart: unless-stopped
 
   auth:
-    build: ../../strem-auth-service
+    build: ../../services/auth
     ports:
       - "8001:8000"
     environment:
@@ -81,7 +78,7 @@ services:
     restart: unless-stopped
 
   user:
-    build: ../../strem-user-service
+    build: ../../services/user
     ports:
       - "8002:8000"
     environment:
@@ -98,7 +95,7 @@ services:
     restart: unless-stopped
 
   training:
-    build: ../../strem-training-service
+    build: ../../services/training
     ports:
       - "8003:8000"
     environment:
@@ -124,7 +121,7 @@ services:
     restart: unless-stopped
 
   ai:
-    build: ../../strem-ai-orchestrator
+    build: ../../services/ai
     ports:
       - "8006:8000"
     environment:
@@ -151,7 +148,7 @@ services:
     restart: unless-stopped
 
   gateway:
-    build: ../../strem-api-gateway
+    build: ../../services/gateway
     ports:
       - "8000:8000"
     environment:
