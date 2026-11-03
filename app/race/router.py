@@ -86,10 +86,13 @@ async def build_mission(
     current: CurrentUserDep,
     services: ServicesDep,
     ai: RaceAIDep,
+    db: SessionDep,
     response: Response,
 ) -> dict[str, Any]:
     kinds = [k for k in service.LAYERS if k in set(body.layers)]
-    results = await service.build_layers(services, ai, mission_id, kinds, use_ai=body.use_ai)
+    results = await service.build_layers(
+        services, ai, db, current.user_id, mission_id, kinds, use_ai=body.use_ai
+    )
     state = ai.status()
     _no_store(response)
     return {
@@ -106,9 +109,12 @@ async def build_one(
     current: CurrentUserDep,
     services: ServicesDep,
     ai: RaceAIDep,
+    db: SessionDep,
     response: Response,
 ) -> dict[str, Any]:
-    results = await service.build_layers(services, ai, mission_id, [kind], use_ai=body.use_ai)
+    results = await service.build_layers(
+        services, ai, db, current.user_id, mission_id, [kind], use_ai=body.use_ai
+    )
     _no_store(response)
     return results[0]
 
