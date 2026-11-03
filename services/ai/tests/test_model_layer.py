@@ -356,7 +356,7 @@ def test_claude_errors_become_honest_reasons(
 
 def test_provider_selection(monkeypatch: pytest.MonkeyPatch) -> None:
     def pick(**values: str) -> Any:
-        monkeypatch.setattr(ai_client, "get_settings", lambda: Settings(_env_file=None, **values))  # type: ignore[call-arg]
+        monkeypatch.setattr(ai_client, "get_settings", lambda: Settings(_env_file=None, **values))  # type: ignore[call-arg, arg-type]
         return build_race_ai()
 
     assert pick(openai_api_key="sk-x").provider == "openai"

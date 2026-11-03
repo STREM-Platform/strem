@@ -23,6 +23,7 @@ from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from pydantic import SecretStr
 
+from app.race.ai import budget
 from app.race.ai.client import AIStatus, AIUnavailable
 
 log = logging.getLogger(__name__)
@@ -94,6 +95,8 @@ class LangChainRaceAI:
         self._reasoning = provider == "openai"
 
     def status(self) -> AIStatus:
+        if limit := budget.exhausted():
+            return AIStatus(False, self.model, limit)
         if time.monotonic() < self._disabled_until:
             return AIStatus(False, self.model, self._reason)
         return AIStatus(True, self.model)
@@ -136,6 +139,7 @@ class LangChainRaceAI:
         status = self.status()
         if not status.available:
             raise AIUnavailable(status.reason or "AI is temporarily unavailable.")
+        budget.spend()
         try:
             return await call()
         except AIUnavailable:

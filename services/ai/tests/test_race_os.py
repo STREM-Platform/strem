@@ -504,7 +504,7 @@ class ScriptedAI(LangChainRaceAI):
         self.fail: str | None = None
 
     def status(self) -> AIStatus:
-        return AIStatus(self.fail is None, self.model, self.fail)
+        return AIStatus(False, self.model, self.fail) if self.fail else super().status()
 
     async def complete_json(
         self, *, rules: str, context: str, prompt: str, schema: dict[str, Any], **_: Any
