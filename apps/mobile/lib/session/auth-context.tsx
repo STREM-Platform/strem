@@ -3,9 +3,11 @@
  * onboarding. Drives the route guard in the root layout.
  *
  * On mount it restores a session from securely-stored tokens (validating them
- * against `/auth/me`) and reads onboarding status. Sign-in/up persist the token
- * pair; sign-out revokes the refresh token and clears storage. Any
- * `SessionExpiredError` bubbling up from the client signs the user out.
+ * against `/auth/me`) and reads onboarding and legal status. Only a refused
+ * session (`SessionExpiredError`, 401/403) clears the tokens; a network failure,
+ * timeout or server error during restore keeps them and moves to `unavailable`,
+ * which shows a retry screen without granting app access (#2). Sign-in/up persist
+ * the token pair; sign-out revokes the refresh token and clears storage.
  */
 
 import {
@@ -20,9 +22,10 @@ import {
 
 import { api, SessionExpiredError } from "@/lib/api/client";
 import type { AuthIdentity } from "@/lib/api/types";
+import { checkStoredSession, type Restored } from "@/lib/session/restore";
 import { clearTokens, getStoredTokens, storeTokens } from "@/lib/session/tokens";
 
-type Phase = "loading" | "signedOut" | "signedIn";
+type Phase = "loading" | "unavailable" | "signedOut" | "signedIn";
 
 interface AuthContextValue {
   phase: Phase;
@@ -36,6 +39,8 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   refreshOnboardingStatus: () => Promise<void>;
   refreshLegalStatus: () => Promise<void>;
+  /** Try restoring the stored session again (from the `unavailable` screen). */
+  retrySession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -72,31 +77,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPhase("signedOut");
   }, []);
 
+  const applyRestored = useCallback((restored: Restored): void => {
+    setUser(restored.phase === "signedIn" ? restored.user : null);
+    setOnboardingCompleted(restored.phase === "signedIn" ? restored.onboardingCompleted : null);
+    setLegalAccepted(restored.phase === "signedIn" ? restored.legalAccepted : null);
+    setPhase(restored.phase);
+  }, []);
+
   // Restore a session on first mount.
   useEffect(() => {
     let active = true;
     (async () => {
-      const tokens = await getStoredTokens();
-      if (!tokens) {
-        if (active) setPhase("signedOut");
-        return;
-      }
-      try {
-        const identity = await api.getMe();
-        await Promise.all([loadOnboarding(), loadLegal()]);
-        if (active) {
-          setUser(identity);
-          setPhase("signedIn");
-        }
-      } catch {
-        await clearTokens();
-        if (active) setPhase("signedOut");
-      }
+      const restored = await checkStoredSession();
+      if (active) applyRestored(restored);
     })();
     return () => {
       active = false;
     };
-  }, [loadOnboarding, loadLegal]);
+  }, [applyRestored]);
+
+  const retrySession = useCallback(async (): Promise<void> => {
+    setPhase("loading");
+    applyRestored(await checkStoredSession());
+  }, [applyRestored]);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<void> => {
@@ -156,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refreshOnboardingStatus,
       refreshLegalStatus,
+      retrySession,
     }),
     [
       phase,
@@ -167,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refreshOnboardingStatus,
       refreshLegalStatus,
+      retrySession,
     ],
   );
 

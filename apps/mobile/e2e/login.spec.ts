@@ -82,3 +82,37 @@ test("a new athlete goes from the welcome hero through About you into the app", 
   const profile = await (await request.get(`${api}/users/me`, { headers })).json();
   expect(profile).toMatchObject({ display_name: "Mira" });
 });
+
+test("a reload while STREM is unreachable keeps the session and retries into the app (#2)", async ({ page, request }) => {
+  const credentials = { email: `restore-${randomUUID()}@example.com`, password: `Test-${randomUUID()}-only` };
+  const registration = await request.post(`${api}/auth/register`, { data: { ...credentials, display_name: "Restore Test" } });
+  const { tokens } = await registration.json();
+  const headers = { Authorization: `Bearer ${tokens.access_token}` };
+  expect((await request.post(`${api}/users/onboarding`, { headers, data: {
+    display_name: "Restore Test", identity_statement: "Synthetic restore regression", transformation_goal: "build_endurance",
+    training_level: "intermediate", weekly_target_days: 3, timezone: "Europe/Berlin", screen: "identity",
+  } })).ok()).toBeTruthy();
+  const legal = await (await request.get(`${api}/users/me/legal`, { headers })).json();
+  expect((await request.post(`${api}/users/me/legal/accept`, { headers, data: {
+    acceptances: legal.documents.map((doc: { document_type: string; required_version: string }) => ({ document_type: doc.document_type, version: doc.required_version })),
+  } })).ok()).toBeTruthy();
+
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill(credentials.email);
+  await page.getByLabel("Password", { exact: true }).fill(credentials.password);
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  const home = page.getByRole("button", { name: "Start a Race Mission", exact: true });
+  await expect(home).toBeVisible();
+
+  // The onboarding check fails at the network level: no login form, no app, tokens kept.
+  await page.route("**/users/onboarding/status", (route) => route.abort("internetdisconnected"));
+  await page.reload();
+  await expect(page.getByText("Can’t reach STREM")).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("strem.refresh_token"))).toBeTruthy();
+
+  await page.unroute("**/users/onboarding/status");
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(home).toBeVisible();
+  await expect(page.getByText("Can’t reach STREM")).toHaveCount(0);
+});
