@@ -394,6 +394,9 @@ def core_lines(ctx: RaceContext) -> list[str]:
 
 
 CHECKIN_FIELDS = ("sleep_quality", "sleep_hours", "energy", "soreness", "stress", "motivation")
+# Day-level evidence (sessions, check-ins, recovery) covers this window; anything
+# older reaches the race team as weekly digests or through its retrieval tools.
+RECENT_DAYS = 14
 
 
 def now_lines(ctx: RaceContext) -> list[str]:
@@ -457,12 +460,15 @@ def now_lines(ctx: RaceContext) -> list[str]:
 
 
 def render(ctx: RaceContext) -> str:
-    """Compact, provenance-labelled context. [athlete]=entered by the athlete,
+    """Provenance-labelled context for the single structured calls (builds, brief,
+    adaptations): the core context, every race and climb, training by week, and
+    day-level evidence for the last `RECENT_DAYS`. [athlete]=entered by the athlete,
     [recorded]=imported/logged, [calculated]=derived by STREM, [plan]=current plan."""
     out = core_lines(ctx)
+    since = (ctx.today - timedelta(days=RECENT_DAYS)).isoformat()
     if ctx.races or ctx.race_sessions:
         out.append("\n## RACE HISTORY")
-        for race in ctx.races[:12]:
+        for race in ctx.races:
             bits = [str(race.get("race_date")), str(race.get("name")), str(race.get("status"))]
             if race.get("distance_km"):
                 bits.append(f"{race['distance_km']} km")
@@ -482,7 +488,7 @@ def render(ctx: RaceContext) -> str:
             if facts:
                 out.append("    race day: " + ", ".join(facts))
         known = {str(r.get("external_id")) for r in ctx.races}
-        for session in ctx.race_sessions[:10]:
+        for session in ctx.race_sessions:
             if f"strava:{session.get('id')}" in known:
                 continue
             out.append(
@@ -499,7 +505,7 @@ def render(ctx: RaceContext) -> str:
             f"descent {_m(c.descent_m, 'unknown')} m, "
             f"altitude {_m(c.lowest_m)}–{_m(c.highest_m)} m"
         )
-        for climb in c.climbs[:16]:
+        for climb in c.climbs:
             out.append(
                 f"- {climb['direction']} km {climb['start_km']}–{climb['end_km']}: "
                 f"{climb['change_m']} m at {climb['grade_pct']}%"
@@ -507,7 +513,7 @@ def render(ctx: RaceContext) -> str:
 
     weeks = ctx.evidence_weeks()
     if weeks:
-        out.append("\n## RECENT TRAINING (last 8 weeks, Monday-based) [recorded]")
+        out.append("\n## TRAINING BY WEEK (Monday-based) [recorded]")
         for row in weeks:
             vol = row.get("volume") or {}
             out.append(
@@ -515,9 +521,9 @@ def render(ctx: RaceContext) -> str:
                 f"{vol.get('hours', 0)} h, {vol.get('km', 0)} km, +{vol.get('elevation_m', 0)} m; "
                 f"longest {_hm(row.get('longest_minutes'))}"
             )
-    recent = ctx.sessions[:12]
+    recent = [s for s in ctx.sessions if str(s.get("logged_at", ""))[:10] >= since]
     if recent:
-        out.append("\n## LAST SESSIONS [recorded]")
+        out.append(f"\n## SESSIONS, LAST {RECENT_DAYS} DAYS [recorded]")
         for s in recent:
             bits = [str(s.get("logged_at", ""))[:10], str(s.get("session_type"))]
             if s.get("title"):
@@ -532,9 +538,12 @@ def render(ctx: RaceContext) -> str:
             bits.append(f"({s.get('source', 'manual')})")
             out.append("- " + " ".join(bits))
 
-    if ctx.checkins:
-        out.append("\n## CHECK-INS (1-5; soreness/stress 5 = worst) [athlete]")
-        for checkin in ctx.checkins[:7]:
+    checkins = [c for c in ctx.checkins if str(c.get("day", "")) >= since]
+    if checkins:
+        out.append(
+            f"\n## CHECK-INS, LAST {RECENT_DAYS} DAYS (1-5; soreness/stress 5 = worst) [athlete]"
+        )
+        for checkin in checkins:
             fields = [f"{k} {checkin[k]}" for k in CHECKIN_FIELDS if checkin.get(k) is not None]
             if checkin.get("illness"):
                 fields.append("ILL")
@@ -544,9 +553,10 @@ def render(ctx: RaceContext) -> str:
                 fields.append(f"note: {checkin['note']}")
             out.append(f"- {checkin.get('day')}: " + ", ".join(fields))
 
-    if ctx.recovery:
-        out.append("\n## RECOVERY (wearable) [recorded]")
-        for r in ctx.recovery[:7]:
+    recovery = [r for r in ctx.recovery if str(r.get("date", ""))[:10] >= since]
+    if recovery:
+        out.append(f"\n## RECOVERY, LAST {RECENT_DAYS} DAYS (wearable) [recorded]")
+        for r in recovery:
             out.append(
                 f"- {str(r.get('date'))[:10]}: HRV {r.get('hrv_ms') or '?'} ms, RHR "
                 f"{r.get('resting_hr') or '?'}, sleep {r.get('sleep_hours') or '?'} h, "
@@ -601,7 +611,7 @@ def render(ctx: RaceContext) -> str:
         out.append(f"\n## CONDITIONS [{cond.get('kind')}]: {cond.get('summary')}")
     if ctx.other_missions:
         out.append("\n## OTHER ACTIVE MISSIONS [athlete]")
-        for m in ctx.other_missions[:5]:
+        for m in ctx.other_missions:
             ev = m.get("event") or {}
             priority = (m.get("goal") or {}).get("priority")
             out.append(

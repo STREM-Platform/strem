@@ -36,7 +36,6 @@ class Settings(BaseSettings):
 
     # The race team as a LangGraph graph (ADR 0010): router, specialists with
     # retrieval tools, composer and safety guard. Off until the evals (ai#37) pass.
-    race_team_graph: bool = False
 
 
 @lru_cache

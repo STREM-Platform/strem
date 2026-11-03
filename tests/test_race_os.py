@@ -16,6 +16,9 @@ from typing import Any
 
 import httpx
 import pytest
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -25,6 +28,7 @@ from app.errors import AppError
 from app.main import create_app
 from app.race import service
 from app.race.ai.client import AIStatus, AIUnavailable, UnavailableAI, get_race_ai, strict_schema
+from app.race.ai.models import LangChainRaceAI
 from app.race.ai.personalize import apply_layer_guardrails, apply_plan_edits
 from app.race.ai.schemas import AILayer, AIPlan
 from app.race.context import RaceContext, render, summarize_course
@@ -38,6 +42,7 @@ from app.race.engine.plan import build_plan
 from app.race.engine.strategy import build_strategy
 from app.race.enrich import conditions as cond_mod
 from app.race.enrich import media as media_mod
+from app.race.graph.team import ROUTER_RULES
 from app.race.router import get_race_services
 from tests.support import TEST_SETTINGS, auth_header
 
@@ -471,10 +476,30 @@ class FakeServices:
         return {"created": len(items), "updated": 0}
 
 
-class ScriptedAI:
+class EchoChat(BaseChatModel):
+    """The race team's chat model in tests: answers the newest question."""
+
+    @property
+    def _llm_type(self) -> str:
+        return "echo"
+
+    def bind_tools(self, tools: Any, **_: Any) -> Any:
+        return self
+
+    def _generate(
+        self, messages: list[BaseMessage], stop: Any = None, run_manager: Any = None, **_: Any
+    ) -> ChatResult:
+        asked = next(m for m in reversed(messages) if isinstance(m, HumanMessage))
+        reply = AIMessage(content=f"Answer to: {asked.text}")
+        return ChatResult(generations=[ChatGeneration(message=reply)])
+
+
+class ScriptedAI(LangChainRaceAI):
     model = "claude-opus-5-5"
 
     def __init__(self) -> None:
+        super().__init__(EchoChat(), self.model, "openai")
+        self._reasoning = False
         self.calls: list[str] = []
         self.fail: str | None = None
 
@@ -488,6 +513,8 @@ class ScriptedAI:
             raise AIUnavailable(self.fail)
         task = prompt.splitlines()[0]
         self.calls.append(task)
+        if rules == ROUTER_RULES:
+            return {"specialists": ["coach"], "why": "scripted"}
         if rules.startswith("You maintain the long-term memory"):
             # Athlete memory (ai#59): remember an injury when one is mentioned.
             said = prompt.rsplit("message:\n", 1)[-1]
