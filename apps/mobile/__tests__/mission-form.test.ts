@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import type { RaceMission } from "@/lib/api/race-missions";
 import { daysBetween, finishTimeText, hm, mondayOf, parseFinishTime, todayIn } from "@/lib/race/format";
-import { missionForm, toInput, validate } from "@/lib/race/mission-form";
+import { missionForm, toInput, validate, withBaseline } from "@/lib/race/mission-form";
 
 const base = {
   ...missionForm(undefined, "trail_running"),
@@ -93,5 +93,15 @@ describe("race formatting", () => {
     expect(daysBetween("2026-10-23", "2027-03-20")).toBe(148);
     expect(mondayOf("2026-10-25")).toBe("2026-10-19");
     expect(todayIn("Europe/Sofia", new Date("2027-06-11T22:00:00Z"))).toBe("2027-06-12");
+  });
+});
+
+describe("a new race starts from the About-you answers (#4)", () => {
+  it("fills experience and training days only when the athlete left them empty", () => {
+    const blank = missionForm(null);
+    expect(withBaseline(blank, { training_level: "intermediate", weekly_target_days: 4 })).toMatchObject({ experience: "some", days: "4" });
+    const edited = { ...blank, experience: "elite" as const, days: "6" };
+    expect(withBaseline(edited, { training_level: "beginner", weekly_target_days: 3 })).toMatchObject({ experience: "elite", days: "6" });
+    expect(withBaseline(blank, { training_level: null, weekly_target_days: null })).toMatchObject({ experience: null, days: "" });
   });
 });

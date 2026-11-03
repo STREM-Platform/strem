@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -11,12 +11,12 @@ import { Choices } from "@/components/ui/fields";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Button, ErrorBanner, IconButton, Overline, Title, useLayout } from "@/components/ui/kit";
 import { C, ui } from "@/constants/theme";
-import { ApiError } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import { courses } from "@/lib/api/courses";
 import type { StravaRoute } from "@/lib/api/race";
 import { raceMissions, type Sport } from "@/lib/api/race-missions";
 import { km, requestKey } from "@/lib/race/format";
-import { missionForm, toInput, validate, type FormErrors, type MissionForm } from "@/lib/race/mission-form";
+import { missionForm, toInput, validate, withBaseline, type FormErrors, type MissionForm } from "@/lib/race/mission-form";
 import { useRace } from "@/lib/race/race-context";
 import { sportMeta } from "@/lib/race/sports";
 import { BUILD_ORDER, useBuilder } from "@/lib/race/use-builder";
@@ -71,6 +71,22 @@ export default function MissionSetup() {
     setForm(missionForm(editing));
     setStep("race");
   }
+
+  // A new race starts from the athlete's About-you answers instead of asking twice (#4).
+  const creating = !params.id;
+  useEffect(() => {
+    if (!creating) return;
+    let active = true;
+    api
+      .getUserProfile()
+      .then((profile) => {
+        if (active) setForm((f) => withBaseline(f, profile));
+      })
+      .catch(() => undefined); // optional: the fields simply stay empty
+    return () => {
+      active = false;
+    };
+  }, [creating]);
 
   const set = <K extends keyof MissionForm>(k: K, v: MissionForm[K]) => setForm((f) => ({ ...f, [k]: v }));
   const index = STEPS.indexOf(step);
