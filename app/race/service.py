@@ -14,6 +14,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
+from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -39,6 +40,7 @@ from app.race.engine.logistics import build_logistics
 from app.race.engine.plan import build_plan
 from app.race.engine.strategy import build_strategy
 from app.race.enrich.conditions import race_conditions
+from app.race.graph import review
 from app.race.graph.team import team_answer
 
 LAYERS = ("plan", "fuel", "gear", "logistics", "strategy")
@@ -196,7 +198,7 @@ async def daily_brief(
     ctx = await load_context(services, mission_id)
     ctx.memories = [memory.memory_out(m) for m in await memory.active(db, user_id)]
     brief = await _brief(ctx, ai, db, user_id, mission_id, refresh=refresh)
-    proposal = await missed_proposal(ctx, ai, db, user_id, mission_id)
+    proposal = await missed_proposal(ctx, ai, db, user_id, mission_id, services)
     if proposal is not None:
         brief["proposal"] = proposal
         actions = [a for a in brief.get("actions") or [] if a.get("target") != "proposal"]
@@ -360,6 +362,125 @@ def _guard_ai_changes(window: list[dict[str, Any]], adaptation: Any) -> list[dic
     return changes
 
 
+def _review_graph(
+    services: RaceServices,
+    ai: RaceAI,
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    mission_id: uuid.UUID,
+    ctx: RaceContext,
+    proposal_id: uuid.UUID,
+    saver: Any,
+) -> Any:
+    """The review graph for one proposal, with this request's data and hooks."""
+
+    async def drafter(state: review.ReviewState) -> dict[str, Any]:
+        assert ctx.plan is not None
+        plan = ctx.plan["content"]
+        notes = [n for n in state.get("notes") or [] if n]
+        proposal = state.get("base") or engine_adapt.adapt(plan, state["reason"], ctx.today)
+        ask = state["reason"] + "".join(
+            f"\nThe athlete reviewed the previous proposal and asked: {n}" for n in notes
+        )
+        status = ai.status()
+        if not status.available:
+            if notes:
+                raise AIUnavailable(status.reason or "The AI race team is offline.")
+            return {
+                "draft": proposal,
+                "origin": "engine",
+                "model": None,
+                "ai_reason": status.reason,
+            }
+        window = engine_adapt.window(plan, ctx.today, 7 if state["kind"] == "missed" else 14)
+        try:
+            adaptation = await ai_adapt(ai, render(ctx), ask, window)
+            changes = _guard_ai_changes(window, adaptation)
+        except AIUnavailable as exc:
+            if notes:
+                raise
+            return {"draft": proposal, "origin": "engine", "model": None, "ai_reason": exc.reason}
+        except (ValueError, KeyError, TypeError):
+            if notes:
+                raise AIUnavailable(
+                    "The AI could not turn that into a valid change; try other words."
+                ) from None
+            reason = "The AI proposal failed validation; showing the engine's proposal."
+            return {"draft": proposal, "origin": "engine", "model": None, "ai_reason": reason}
+        if not changes and state["kind"] == "missed" and not notes:
+            return {"draft": proposal, "origin": "engine", "model": None, "ai_reason": None}
+        draft = {
+            **proposal,
+            "summary": adaptation.summary[:800],
+            "safety_note": adaptation.safety_note or proposal.get("safety_note"),
+            "changes": changes,
+        }
+        return {"draft": draft, "origin": "ai", "model": ai.model, "ai_reason": None}
+
+    async def on_draft(state: review.ReviewState) -> None:
+        assert ctx.plan is not None
+        row = await db.get(store.RaceProposal, proposal_id)
+        content = {
+            **(state.get("draft") or {}),
+            "reason": state["reason"],
+            "notes": state.get("notes") or [],
+        }
+        if row is None:
+            row = store.RaceProposal(
+                id=proposal_id, user_id=user_id, mission_id=mission_id, created_at=datetime.now(UTC)
+            )
+            db.add(row)
+        row.status = "pending"
+        row.origin = state.get("origin") or "engine"
+        row.model = state.get("model")
+        row.plan_version = ctx.plan.get("version")
+        row.content = content
+        await db.commit()
+
+    async def on_accept(_: review.ReviewState) -> None:
+        row = await db.get(store.RaceProposal, proposal_id)
+        assert row is not None
+        await _apply_proposal(services, db, row)
+
+    async def on_dismiss(_: review.ReviewState) -> None:
+        row = await db.get(store.RaceProposal, proposal_id)
+        assert row is not None
+        row.status = "rejected"
+        row.decided_at = datetime.now(UTC)
+        await db.commit()
+
+    return review.build_review(
+        drafter=drafter,
+        on_draft=on_draft,
+        on_accept=on_accept,
+        on_dismiss=on_dismiss,
+        checkpointer=saver,
+    )
+
+
+async def _start_review(
+    services: RaceServices,
+    ai: RaceAI,
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    mission_id: uuid.UUID,
+    ctx: RaceContext,
+    initial: review.ReviewState,
+    proposal_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """Draft a proposal and pause for the athlete's review."""
+    pid = proposal_id or uuid.uuid4()
+    graph = _review_graph(
+        services, ai, db, user_id, mission_id, ctx, pid, await review.checkpointer()
+    )
+    await graph.ainvoke(initial, review.thread(pid))
+    values = (await graph.aget_state(review.thread(pid))).values
+    row = await db.get(store.RaceProposal, pid)
+    assert row is not None
+    await db.refresh(row)
+    return proposal_out(row, values.get("ai_reason"))
+
+
 async def propose_adaptation(
     services: RaceServices,
     ai: RaceAI,
@@ -371,45 +492,18 @@ async def propose_adaptation(
     ctx = await load_context(services, mission_id)
     if not ctx.plan:
         raise AppError(409, "plan_missing", "Build the training plan before adapting it.")
-    plan = ctx.plan["content"]
-    proposal = engine_adapt.adapt(plan, reason, ctx.today)
-    origin, model, ai_reason = "engine", None, None
-    status = ai.status()
-    if status.available:
-        window = engine_adapt.window(plan, ctx.today)
-        try:
-            adaptation = await ai_adapt(ai, render(ctx), reason, window)
-            changes = _guard_ai_changes(window, adaptation)
-            proposal = {
-                "category": proposal["category"],
-                "summary": adaptation.summary[:800],
-                "safety_note": adaptation.safety_note or proposal.get("safety_note"),
-                "changes": changes,
-            }
-            origin, model = "ai", ai.model
-        except AIUnavailable as exc:
-            ai_reason = exc.reason
-        except (ValueError, KeyError, TypeError):
-            ai_reason = "The AI proposal failed validation; showing the engine's proposal."
-    else:
-        ai_reason = status.reason
-    row = store.RaceProposal(
-        user_id=user_id,
-        mission_id=mission_id,
-        status="pending",
-        origin=origin,
-        model=model,
-        plan_version=ctx.plan.get("version"),
-        content={**proposal, "reason": reason},
-        created_at=datetime.now(UTC),
+    return await _start_review(
+        services, ai, db, user_id, mission_id, ctx, {"kind": "adapt", "reason": reason, "notes": []}
     )
-    db.add(row)
-    await db.commit()
-    return proposal_out(row, ai_reason)
 
 
 async def missed_proposal(
-    ctx: RaceContext, ai: RaceAI, db: AsyncSession, user_id: uuid.UUID, mission_id: uuid.UUID
+    ctx: RaceContext,
+    ai: RaceAI,
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    mission_id: uuid.UUID,
+    services: RaceServices,
 ) -> dict[str, Any] | None:
     """Skipped or missed sessions → one reviewed proposal; never a silent rewrite.
 
@@ -425,42 +519,19 @@ async def missed_proposal(
             return proposal_out(pending)
         pending.status = "expired"  # the plan moved on; re-check below
         await db.commit()
-    plan = ctx.plan["content"]
-    proposal = engine_adapt.missed(plan, ctx.progress, ctx.today)
+    proposal = engine_adapt.missed(ctx.plan["content"], ctx.progress, ctx.today)
     if proposal is None:
         return None
     seen = set(proposal["trigger"]["missed"])
     if any(seen <= set((p.content.get("trigger") or {}).get("missed") or []) for p in earlier):
         return None
-    origin, model, ai_reason = "engine", None, None
-    status = ai.status()
-    if status.available:
-        window = engine_adapt.window(plan, ctx.today, 7)
-        try:
-            adaptation = await ai_adapt(ai, render(ctx), proposal["summary"], window)
-            changes = _guard_ai_changes(window, adaptation)
-            if changes:
-                proposal = {**proposal, "summary": adaptation.summary[:800], "changes": changes}
-                origin, model = "ai", ai.model
-        except AIUnavailable as exc:
-            ai_reason = exc.reason
-        except (ValueError, KeyError, TypeError):
-            ai_reason = "The AI proposal failed validation; showing the engine's proposal."
-    else:
-        ai_reason = status.reason
-    row = store.RaceProposal(
-        user_id=user_id,
-        mission_id=mission_id,
-        status="pending",
-        origin=origin,
-        model=model,
-        plan_version=ctx.plan.get("version"),
-        content={**proposal, "reason": "Missed training"},
-        created_at=datetime.now(UTC),
-    )
-    db.add(row)
-    await db.commit()
-    return proposal_out(row, ai_reason)
+    initial: review.ReviewState = {
+        "kind": "missed",
+        "reason": "Missed training",
+        "notes": [],
+        "base": proposal,
+    }
+    return await _start_review(services, ai, db, user_id, mission_id, ctx, initial)
 
 
 async def list_proposals(
@@ -483,6 +554,43 @@ def proposal_out(row: store.RaceProposal, ai_reason: str | None = None) -> dict[
     }
 
 
+async def _apply_proposal(
+    services: RaceServices, db: AsyncSession, row: store.RaceProposal
+) -> None:
+    """Write an accepted proposal to the plan, unless the plan moved on since."""
+    plan = await services.plan(row.mission_id)
+    if plan is None:
+        raise AppError(409, "plan_missing", "The plan no longer exists.")
+    if plan.get("version") != row.plan_version:
+        row.status = "expired"
+        await db.commit()
+        raise AppError(409, "proposal_stale", "The plan changed since this proposal; ask again.")
+    content = engine_adapt.apply_changes(plan["content"], row.content.get("changes") or [])
+    await services.put_plan(
+        row.mission_id,
+        {
+            "content": content,
+            "origin": row.origin,
+            "model": row.model,
+            "inputs_digest": plan.get("inputs_digest"),
+        },
+    )
+    row.status = "accepted"
+    row.decided_at = datetime.now(UTC)
+    await db.commit()
+
+
+async def _pending(
+    db: AsyncSession, user_id: uuid.UUID, mission_id: uuid.UUID, proposal_id: uuid.UUID
+) -> store.RaceProposal:
+    row = await db.get(store.RaceProposal, proposal_id)
+    if row is None or row.user_id != user_id or row.mission_id != mission_id:
+        raise AppError(404, "proposal_not_found", "Proposal not found.")
+    if row.status != "pending":
+        raise AppError(409, "proposal_decided", f"This proposal was already {row.status}.")
+    return row
+
+
 async def decide_proposal(
     services: RaceServices,
     db: AsyncSession,
@@ -490,35 +598,70 @@ async def decide_proposal(
     mission_id: uuid.UUID,
     proposal_id: uuid.UUID,
     accept: bool,
+    ai: RaceAI | None = None,
 ) -> dict[str, Any]:
-    row = await db.get(store.RaceProposal, proposal_id)
-    if row is None or row.user_id != user_id or row.mission_id != mission_id:
-        raise AppError(404, "proposal_not_found", "Proposal not found.")
-    if row.status != "pending":
-        raise AppError(409, "proposal_decided", f"This proposal was already {row.status}.")
-    if accept:
-        plan = await services.plan(mission_id)
-        if plan is None:
-            raise AppError(409, "plan_missing", "The plan no longer exists.")
-        if plan.get("version") != row.plan_version:
-            row.status = "expired"
-            await db.commit()
-            raise AppError(
-                409, "proposal_stale", "The plan changed since this proposal; ask again."
-            )
-        content = engine_adapt.apply_changes(plan["content"], row.content.get("changes") or [])
-        await services.put_plan(
-            mission_id,
-            {
-                "content": content,
-                "origin": row.origin,
-                "model": row.model,
-                "inputs_digest": plan.get("inputs_digest"),
-            },
+    row = await _pending(db, user_id, mission_id, proposal_id)
+    saver = await review.checkpointer()
+    ctx = await load_context(services, mission_id) if ai is not None else None
+    graph = (
+        _review_graph(services, ai, db, user_id, mission_id, ctx, proposal_id, saver)
+        if ai is not None and ctx is not None
+        else None
+    )
+    if graph is not None and await review.waiting_for_review(graph, proposal_id):
+        await graph.ainvoke(
+            Command(resume={"decision": "accept" if accept else "dismiss"}),
+            review.thread(proposal_id),
         )
-    row.status = "accepted" if accept else "rejected"
-    row.decided_at = datetime.now(UTC)
-    await db.commit()
+        await db.refresh(row)
+        return proposal_out(row)
+    # Proposals made before the review graph: decide directly.
+    if accept:
+        await _apply_proposal(services, db, row)
+    else:
+        row.status = "rejected"
+        row.decided_at = datetime.now(UTC)
+        await db.commit()
+    return proposal_out(row)
+
+
+async def adjust_proposal(
+    services: RaceServices,
+    ai: RaceAI,
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    mission_id: uuid.UUID,
+    proposal_id: uuid.UUID,
+    note: str,
+) -> dict[str, Any]:
+    """The athlete's words go back to the race team for a new draft; it pauses again."""
+    row = await _pending(db, user_id, mission_id, proposal_id)
+    status = ai.status()
+    if not status.available:
+        raise AppError(
+            503,
+            "ai_unavailable",
+            f"Adjusting needs the AI race team. {status.reason or ''}".strip(),
+        )
+    ctx = await load_context(services, mission_id)
+    if not ctx.plan:
+        raise AppError(409, "plan_missing", "The plan no longer exists.")
+    graph = _review_graph(
+        services, ai, db, user_id, mission_id, ctx, proposal_id, await review.checkpointer()
+    )
+    try:
+        if await review.waiting_for_review(graph, proposal_id):
+            await graph.ainvoke(
+                Command(resume={"decision": "adjust", "note": note}), review.thread(proposal_id)
+            )
+        else:
+            kind = "missed" if row.content.get("category") == "missed" else "adapt"
+            reason = str(row.content.get("reason") or "Adjust the plan")
+            initial: review.ReviewState = {"kind": kind, "reason": reason, "notes": [note]}
+            await graph.ainvoke(initial, review.thread(proposal_id))
+    except AIUnavailable as exc:
+        raise AppError(503, "ai_unavailable", exc.reason) from exc
+    await db.refresh(row)
     return proposal_out(row)
 
 

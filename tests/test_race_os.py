@@ -523,6 +523,8 @@ class ScriptedAI:
                 "actions": [{"title": "Upload the course GPX", "target": "course"}],
             }
         if "adapt" in task:
+            if "reviewed the previous proposal and asked:" in prompt:
+                return {"summary": "Adjusted as you asked.", "safety_note": None, "changes": []}
             return {
                 "summary": "Rest two days.",
                 "safety_note": "See a doctor if fever persists.",

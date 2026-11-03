@@ -13,3 +13,7 @@ langchain-core>=1.7,<2
 langchain-anthropic>=1.7,<2
 langchain-openai>=1.7,<2
 langgraph>=1.2,<2
+# Review threads (proposals waiting for the athlete) persist in Postgres.
+langgraph-checkpoint-postgres>=3.2,<4
+psycopg[binary]>=3.3,<4
+psycopg-pool>=3.3,<4

@@ -51,6 +51,10 @@ class DeleteRaceTeamData(BaseModel):
     confirmation: str = Field(pattern="^FORGET MY RACE TEAM DATA$")
 
 
+class AdjustRequest(BaseModel):
+    note: str = Field(min_length=3, max_length=600)
+
+
 class AdaptRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=600)
 
@@ -302,6 +306,24 @@ async def proposals(
     return {"items": await service.list_proposals(db, current.user_id, mission_id, status)}
 
 
+@router.post("/race/{mission_id}/proposals/{proposal_id}/adjust")
+async def adjust(
+    mission_id: uuid.UUID,
+    proposal_id: uuid.UUID,
+    body: AdjustRequest,
+    current: CurrentUserDep,
+    services: ServicesDep,
+    ai: RaceAIDep,
+    db: SessionDep,
+    response: Response,
+) -> dict[str, Any]:
+    """The athlete's words back to the race team: a new draft that again waits for review."""
+    _no_store(response)
+    return await service.adjust_proposal(
+        services, ai, db, current.user_id, mission_id, proposal_id, body.note.strip()
+    )
+
+
 @router.post("/race/{mission_id}/proposals/{proposal_id}/{decision}")
 async def decide(
     mission_id: uuid.UUID,
@@ -309,16 +331,15 @@ async def decide(
     decision: str,
     current: CurrentUserDep,
     services: ServicesDep,
+    ai: RaceAIDep,
     db: SessionDep,
     response: Response,
 ) -> dict[str, Any]:
     if decision not in ("accept", "reject"):
-        from app.errors import AppError
-
-        raise AppError(404, "unknown_decision", "Use accept or reject.")
+        raise AppError(404, "unknown_decision", "Use accept, reject or adjust.")
     _no_store(response)
     return await service.decide_proposal(
-        services, db, current.user_id, mission_id, proposal_id, decision == "accept"
+        services, db, current.user_id, mission_id, proposal_id, decision == "accept", ai
     )
 
 
