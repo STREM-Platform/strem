@@ -9,7 +9,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.race.context import core_lines
+from app.race.context import core_lines, render
 from app.race.engine.cockpit import build_specialists
 from app.race.engine.plan import build_plan
 from tests.support import auth_header
@@ -125,3 +125,29 @@ def test_core_context_says_where_the_athlete_is_today() -> None:
 
     quiet = "\n".join(core_lines(ctx_for(m)))
     assert "No training plan yet" in quiet and "No check-in today" in quiet
+
+
+def test_render_uses_date_windows_not_fixed_counts() -> None:
+    m = mission()
+    races = [
+        {"race_date": f"2025-{month:02d}-01", "name": f"Synthetic Race {month}", "status": "done"}
+        for month in range(1, 13)
+    ] + [{"race_date": "2026-01-10", "name": "Synthetic Race 13", "status": "done"}]
+    sessions = [
+        {
+            "logged_at": (TODAY - timedelta(days=days)).isoformat() + "T06:00:00Z",
+            "session_type": "running",
+            "title": f"Run {days} days ago",
+            "duration_minutes": 40,
+        }
+        for days in (1, 3, 5, 7, 9, 11, 12, 13, 20)
+    ]
+    checkins = [
+        {"day": (TODAY - timedelta(days=d)).isoformat(), "energy": 3} for d in range(0, 30, 3)
+    ]
+    text = render(ctx_for(m, races=races, sessions=sessions, checkins=checkins))
+    assert all(f"Synthetic Race {n}" in text for n in range(1, 14))  # no 12-race cap
+    assert "Run 13 days ago" in text and "Run 1 days ago" in text
+    assert "Run 20 days ago" not in text  # older than the window: weekly digests and tools
+    # Days 0, 3, 6, 9 and 12 (not the newest seven), plus today in the NOW section.
+    assert text.count("energy 3") == 6

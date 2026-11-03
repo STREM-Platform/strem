@@ -17,13 +17,11 @@ from typing import Any
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.errors import AppError
 from app.race import memory, store
 from app.race.ai.client import AIUnavailable, RaceAI
 from app.race.ai.models import LangChainRaceAI
 from app.race.ai.personalize import ai_adapt, ai_brief
-from app.race.ai.prompts import RACE_TEAM
 from app.race.clients import RaceServices
 from app.race.context import RaceContext, assemble, render
 from app.race.engine import adapt as engine_adapt
@@ -171,7 +169,7 @@ async def chat(
     message: str,
 ) -> dict[str, Any]:
     status = ai.status()
-    if not status.available:
+    if not status.available or not isinstance(ai, LangChainRaceAI):
         return {"available": False, "reason": status.reason, "message": None}
     ctx = await load_context(services, mission_id)
     known = await memory.active(db, user_id)
@@ -185,15 +183,10 @@ async def chat(
     previous = turns[-1]["content"] if turns and turns[-1]["role"] == "assistant" else None
     turns.append({"role": "user", "content": message})
 
-    async def answer_turn() -> str:
-        if get_settings().race_team_graph and isinstance(ai, LangChainRaceAI):
-            return await team_answer(ai, ctx, message, turns[:-1])
-        return await ai.complete_text(rules=RACE_TEAM, context=render(ctx), messages=turns)
-
     try:
         # Remembering runs alongside the answer, so it adds no waiting (ai#59).
         answer, learned = await asyncio.gather(
-            answer_turn(), memory.extract(ai, known, message, previous)
+            team_answer(ai, ctx, message, turns[:-1]), memory.extract(ai, known, message, previous)
         )
     except AIUnavailable as exc:
         return {"available": False, "reason": exc.reason, "message": None}
@@ -499,24 +492,21 @@ async def decide_proposal(
     mission_id: uuid.UUID,
     proposal_id: uuid.UUID,
     accept: bool,
-    ai: RaceAI | None = None,
+    ai: RaceAI,
 ) -> dict[str, Any]:
     row = await _pending(db, user_id, mission_id, proposal_id)
-    saver = await review.checkpointer()
-    ctx = await load_context(services, mission_id, db, user_id) if ai is not None else None
-    graph = (
-        _review_graph(services, ai, db, user_id, mission_id, ctx, proposal_id, saver)
-        if ai is not None and ctx is not None
-        else None
+    ctx = await load_context(services, mission_id, db, user_id)
+    graph = _review_graph(
+        services, ai, db, user_id, mission_id, ctx, proposal_id, await review.checkpointer()
     )
-    if graph is not None and await review.waiting_for_review(graph, proposal_id):
+    if await review.waiting_for_review(graph, proposal_id):
         await graph.ainvoke(
             Command(resume={"decision": "accept" if accept else "dismiss"}),
             review.thread(proposal_id),
         )
         await db.refresh(row)
         return proposal_out(row)
-    # Proposals made before the review graph: decide directly.
+    # No review thread (stored before phase 4): decide directly.
     if accept:
         await _apply_proposal(services, db, row)
     else:

@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 # Import models so their tables are registered on Base.metadata.
-from app import models  # noqa: F401
 from app.config import get_settings
 from app.db import Base
+from app.race import memory as race_memory  # noqa: F401
 from app.race import store as race_store  # noqa: F401
 
 config = context.config
