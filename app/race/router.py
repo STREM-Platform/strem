@@ -7,9 +7,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.deps import BearerTokenDep, CurrentUserDep, SessionDep
-from app.race import importer, service, store
+from app.errors import AppError
+from app.race import importer, memory, service, store
 from app.race.ai.client import RaceAI, get_race_ai
 from app.race.clients import RaceServices
 from app.race.enrich.geo import search_places
@@ -38,6 +40,15 @@ class LayerBuildRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
+
+
+class MemoryCorrection(BaseModel):
+    text: str = Field(min_length=3, max_length=400)
+    kind: str | None = None
+
+
+class DeleteRaceTeamData(BaseModel):
+    confirmation: str = Field(pattern="^FORGET MY RACE TEAM DATA$")
 
 
 class AdaptRequest(BaseModel):
@@ -309,6 +320,60 @@ async def decide(
     return await service.decide_proposal(
         services, db, current.user_id, mission_id, proposal_id, decision == "accept"
     )
+
+
+@router.get("/race/memory")
+async def list_memory(
+    current: CurrentUserDep, db: SessionDep, response: Response
+) -> dict[str, Any]:
+    """What the race team remembers about the athlete (ai#59), newest first."""
+    _no_store(response)
+    return {"items": [memory.memory_out(m) for m in await memory.active(db, current.user_id)]}
+
+
+@router.patch("/race/memory/{memory_id}")
+async def correct_memory(
+    memory_id: uuid.UUID, body: MemoryCorrection, current: CurrentUserDep, db: SessionDep
+) -> dict[str, Any]:
+    row = await memory.owned(db, current.user_id, memory_id)
+    if row is None:
+        raise AppError(404, "memory_not_found", "That memory no longer exists.")
+    return memory.memory_out(await memory.correct(db, row, body.text, body.kind))
+
+
+@router.delete("/race/memory/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def forget_memory(memory_id: uuid.UUID, current: CurrentUserDep, db: SessionDep) -> Response:
+    row = await memory.owned(db, current.user_id, memory_id)
+    if row is not None:
+        await memory.forget(db, row)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/race/data")
+async def export_race_team_data(
+    current: CurrentUserDep, db: SessionDep, response: Response
+) -> dict[str, Any]:
+    """Everything the race team holds about the athlete: memory, chat, briefs, proposals."""
+    _no_store(response)
+    rows = await db.scalars(
+        select(memory.AthleteMemory)
+        .where(memory.AthleteMemory.user_id == current.user_id)
+        .order_by(memory.AthleteMemory.created_at)
+    )
+    return {
+        "memory": [memory.memory_out(m) for m in rows],
+        **await store.export_user(db, current.user_id),
+    }
+
+
+@router.delete("/race/data", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_race_team_data(
+    body: DeleteRaceTeamData, current: CurrentUserDep, db: SessionDep
+) -> Response:
+    await memory.purge(db, current.user_id)
+    await store.purge_user(db, current.user_id)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/race/history/import-strava")

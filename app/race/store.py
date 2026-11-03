@@ -152,3 +152,57 @@ async def proposals(
         .limit(limit)
     )
     return [r for r in rows if category is None or (r.content or {}).get("category") == category]
+
+
+async def export_user(session: AsyncSession, user_id: uuid.UUID) -> dict[str, Any]:
+    """Everything the race team holds about one athlete (ADR 0010: joins export)."""
+    chats = await session.scalars(
+        select(RaceChatMessage)
+        .where(RaceChatMessage.user_id == user_id)
+        .order_by(RaceChatMessage.created_at)
+    )
+    briefs = await session.scalars(
+        select(RaceBrief).where(RaceBrief.user_id == user_id).order_by(RaceBrief.day)
+    )
+    proposals = await session.scalars(
+        select(RaceProposal)
+        .where(RaceProposal.user_id == user_id)
+        .order_by(RaceProposal.created_at)
+    )
+    return {
+        "chat": [
+            {
+                "mission_id": str(r.mission_id),
+                "role": r.role,
+                "content": r.content,
+                "model": r.model,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in chats
+        ],
+        "briefs": [
+            {
+                "mission_id": str(r.mission_id),
+                "day": r.day.isoformat(),
+                "origin": r.origin,
+                "content": r.content,
+            }
+            for r in briefs
+        ],
+        "proposals": [
+            {
+                "mission_id": str(r.mission_id),
+                "status": r.status,
+                "origin": r.origin,
+                "content": r.content,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in proposals
+        ],
+    }
+
+
+async def purge_user(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Delete every race-team record of one athlete."""
+    for model in (RaceChatMessage, RaceBrief, RaceProposal):
+        await session.execute(delete(model).where(model.user_id == user_id))

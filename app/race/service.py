@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.errors import AppError
-from app.race import store
+from app.race import memory, store
 from app.race.ai.client import AIUnavailable, RaceAI
 from app.race.ai.models import LangChainRaceAI
 from app.race.ai.personalize import (
@@ -178,6 +178,7 @@ def _brief_digest(ctx: RaceContext) -> str:
         "layers": {k: v.get("version") for k, v in ctx.layers.items()},
         "mission": ctx.mission.get("version"),
         "sessions": [s.get("id") for s in ctx.sessions[:3]],
+        "memory": [(m["id"], m["updated_at"]) for m in ctx.memories],
     }
     return hashlib.sha256(json.dumps(relevant, sort_keys=True, default=str).encode()).hexdigest()
 
@@ -193,6 +194,7 @@ async def daily_brief(
 ) -> dict[str, Any]:
     """Today's brief, plus the race team's adjustment when training was missed (ai#44)."""
     ctx = await load_context(services, mission_id)
+    ctx.memories = [memory.memory_out(m) for m in await memory.active(db, user_id)]
     brief = await _brief(ctx, ai, db, user_id, mission_id, refresh=refresh)
     proposal = await missed_proposal(ctx, ai, db, user_id, mission_id)
     if proposal is not None:
@@ -269,22 +271,34 @@ async def chat(
     if not status.available:
         return {"available": False, "reason": status.reason, "message": None}
     ctx = await load_context(services, mission_id)
-    past = await store.history(db, user_id, mission_id, limit=20)
+    known = await memory.active(db, user_id)
+    ctx.memories = [memory.memory_out(m) for m in known]
+    past = await store.history(db, user_id, mission_id, limit=30)
     turns = [
         {"role": row.role, "content": row.content}
         for row in past
         if row.role in ("user", "assistant")
     ]
+    previous = turns[-1]["content"] if turns and turns[-1]["role"] == "assistant" else None
     turns.append({"role": "user", "content": message})
-    try:
+
+    async def answer_turn() -> str:
         if get_settings().race_team_graph and isinstance(ai, LangChainRaceAI):
-            answer = await team_answer(ai, ctx, message, turns[:-1])
-        else:
-            answer = await ai.complete_text(rules=RACE_TEAM, context=render(ctx), messages=turns)
+            return await team_answer(ai, ctx, message, turns[:-1])
+        return await ai.complete_text(rules=RACE_TEAM, context=render(ctx), messages=turns)
+
+    try:
+        # Remembering runs alongside the answer, so it adds no waiting (ai#59).
+        answer, learned = await asyncio.gather(
+            answer_turn(), memory.extract(ai, known, message, previous)
+        )
     except AIUnavailable as exc:
         return {"available": False, "reason": exc.reason, "message": None}
     asked = datetime.now(UTC)
-    await store.add_message(db, user_id, mission_id, "user", message, created_at=asked)
+    question = await store.add_message(db, user_id, mission_id, "user", message, created_at=asked)
+    await memory.store_items(
+        db, user_id, known, learned, source_ref=str(question.id), today=ctx.today
+    )
     reply = await store.add_message(
         db,
         user_id,

@@ -488,6 +488,21 @@ class ScriptedAI:
             raise AIUnavailable(self.fail)
         task = prompt.splitlines()[0]
         self.calls.append(task)
+        if rules.startswith("You maintain the long-term memory"):
+            # Athlete memory (ai#59): remember an injury when one is mentioned.
+            said = prompt.rsplit("message:\n", 1)[-1]
+            if "knee" not in said.lower():
+                return {"items": []}
+            return {
+                "items": [
+                    {
+                        "kind": "injury",
+                        "text": "Left knee hurts on long descents",
+                        "confidence": 0.9,
+                        "replaces": None,
+                    }
+                ]
+            }
         assert "RACE MISSION" in context and schema["additionalProperties"] is False
         if "training plan" in task:
             return {
