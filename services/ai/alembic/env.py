@@ -22,10 +22,17 @@ config.set_main_option("sqlalchemy.url", get_settings().database_url)
 target_metadata = Base.metadata
 
 
+def ours(name: str | None, type_: str, parent_names: object) -> bool:
+    """LangGraph creates and migrates its own checkpoint tables at startup: leave them
+    out of autogenerate and `alembic check`."""
+    return not (type_ == "table" and name is not None and name.startswith("checkpoint"))
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
         target_metadata=target_metadata,
+        include_name=ours,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -34,7 +41,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(connection=connection, target_metadata=target_metadata, include_name=ours)
     with context.begin_transaction():
         context.run_migrations()
 
