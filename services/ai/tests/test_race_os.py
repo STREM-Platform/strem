@@ -867,6 +867,36 @@ def test_media_ranking_follows_the_race_type() -> None:
     assert media_mod._rank(photo("Anything", "event"), ()) == 0
 
 
+def test_media_search_only_labels_photos_that_name_the_race_or_place(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_commons(query: str, depicts: str, limit: int = 12) -> list[dict[str, Any]]:
+        title = "Helvellyn Trail race" if depicts == "event" else "Plovdiv old town"
+        return [
+            {
+                "url": f"https://x/{query}.jpg",
+                "title": title,
+                "depicts": depicts,
+                "width": 3000,
+                "height": 2000,
+            }
+        ]
+
+    async def no_openverse(query: str, depicts: str, limit: int = 10) -> list[dict[str, Any]]:
+        return []
+
+    monkeypatch.setattr(media_mod, "search_commons", fake_commons)
+    monkeypatch.setattr(media_mod, "search_openverse", no_openverse)
+    items = asyncio.run(
+        media_mod.search_media("Plovdiv Hills Ultra 44K", "Markovo, Plovdiv", "trail_running")
+    )
+    labels = {(i["title"], i["depicts"]) for i in items}
+    # A trail race elsewhere is atmosphere, not this race; the city photo is the place.
+    assert ("Helvellyn Trail race", "atmosphere") in labels
+    assert ("Plovdiv old town", "location") in labels
+    assert all(i["depicts"] != "event" for i in items)
+
+
 def test_media_ranking_prefers_frames_that_fit_a_hero() -> None:
     assert media_mod._cover_fit({"width": 3000, "height": 2000}) == 0
     assert media_mod._cover_fit({"width": 11429, "height": 2400}) == 1  # panorama

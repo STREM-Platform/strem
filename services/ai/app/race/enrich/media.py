@@ -62,6 +62,15 @@ SPORT_TERMS: dict[str, tuple[str, tuple[str, ...]]] = {
     "multisport": ("adventure race", ("adventure race", "kayak", "trek", "multisport")),
 }
 _TAG = re.compile(r"<[^>]+>")
+_WORD = re.compile(r"[^\W\d_]{4,}")
+# Words in race and place names that say nothing about which race or place it is:
+# "Helvellyn Trail race" must not pass as a photo of "Plovdiv Hills Ultra".
+GENERIC = frozenset(
+    "trail ultra marathon half race races running runner skyrace skyrun hills mountain "
+    "mountains peak valley lake river city town park base edition open classic challenge "
+    "series grand fondo tour international national championship festival cross country "
+    "road swim bike ride cycling triathlon ironman hyrox from with".split()
+)
 
 
 def _strip_query(url: str) -> str:
@@ -237,8 +246,19 @@ async def search_media(
                 continue
             seen.add(key)
             ranked.append(item)
+    for item in ranked:
+        named = event_name if item["depicts"] == "event" else place
+        if item["depicts"] in ("event", "location") and not mentions(item, named):
+            item["depicts"] = "atmosphere"  # a search hit is not proof of the race or place
     ranked.sort(key=lambda item: (_rank(item, words), _cover_fit(item)))
     return ranked[:limit]
+
+
+def mentions(item: dict[str, Any], name: str | None) -> bool:
+    """Whether the photo's title or description names the race or place."""
+    wanted = {w for w in _WORD.findall((name or "").lower()) if w not in GENERIC}
+    text = f"{item.get('title') or ''} {item.get('description') or ''}".lower()
+    return bool(wanted) and any(word in text for word in wanted)
 
 
 def shows_sport(item: dict[str, Any], words: tuple[str, ...]) -> bool:

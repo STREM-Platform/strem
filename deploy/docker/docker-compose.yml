@@ -154,7 +154,7 @@ services:
       # Shared rate-limit counters (the gateway fails open if Redis is down).
       REDIS_URL: redis://redis:6379/0
       # AI race-team builds make several model calls; allow up to 3 minutes.
-      UPSTREAM_TIMEOUT_SECONDS: "180"
+      UPSTREAM_TIMEOUT_SECONDS: "300"
     depends_on:
       - auth
       - user
