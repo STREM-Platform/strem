@@ -281,6 +281,21 @@ test("add checkpoints in Race Lab and get a leg-by-leg checkpoint plan", async (
   await expect(page.getByText(/Start → Hut/)).toBeVisible();
   const mission = await (await request.get(`${api}/race-missions/${id}`, { headers })).json();
   expect(mission.event.checkpoints.map((c: { name: string }) => c.name)).toEqual(["Hut", "Pass"]);
+
+  // Race-day mode (mobile#128): the checkpoint plan becomes the live, saved race pack.
+  await page.goto("/race?tab=overview");
+  await page.getByRole("button", { name: "Open race-day mode" }).click();
+  await page.getByRole("button", { name: "Start the race clock" }).click();
+  await expect(page.getByText("Hut", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Arrived at Hut" }).click();
+  await expect(page.getByRole("button", { name: "Arrived at Pass" })).toBeVisible();
+  await expect(page.getByText(/^Ahead$/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Arrived at Pass" })).toBeVisible({ timeout: 30000 });
+  await page.getByRole("button", { name: "Arrived at Pass" }).click();
+  await page.getByRole("button", { name: "Arrived at Finish" }).click();
+  await page.getByRole("button", { name: "Debrief this race" }).click();
+  await expect(page.getByLabel("What happened")).toHaveValue(/Station times \(race-day mode\):\nHut: 0:00/);
 });
 
 test("a past race's stomach trouble shapes the fuel plan", async ({ page, request }) => {
