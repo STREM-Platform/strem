@@ -2,8 +2,7 @@
 
 These let the app record that a user has accepted the current Terms, Privacy
 Policy, and Medical Disclaimer (versioned, append-only) and check whether any
-re-acceptance is required. They power the accept gates at onboarding, before the
-first biomarker entry, and in Profile.
+re-acceptance is required. They power the accept gates at onboarding and in Profile.
 
 The mobile accept-gate UI and in-app disclaimer surfacing are a deliberately
 deferred follow-up slice (strem-mobile#58-mobile); this service exposes the two

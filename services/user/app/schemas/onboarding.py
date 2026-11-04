@@ -15,13 +15,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.schemas.enums import (
-    Modality,
-    NutritionPreference,
     OnboardingStatusValue,
     ScreenName,
     TrainingLevel,
     TransformationGoal,
-    TribePreference,
 )
 
 
@@ -31,10 +28,7 @@ class OnboardingRequest(BaseModel):
     identity_statement: str | None = Field(default=None, max_length=280)
     transformation_goal: TransformationGoal | None = None
     training_level: TrainingLevel | None = None
-    preferred_modalities: list[Modality] | None = None
     weekly_target_days: int | None = Field(default=None, ge=2, le=7)
-    nutrition_preference: NutritionPreference | None = None
-    tribe_preference: TribePreference | None = None
     display_name: str | None = Field(default=None, max_length=40)
     timezone: str | None = None
     screen: ScreenName | None = None

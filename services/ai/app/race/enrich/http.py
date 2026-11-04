@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 
-USER_AGENT = "STREM-RaceOS/1.0 (+https://github.com/STREM-Platform)"
+USER_AGENT = "STREM-RaceOS/1.0 (+https://github.com/baldzhiyski/strem)"
 _CACHE: dict[str, tuple[float, Any]] = {}
 _CACHE_LIMIT = 512
 
