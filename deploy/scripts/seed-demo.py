@@ -385,6 +385,49 @@ def ensure_mission(base_url: str, token: str, today: date) -> tuple[dict[str, An
     return mission, True
 
 
+CHECKPOINTS = [
+    {"name": "Lochen", "km": 12.5, "services": ["water"]},
+    {"name": "Plettenberg", "km": 24.0, "services": ["water", "food", "crew"], "cutoff_minutes": 330},
+    {"name": "Oberhohenberg", "km": 37.5, "services": ["water", "food", "drop_bag"], "cutoff_minutes": 480},
+]
+
+
+def ensure_race_day(base_url: str, token: str, mission: dict[str, Any]) -> str:
+    """Checkpoints plus a strategy layer with the checkpoint plan, so race-day mode
+    (mobile#128) has something to run. Existing checkpoints are kept."""
+    mission_id = mission["id"]
+    note = "kept the existing checkpoints"
+    if not mission["event"].get("checkpoints"):
+        request_json(
+            "PATCH",
+            base_url,
+            f"/race-missions/{mission_id}",
+            {
+                "event": {**mission["event"], "checkpoints": CHECKPOINTS},
+                "correction_reason": "Demo checkpoints for race-day mode",
+            },
+            token=token,
+            headers={"If-Match": f'"{mission["version"]}"'},
+        )
+        note = f"added {len(CHECKPOINTS)} checkpoints"
+    layers = request_json("GET", base_url, f"/race-missions/{mission_id}/layers", token=token)
+    strategy = next((l for l in layers["items"] if l["kind"] == "strategy"), None)
+    has_plan = strategy and any(
+        s["id"] == "checkpoints" for s in strategy["content"].get("sections", [])
+    )
+    if not has_plan:
+        request_json(
+            "POST",
+            base_url,
+            f"/ai/race/{mission_id}/layers/strategy/build",
+            {"use_ai": False},
+            token=token,
+            timeout=120,
+        )
+        note += "; built the strategy checkpoint plan"
+    return note
+
+
 def attach_course(base_url: str, token: str, mission_id: str, course: Path) -> str:
     try:
         request_json("GET", base_url, f"/training/missions/{mission_id}/course", token=token)
@@ -406,6 +449,9 @@ def attach_course(base_url: str, token: str, mission_id: str, course: Path) -> s
 
 
 def main() -> int:
+    # Windows consoles default to a legacy code page; photo titles are not ASCII.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     args = parse_args()
     base_url = args.base_url.rstrip("/")
     today = date.today()
@@ -480,6 +526,7 @@ def main() -> int:
         built = request_json(
             "POST", base_url, f"/ai/race/{mission_id}/build", {}, token=token, timeout=600
         )
+    race_day = ensure_race_day(base_url, token, mission)
     topped = top_up_training(base_url, token, mission_id, today)
     checkins = seed_checkins(base_url, token, today)
 
@@ -492,6 +539,7 @@ def main() -> int:
     print(f"Cover:    {(mission.get('cover') or {}).get('title') or 'none'}")
     print(f"History:  {races} race(s) added | Training: {sessions} session(s) added")
     print(f"Kept current: {topped} plan session(s) logged | {checkins} check-in(s) added")
+    print(f"Race day: {race_day}")
     if course:
         print(f"Course:   {course}")
     if built:

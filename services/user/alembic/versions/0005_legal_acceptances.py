@@ -33,9 +33,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_legal_acceptances_user_id", "legal_acceptances", ["user_id"]
-    )
+    op.create_index("ix_legal_acceptances_user_id", "legal_acceptances", ["user_id"])
 
 
 def downgrade() -> None:

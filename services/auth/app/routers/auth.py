@@ -8,7 +8,7 @@ revokes it; `/auth/me` returns the identity behind the access token.
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Response, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -18,6 +18,7 @@ from app.models import RefreshToken, User
 from app.schemas import (
     AuthIdentity,
     AuthSession,
+    DeleteAccountRequest,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -171,3 +172,22 @@ async def me(
     if user is None:
         raise AppError(401, "unauthorized", "Authentication required.")
     return _identity(user)
+
+
+@router.delete("/auth/account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    body: DeleteAccountRequest,
+    current: CurrentUserDep,
+    session: SessionDep,
+) -> Response:
+    """The last step of account deletion (auth#7): the app has already erased the
+    athlete's data in the other services. Needs the password again."""
+    user = await session.get(User, current.user_id)
+    if user is None:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    if not verify_password(body.password, user.password_hash):
+        raise AppError(401, "invalid_credentials", "The password is incorrect.")
+    await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
+    await session.delete(user)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

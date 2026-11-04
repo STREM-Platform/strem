@@ -12,14 +12,14 @@ from sqlalchemy import select
 from app.deps import BearerTokenDep, CurrentUserDep, SessionDep
 from app.errors import AppError
 from app.race import importer, memory, service, store
-from app.race.ai.client import RaceAI, get_race_ai
+from app.race.ai import budget
 from app.race.clients import RaceServices
 from app.race.enrich.geo import search_places
 from app.race.enrich.media import search_media
 from app.race.plan_import import PlanImportRequest
 
 router = APIRouter(prefix="/v1/ai", tags=["race-os"])
-RaceAIDep = Annotated[RaceAI, Depends(get_race_ai)]
+RaceAIDep = budget.MeteredAIDep
 
 
 def get_race_services(token: BearerTokenDep) -> RaceServices:
@@ -76,7 +76,14 @@ def _no_store(response: Response) -> None:
 @router.get("/race/status")
 async def race_ai_status(ai: RaceAIDep, current: CurrentUserDep) -> dict[str, Any]:
     state = ai.status()
-    return {"available": state.available, "model": state.model, "reason": state.reason}
+    meter = budget.current_meter()
+    return {
+        "available": state.available,
+        "model": state.model,
+        "reason": state.reason,
+        "daily_limit": meter.limit if meter else 0,
+        "left_today": meter.left if meter else None,
+    }
 
 
 @router.post("/race/{mission_id}/build")

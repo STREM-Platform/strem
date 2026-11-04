@@ -72,7 +72,13 @@ def test_what_the_athlete_says_is_remembered_used_corrected_and_forgotten() -> N
             )
             assert purged.status_code == 204
             empty = (await client.get("/v1/ai/race/data", headers=headers)).json()
-            assert empty == {"memory": [], "chat": [], "briefs": [], "proposals": []}
+            assert empty == {
+                "memory": [],
+                "chat": [],
+                "briefs": [],
+                "proposals": [],
+                "ai_usage": [],
+            }
 
     asyncio.run(scenario())
 

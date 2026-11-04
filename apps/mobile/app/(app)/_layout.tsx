@@ -7,7 +7,7 @@ import { RaceProvider } from "@/lib/race/race-context";
 import { useAuth } from "@/lib/session/auth-context";
 
 // Focused flows take the whole screen; everything else lives in the app frame.
-const FULL_SCREEN = ["/mission-setup", "/debrief"];
+const FULL_SCREEN = ["/mission-setup", "/debrief", "/race-day"];
 
 function Frame() {
   const pathname = usePathname();

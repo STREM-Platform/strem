@@ -1,4 +1,5 @@
-"""The race team's own records: conversation, daily briefs, plan proposals.
+"""The race team's own records: conversation, daily briefs, plan proposals, and
+the athlete's daily AI usage (#8).
 
 These are AI outputs and the athlete's messages to the race team — not copies
 of domain data. Each row is owned by one athlete and one mission.
@@ -10,7 +11,17 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Date, DateTime, String, Text, UniqueConstraint, delete, select
+from sqlalchemy import (
+    JSON,
+    Date,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    delete,
+    select,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
@@ -41,6 +52,15 @@ class RaceBrief(Base):
     inputs_digest: Mapped[str] = mapped_column(String(64))
     content: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class AIUsage(Base):
+    """Model calls one athlete made on one UTC day (the daily AI limit, #8)."""
+
+    __tablename__ = "ai_usage"
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    calls: Mapped[int] = mapped_column(Integer)
 
 
 class RaceProposal(Base):
@@ -169,6 +189,9 @@ async def export_user(session: AsyncSession, user_id: uuid.UUID) -> dict[str, An
         .where(RaceProposal.user_id == user_id)
         .order_by(RaceProposal.created_at)
     )
+    usage = await session.scalars(
+        select(AIUsage).where(AIUsage.user_id == user_id).order_by(AIUsage.day)
+    )
     return {
         "chat": [
             {
@@ -199,10 +222,11 @@ async def export_user(session: AsyncSession, user_id: uuid.UUID) -> dict[str, An
             }
             for r in proposals
         ],
+        "ai_usage": [{"day": r.day.isoformat(), "calls": r.calls} for r in usage],
     }
 
 
 async def purge_user(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Delete every race-team record of one athlete."""
-    for model in (RaceChatMessage, RaceBrief, RaceProposal):
+    for model in (RaceChatMessage, RaceBrief, RaceProposal, AIUsage):
         await session.execute(delete(model).where(model.user_id == user_id))
