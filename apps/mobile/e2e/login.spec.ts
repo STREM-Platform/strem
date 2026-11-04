@@ -82,3 +82,37 @@ test("a new athlete goes from the welcome hero through About you into the app", 
   const profile = await (await request.get(`${api}/users/me`, { headers })).json();
   expect(profile).toMatchObject({ display_name: "Mira" });
 });
+
+test("delete my account erases every service's data and frees the email", async ({ page, request }) => {
+  const credentials = { email: `delete-${randomUUID()}@example.com`, password: `Test-${randomUUID()}-only` };
+  const { tokens } = await (await request.post(`${api}/auth/register`, { data: { ...credentials, display_name: "Leaving" } })).json();
+  const headers = { Authorization: `Bearer ${tokens.access_token}` };
+  expect((await request.post(`${api}/users/onboarding`, { headers, data: {
+    display_name: "Leaving", identity_statement: "Synthetic deletion", transformation_goal: "build_endurance",
+    training_level: "intermediate", weekly_target_days: 3, timezone: "Europe/Berlin", screen: "identity",
+  } })).ok()).toBeTruthy();
+  const legal = await (await request.get(`${api}/users/me/legal`, { headers })).json();
+  expect((await request.post(`${api}/users/me/legal/accept`, { headers, data: {
+    acceptances: legal.documents.map((doc: { document_type: string; required_version: string }) => ({ document_type: doc.document_type, version: doc.required_version })),
+  } })).ok()).toBeTruthy();
+  expect((await request.post(`${api}/training/sessions`, { headers, data: { session_type: "running", duration_minutes: 30 } })).status()).toBe(201);
+
+  await page.addInitScript((pair) => {
+    localStorage.setItem("strem.access_token", pair.access_token);
+    localStorage.setItem("strem.refresh_token", pair.refresh_token);
+  }, tokens);
+  await page.goto("/mission-data");
+  await page.getByLabel("Your password", { exact: true }).fill("wrong-password-1");
+  await page.getByLabel("Type DELETE MY ACCOUNT to confirm").fill("DELETE MY ACCOUNT");
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.getByText("The password is incorrect. Nothing was deleted.")).toBeVisible();
+
+  await page.getByLabel("Your password", { exact: true }).fill(credentials.password);
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page).toHaveURL(/\/login/, { timeout: 20000 });
+  expect((await request.post(`${api}/auth/login`, { data: credentials })).status()).toBe(401);
+  const again = await request.post(`${api}/auth/register`, { data: { ...credentials, display_name: "Back" } });
+  expect(again.status()).toBe(201);
+  const fresh = { Authorization: `Bearer ${(await again.json()).tokens.access_token}` };
+  expect((await (await request.get(`${api}/training/sessions`, { headers: fresh })).json()).items).toEqual([]);
+});

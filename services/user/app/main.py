@@ -16,6 +16,7 @@ from app.db import configure
 from app.errors import register_error_handlers
 from app.observability import configure_logging, install_request_logging
 from app.routers import (
+    account,
     athlete,
     legal,
     mission_layers,
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     application.include_router(race_missions.router)
     application.include_router(mission_layers.router)
     application.include_router(race_history.router)
+    application.include_router(account.router)
 
     @application.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:

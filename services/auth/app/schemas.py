@@ -18,6 +18,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class DeleteAccountRequest(BaseModel):
+    password: str
+    confirmation: Literal["DELETE MY ACCOUNT"]
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

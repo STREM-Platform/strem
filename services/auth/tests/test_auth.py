@@ -156,9 +156,7 @@ def test_me_without_token_is_unauthorized() -> None:
 
 def test_me_with_malformed_token_is_unauthorized() -> None:
     async def scenario(client: httpx.AsyncClient) -> None:
-        response = await client.get(
-            "/v1/auth/me", headers={"Authorization": "Bearer not-a-jwt"}
-        )
+        response = await client.get("/v1/auth/me", headers={"Authorization": "Bearer not-a-jwt"})
         assert response.status_code == 401
 
     run(scenario)
