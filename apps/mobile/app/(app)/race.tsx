@@ -12,10 +12,11 @@ import { Meter } from "@/components/ui/charts";
 import { Icon } from "@/components/ui/icon";
 import { Body, Button, EmptyState, ErrorBanner, OriginBadge, Page, Row, Segmented, Skeleton, Title } from "@/components/ui/kit";
 import { C, LAYER_COLOR, ui } from "@/constants/theme";
+import type { MissionCourse } from "@/lib/api/courses";
 import type { LayerKind } from "@/lib/api/race";
 import { todayIn } from "@/lib/race/format";
 import { useRace } from "@/lib/race/race-context";
-import { useBuilder, type BuildKind } from "@/lib/race/use-builder";
+import { BUILD_ORDER, useBuilder, type BuildKind } from "@/lib/race/use-builder";
 
 type Tab = "overview" | "course" | LayerKind;
 const TABS: { value: Tab; label: string; icon: "grid" | "route" | "compass" | "drop" | "pack" | "map"; color?: string }[] = [
@@ -40,7 +41,7 @@ export default function RaceLab() {
     setSeenParam(paramTab);
     if (paramTab) setTab(paramTab);
   }
-  const refresh = useCallback(() => race.refresh(["layers", "brief"], { briefRefresh: true }), [race]);
+  const refresh = useCallback(() => race.refresh(["plan", "layers", "brief"], { briefRefresh: true }), [race]);
   const builder = useBuilder(refresh);
 
   if (!mission) {
@@ -52,6 +53,14 @@ export default function RaceLab() {
   }
   const today = todayIn(mission.event.timezone);
   const missing = (["strategy", "fuel", "gear", "logistics"] as LayerKind[]).filter((k) => !layers[k]);
+  // Pacing, fuel, kit, timings and the plan's climbing all follow the course:
+  // a new, replaced or removed GPX rebuilds everything the race team already built.
+  const courseChanged = (next: MissionCourse | null) => {
+    race.replaceCourse(next);
+    const stale = BUILD_ORDER.filter((kind) => (kind === "plan" ? race.plan : layers[kind]));
+    if (stale.length) void builder.build(mission.id, [...stale]);
+    else void race.refresh(["brief"], { briefRefresh: true });
+  };
 
   return (
     <Page>
@@ -102,7 +111,7 @@ export default function RaceLab() {
         </View>
       ) : null}
       {tab === "course" ? (
-        race.dataLoading && course === undefined ? <Skeleton height={320} radius={22} /> : <CoursePanel missionId={mission.id} saved={course} onChange={(c) => { race.replaceCourse(c); void race.refresh(["brief"], { briefRefresh: true }); }} />
+        race.dataLoading && course === undefined ? <Skeleton height={320} radius={22} /> : <CoursePanel missionId={mission.id} saved={course} onChange={courseChanged} />
       ) : null}
       {tab === "strategy" ? (
         <CheckpointsCard
