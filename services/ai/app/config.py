@@ -34,8 +34,9 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-6.1-sol"
     openai_base_url: str = "https://api.openai.com/v1"
 
-    # The race team as a LangGraph graph (ADR 0010): router, specialists with
-    # retrieval tools, composer and safety guard. Off until the evals (ai#37) pass.
+    # Model calls each athlete may make per UTC day (#8); 0 = no limit. Past it the
+    # race engine carries on and the app says the AI is back tomorrow.
+    ai_daily_limit: int = 60
 
 
 @lru_cache

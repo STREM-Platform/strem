@@ -173,6 +173,19 @@ export const api = {
       auth: true,
     });
   },
+  /**
+   * Delete the account and everything it owns (auth#7). The password is checked
+   * first, then each service erases its data, and the auth account goes last, so
+   * a failure part-way leaves a signed-in account that can simply retry.
+   */
+  async deleteAccount(email: string, password: string): Promise<void> {
+    await request<AuthSession>("/auth/login", { method: "POST", body: { email, password } });
+    const confirm = { confirmation: "DELETE MY ACCOUNT" };
+    await request<void>("/ai/race/data", { method: "DELETE", body: { confirmation: "FORGET MY RACE TEAM DATA" }, auth: true });
+    await request<void>("/training/account", { method: "DELETE", body: confirm, auth: true });
+    await request<void>("/users/me", { method: "DELETE", body: confirm, auth: true });
+    await request<void>("/auth/account", { method: "DELETE", body: { ...confirm, password }, auth: true });
+  },
   getMe(): Promise<AuthIdentity> {
     return request<AuthIdentity>("/auth/me", { auth: true, timeoutMs: SESSION_CHECK_MS });
   },

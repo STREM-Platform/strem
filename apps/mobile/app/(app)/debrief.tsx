@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { View } from "react-native";
 
@@ -12,13 +12,16 @@ import { useRace } from "@/lib/race/race-context";
 
 export default function DebriefScreen() {
   const router = useRouter();
+  // From race-day mode: the finish clock and planned-vs-actual station times.
+  const params = useLocalSearchParams<{ finish?: string; timeline?: string }>();
   const race = useRace();
   const mission = race.mission;
   const [status, setStatus] = useState<"finished" | "dnf" | "dns">("finished");
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(params.finish ?? "");
   const [placement, setPlacement] = useState("");
   const [rating, setRating] = useState<number | null>(null);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(params.timeline ? `Station times (race-day mode):
+${params.timeline}` : "");
   const [lessons, setLessons] = useState("");
   const [raceDay, setRaceDay] = useState<RaceDayData>({});
   const [busy, setBusy] = useState(false);

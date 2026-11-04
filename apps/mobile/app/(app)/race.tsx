@@ -59,6 +59,9 @@ export default function RaceLab() {
         <RaceSwitcher />
         <Title size={38}>Execute race day</Title>
       </View>
+      {layers.strategy ? (
+        <Button label="Race-day mode" icon="stopwatch" kind="secondary" onPress={() => router.push("/(app)/race-day")} style={{ alignSelf: "flex-start" }} accessibilityLabel="Open race-day mode" />
+      ) : null}
       <Segmented scroll options={TABS} value={tab} onChange={setTab} />
       {race.dataError ? <ErrorBanner message={race.dataError} onRetry={() => void race.refresh()} /> : null}
       <BuildPanel states={builder.states} />
