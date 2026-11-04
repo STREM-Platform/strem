@@ -26,7 +26,7 @@ export default function MissionDataScreen() {
     setBusy(true);
     setError(null);
     try {
-      // The race team's memory, chat, briefs and proposals are part of your data (ADR 0010).
+      // The race team's memory, chat, briefs and proposals are part of your data.
       const [missions, team] = await Promise.all([raceMissions.exportData(), memoryApi.exportAll().catch(() => null)]);
       setData({ ...missions, race_team: team });
     } catch {

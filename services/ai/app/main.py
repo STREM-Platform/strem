@@ -1,8 +1,8 @@
 """strem-ai-orchestrator — application entrypoint.
 
-The Race OS race team (strem-docs#26, ADR 0008): the deterministic race engine,
+The Race OS race team (strem-docs#26): the deterministic race engine,
 guarded AI personalization, briefs, chat and adaptation, plus enrichment (places,
-conditions, licensed photos), against strem-shared-contracts/contracts/ai/openapi.yml.
+conditions, licensed photos).
 It owns no race facts and copies no raw logs. `GET /health` stays unversioned.
 """
 
@@ -23,7 +23,7 @@ from app.race.router import router as race_router
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     configure(get_settings().database_url)
     # Prepare the review checkpointer before any request: its Postgres setup builds
-    # indexes CONCURRENTLY, which waits on every open transaction (ADR 0010 phase 4).
+    # indexes CONCURRENTLY, which waits on every open transaction.
     await review.checkpointer()
     yield
 

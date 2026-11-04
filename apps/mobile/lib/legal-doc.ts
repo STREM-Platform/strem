@@ -1,5 +1,5 @@
 /**
- * Parses the bundled policy markdown (a mirror of `strem-docs/legal`) into
+ * Parses the bundled policy markdown (a mirror of `docs/legal`) into
  * blocks the policy viewer can lay out as a document (mobile#139). Pure, so it
  * is unit-tested; it only understands the subset the legal docs use.
  */

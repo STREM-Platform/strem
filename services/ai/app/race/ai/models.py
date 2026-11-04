@@ -1,4 +1,4 @@
-"""The race team's model layer on LangChain (ADR 0010, ai#58 phase 1).
+"""The race team's model layer on LangChain (ai#58 phase 1).
 
 `ChatAnthropic` and `ChatOpenAI` replace the two hand-written clients behind the
 same `RaceAI` contract, so every caller (brief, chat, layers, plan, adapt,

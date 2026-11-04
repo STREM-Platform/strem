@@ -53,7 +53,7 @@ Every layer is built first by the deterministic **race engine** — always avail
 the safety envelope — and then personalized by the **AI race team** from everything
 STREM knows. Guardrails keep AI edits inside safe limits. Every layer, plan, brief and
 proposal says whether the engine, the AI or the athlete made it, and why the AI was
-not used when it was not. Architecture: [ADR 0008](../architecture/adr/0008-race-os-layers-and-race-engine.md).
+not used when it was not.
 
 ## The race team
 

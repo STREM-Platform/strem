@@ -2,9 +2,8 @@
 
 Profiles, onboarding, legal acceptance, the athlete profile, and the Race OS
 records — Race Missions, their Race Lab layers and race history — for STREM
-(strem-docs#26, ADR 0008). It is the source of truth for personalization data that
-is not authentication (see `strem-docs/architecture/service-map.md`). Endpoints
-implement `strem-shared-contracts/contracts/user/openapi.yml`.
+(strem-docs#26). It is the source of truth for personalization data that
+is not authentication.
 
 ## Endpoints
 
@@ -36,7 +35,7 @@ the access token from `strem-auth-service` and scoped to the token's user.
   mission is active.
 - **Deletion is coordinated.** Mission data deletion advances a per-owner
   generation and purges training-service courses and plans through its internal
-  endpoint before erasing missions (ADR 0007). A failed purge keeps the intent;
+  endpoint before erasing missions. A failed purge keeps the intent;
   retry DELETE to finish.
 - **Onboarding** persists per screen and is idempotent; profiles are created on
   first access and fall back to the email local-part for a display name.

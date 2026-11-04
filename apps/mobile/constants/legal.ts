@@ -1,6 +1,6 @@
 /**
  * Legal policy presentation metadata, paired with the bundled canonical text in
- * `constants/legal-docs.ts` (a mirror of `strem-docs/legal/*.md`). The version
+ * `constants/legal-docs.ts` (a mirror of `docs/legal/*.md`). The version
  * shown + accepted is the one in the bundled doc; the backend
  * (`GET /users/me/legal`) is the source of truth for what is *required*.
  */

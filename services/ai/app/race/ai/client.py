@@ -1,6 +1,6 @@
 """The race team's model contract (`RaceAI`) and provider selection.
 
-The models themselves run on LangChain (`models.py`, ADR 0010): Claude or GPT,
+The models themselves run on LangChain (`models.py`): Claude or GPT,
 chosen by `AI_PROVIDER`. Any failure raises `AIUnavailable` with an honest
 reason so callers fall back to the race engine instead of inventing output.
 """

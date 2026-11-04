@@ -1,8 +1,6 @@
 """Profile and onboarding enums, mirroring the user contract and onboarding-flow.md.
 
-Enum string values are identical to
-`strem-shared-contracts/contracts/user/openapi.yml`. Rank and medal enums live
-in `app.schemas.game`.
+Enum string values are part of the user API.
 """
 
 from __future__ import annotations

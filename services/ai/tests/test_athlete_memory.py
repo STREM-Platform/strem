@@ -1,4 +1,4 @@
-"""Athlete memory (ADR 0010, ai#59): what the athlete says is kept, used, editable
+"""Athlete memory (ai#59): what the athlete says is kept, used, editable
 and deletable, and the race team's records join export and purge."""
 
 from __future__ import annotations

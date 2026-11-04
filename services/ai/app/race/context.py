@@ -263,7 +263,7 @@ def _line(label: str, value: Any) -> str | None:
 def core_lines(ctx: RaceContext) -> list[str]:
     """The always-on part of the context: the race, the athlete's intake and profile
     (goal, constraints, injuries, diet). The race team graph sends only this and
-    fetches the rest with tools (ADR 0010)."""
+    fetches the rest with tools."""
     event, goal, prep = ctx.event, ctx.goal, ctx.prep
     out: list[str] = [f"TODAY: {ctx.today.isoformat()} ({ctx.days_to_race} days to race day)"]
     out.append("\n## RACE MISSION [athlete]")

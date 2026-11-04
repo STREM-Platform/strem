@@ -3,13 +3,9 @@
 Authentication and session management for STREM — account identity, credential
 verification, and the JWT / refresh-token lifecycle.
 
-Implements `strem-shared-contracts/contracts/auth/openapi.yml`. Auth owns account
+Implements the auth API (OpenAPI at `/docs`). Auth owns account
 identity and the token lifecycle only; profile, onboarding and Race OS records
-belong to `strem-user-service` (see `strem-docs/architecture/service-map.md`).
-
-See `strem-docs/architecture/adr/0002-use-fastapi-for-services.md` for the
-framework decision and `strem-docs/architecture/security-model.md` for the
-security baseline.
+belong to the user service.
 
 ## Endpoints
 

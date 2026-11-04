@@ -1,4 +1,4 @@
-/** Generated mirror of strem-docs/legal. Do not edit policy text here. */
+/** Generated mirror of docs/legal. Do not edit policy text here. */
 export const LEGAL_DOCS = {
   "terms": {
     "version": "2026-06-20",

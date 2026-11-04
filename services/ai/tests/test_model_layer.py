@@ -1,4 +1,4 @@
-"""The race team's LangChain model layer (ADR 0010, ai#58 phase 1).
+"""The race team's LangChain model layer (ai#58 phase 1).
 
 No network: Claude and GPT run against mock HTTP transports, so these tests pin
 what goes over the wire (system context, cache control, structured output,

@@ -73,10 +73,9 @@ directory, so the backend can compare what a user has accepted against what is
 required without parsing Markdown:
 
 - **Source of truth for required versions:**
-  `strem-user-service/app/legal.py` (`REQUIRED_VERSIONS`). The values there
+  `services/user/app/legal.py` (`REQUIRED_VERSIONS`). The values there
   **must** match the `Version:` headers in these files. When you bump a header
-  here, bump the constant there in the same change, and the contract response in
-  `strem-shared-contracts/contracts/user/openapi.yml` if the shape changes.
+  here, bump the constant there in the same change.
 
 - **Recording acceptance:** `POST /users/me/legal/accept` records one or more
   acceptances (`document_type` + `version`). The service rejects a version that
@@ -115,11 +114,9 @@ another consent gate.
 1. Edit the relevant `*.md` file. If the change is **material**, bump `Version` and
    `Effective` (and `Last-updated`); otherwise bump only `Last-updated`.
 2. If `Version` changed, update `REQUIRED_VERSIONS` in
-   `strem-user-service/app/legal.py` to match, and run that service's test suite
+   `services/user/app/legal.py` to match, and run that service's test suite
    (the registry has a test asserting the versions are well-formed dates).
-3. If the API response shape changed, update
-   `strem-shared-contracts/contracts/user/openapi.yml` and validate contracts.
-4. Update the mobile accept-gate copy/version handling in the `#58`-mobile
+3. Update the mobile accept-gate copy/version handling in the `#58`-mobile
    follow-up slice.
 
 Keeping the version string in exactly these four places aligned is the whole

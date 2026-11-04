@@ -1,4 +1,4 @@
-"""Plan changes pause for the athlete (ADR 0010, ai#58 phase 4).
+"""Plan changes pause for the athlete (ai#58 phase 4).
 
     draft → review (interrupt) ─ accept  → apply
                                ├ adjust  → draft (with the athlete's note) → review …

@@ -1,7 +1,7 @@
 """ORM models for accounts and refresh tokens.
 
 `User.id` is the stable `user_id` (UUID) that every other STREM service keys
-user data on (see strem-shared-contracts/contracts/auth/openapi.yml). Refresh
+user data on. Refresh
 tokens are stored as a hash only — the opaque token itself is never persisted.
 """
 

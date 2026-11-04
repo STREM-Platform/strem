@@ -1,9 +1,9 @@
 # strem-ai-orchestrator
 
-The Race OS **race team** for STREM (strem-docs#26, ADR 0008): it builds every
+The Race OS **race team** for STREM (strem-docs#26): it builds every
 layer of a Race Mission — training plan, fuel, gear, logistics and race strategy —
 writes the daily brief, answers questions and proposes adaptations. Implements the
-race endpoints in `strem-shared-contracts/contracts/ai/openapi.yml`.
+race endpoints (OpenAPI at `/docs`).
 
 It owns no race facts and copies **no raw logs**. It reads the mission, course, plan,
 progress, sessions, check-ins, race history and athlete profile through the user and

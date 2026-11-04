@@ -2,8 +2,7 @@
 
 Training evidence for STREM's Race OS (strem-docs#26): logged and imported
 sessions, connected sources (Strava, Whoop), private mission courses, mission
-training plans, progress and daily check-ins. Implements
-`strem-shared-contracts/contracts/training/openapi.yml`.
+training plans, progress and daily check-ins (OpenAPI at `/docs`).
 
 Strength-set logging, workout finishing, personal records and event publishing
 were retired in strem-docs#28; their tables stay (no drop migration).
@@ -103,9 +102,7 @@ no-store. `GET /v1/training/courses/data` exports models plus original GPX; miss
 export includes it too. Mission deletion uses a durable user intent, a dedicated
 internal purge authorization and a training owner-generation fence. Late uploads
 cannot recreate erased data; purge retries cannot erase newer courses. Do not
-expose the internal purge route via the gateway. See the full protocol/rollout in
-`strem-docs/architecture/adr/0007-private-mission-courses.md`. No production DB or
-infrastructure is changed by this increment. Async status remains future work.
+expose the internal purge route via the gateway.
 
 ## Run locally
 

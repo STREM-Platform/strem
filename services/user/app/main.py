@@ -2,7 +2,7 @@
 
 Owns user profiles, onboarding and legal acceptance, the athlete profile, and
 the Race OS records: Race Missions, their Race Lab layers and race history
-(strem-docs#26). Endpoints implement strem-shared-contracts/contracts/user/openapi.yml.
+(strem-docs#26). OpenAPI at `/docs`.
 `GET /health` stays unversioned for probes.
 """
 

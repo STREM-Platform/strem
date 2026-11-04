@@ -1,7 +1,6 @@
 """Runtime configuration loaded from the environment.
 
-Mirrors `.env.example`. See `strem-shared-contracts/contracts/auth/openapi.yml`
-for the token lifecycle these values control.
+Mirrors `.env.example`; these values control the token lifecycle.
 """
 
 from functools import lru_cache

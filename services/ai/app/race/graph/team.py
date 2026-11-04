@@ -1,4 +1,4 @@
-"""The race team as a LangGraph graph (ADR 0010, ai#58 phase 2).
+"""The race team as a LangGraph graph (ai#58 phase 2).
 
     question → route → specialist × 1-2 (in parallel, each with retrieval tools)
              → compose → guard → answer
