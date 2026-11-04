@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
 
     # Base URL of strem-user-service: mission ownership and the deletion-fence
-    # generation for courses and plans (ADR 0007).
+    # generation for courses and plans.
     user_service_base_url: str = "http://localhost:8002/v1"
 
     # Connected-source ingestion (A3). Provider OAuth tokens are stored encrypted

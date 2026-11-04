@@ -1,4 +1,4 @@
-"""Athlete memory (ADR 0010, ai#59): what the athlete tells the race team, kept.
+"""Athlete memory (ai#59): what the athlete tells the race team, kept.
 
 After each chat turn an extractor turns durable statements ("my left knee hurts
 on long descents", "I can only train before work") into memory items with their

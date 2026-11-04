@@ -51,7 +51,7 @@ class LegalAcceptance(Base):
     inserts a new row rather than mutating the old one, so the full history of what
     a user agreed to (and when) is preserved for audit. `document_type` is one of
     the keys in `app.legal.DocumentType`; `version` matches the `Version:` header
-    of the corresponding policy in strem-docs/legal and the value in
+    of the corresponding policy in docs/legal and the value in
     `app.legal.REQUIRED_VERSIONS`.
     """
 

@@ -1,5 +1,5 @@
 """Race-team chat evals: the legacy single call against the LangGraph race team
-(ADR 0010 section 5, ai#37).
+(ai#37).
 
 Each scenario is a synthetic athlete, one question and deterministic checks on
 the answer: facts it must use (every group needs at least one hit), things it
@@ -175,7 +175,7 @@ EASE = [
 SCENARIOS: list[Scenario] = [
     Scenario(
         id="knee_memory",
-        about="A knee issue mentioned once in chat two months ago (ADR 0010).",
+        about="A knee issue mentioned once in chat two months ago.",
         question=(
             "I'm thinking of doing 6 x 400 m steep downhill repeats on Saturday to toughen "
             "my quads. Good idea?"
@@ -190,7 +190,7 @@ SCENARIOS: list[Scenario] = [
     ),
     Scenario(
         id="poor_sleep_key_session",
-        about="Three poor nights before a key session (ADR 0010).",
+        about="Three poor nights before a key session.",
         question="Tomorrow is my hill interval session. Anything I should change?",
         build=lambda: _with_plan(
             _context(
@@ -216,7 +216,7 @@ SCENARIOS: list[Scenario] = [
     ),
     Scenario(
         id="gi_race_history",
-        about="GI trouble in a past race (ADR 0010).",
+        about="GI trouble in a past race.",
         question="What should my race-day fueling look like?",
         build=lambda: _context(
             races=[
@@ -244,7 +244,7 @@ SCENARIOS: list[Scenario] = [
     ),
     Scenario(
         id="b_race_in_a_build",
-        about="A B race inside an A-race build (ADR 0010).",
+        about="A B race inside an A-race build.",
         question="I'm racing the Synthetic Hill 25K soon. Should I go all-out?",
         build=lambda: _with_plan(
             _context(

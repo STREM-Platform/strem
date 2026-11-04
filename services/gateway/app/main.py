@@ -2,7 +2,7 @@
 
 The mobile-facing entrypoint: routes `/v1` requests to the owning backend service
 and hands off the caller's bearer token. It owns no domain data, no database, and
-no business logic (ADR 0006). `GET /health` stays unversioned for probes.
+no business logic. `GET /health` stays unversioned for probes.
 
 The edge is hardened here: a request-size cap, per-IP and per-token rate limiting
 (Redis-backed, shared across instances; in-memory fallback), and security

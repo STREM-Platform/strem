@@ -64,7 +64,7 @@ export interface Proposal {
   category: string;
   summary: string;
   safety_note?: string | null;
-  /** What the athlete asked for when adjusting, oldest first (ADR 0010 phase 4). */
+  /** What the athlete asked for when adjusting, oldest first. */
   notes?: string[];
   changes: {
     session_id: string;

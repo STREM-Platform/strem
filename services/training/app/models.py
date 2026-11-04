@@ -38,7 +38,9 @@ class TrainingSession(Base):
     elevation_m: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Provenance (A3): "manual" for in-app logs, else the connected source.
-    source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(20), default="manual", server_default="manual", nullable=False
+    )
     # The provider's activity id, so re-syncs are idempotent (null for manual).
     external_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Race OS evidence fields (docs#26): what the source recorded, never inferred.

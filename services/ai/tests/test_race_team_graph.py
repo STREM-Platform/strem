@@ -1,4 +1,4 @@
-"""The race team as a LangGraph graph (ADR 0010, ai#58 phase 2).
+"""The race team as a LangGraph graph (ai#58 phase 2).
 
 A scripted chat model stands in for the provider, so these tests pin the graph:
 routing, specialists fetching data with tools instead of a capped context

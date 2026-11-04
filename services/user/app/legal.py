@@ -4,9 +4,9 @@ policy versions, and the read/write helpers behind the legal router.
 The required version for each document lives here in code — not by parsing the
 strem-docs Markdown — so the service can compare what a user accepted against what
 is required cheaply and deterministically. The values in `REQUIRED_VERSIONS` MUST
-match the `Version:` headers of the policies in `strem-docs/legal/*.md`; when a
+match the `Version:` headers of the policies in `docs/legal/*.md`; when a
 policy's version is bumped there, bump it here in the same change (see
-`strem-docs/legal/README.md`).
+`docs/legal/README.md`).
 
 Acceptance is append-only: recording an acceptance always inserts a new row, so the
 full history of what each user agreed to and when is preserved for audit.
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 class DocumentType(StrEnum):
     """The legal documents a user must accept. Values are the canonical keys used
     across the backend, the OpenAPI contract, and the mobile accept gates, and map
-    to the files in `strem-docs/legal/`.
+    to the files in `docs/legal/`.
     """
 
     TERMS = "terms"
@@ -41,7 +41,7 @@ class DocumentType(StrEnum):
 
 
 # Currently required version per document. MUST match the `Version:` headers in
-# strem-docs/legal/{terms-of-service,privacy-policy,medical-disclaimer}.md.
+# docs/legal/{terms-of-service,privacy-policy,medical-disclaimer}.md.
 REQUIRED_VERSIONS: dict[DocumentType, str] = {
     DocumentType.TERMS: "2026-06-20",
     DocumentType.PRIVACY: "2026-06-20",

@@ -2,7 +2,7 @@
 
 React Native + Expo app for STREM's Race OS: name a race or challenge, and the race
 team plans training, fueling, gear, logistics and strategy for it
-(`../strem-docs/product/race-os.md`).
+(`../../docs/product.md`).
 
 ## Navigation
 

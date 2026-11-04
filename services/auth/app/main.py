@@ -1,7 +1,6 @@
 """strem-auth-service — application entrypoint.
 
-Implements the authentication contract in
-strem-shared-contracts/contracts/auth/openapi.yml: email + password accounts
+Authentication: email + password accounts
 with a JWT access token and a rotating, server-side refresh token. The database
 engine is configured on startup; `GET /health` stays unversioned for probes.
 """

@@ -49,7 +49,7 @@ async def load_context(
     user_id: uuid.UUID | None = None,
 ) -> RaceContext:
     """The athlete's context from the owning services; with a session and user it also
-    carries their memory, so every AI path reads the same core context (ADR 0010)."""
+    carries their memory, so every AI path reads the same core context."""
     ctx = await assemble(services, mission_id, conditions=conditions_for)
     if db is not None and user_id is not None:
         ctx.memories = [memory.memory_out(m) for m in await memory.active(db, user_id)]
@@ -66,7 +66,7 @@ async def build_layers(
     *,
     use_ai: bool = True,
 ) -> list[dict[str, Any]]:
-    """Race Lab and plan builds through the build graph (ADR 0010 phase 5)."""
+    """Race Lab and plan builds through the build graph."""
     ctx = await load_context(services, mission_id, db, user_id)
     return await build.run_builds(services, ai, ctx, kinds, use_ai=use_ai, context_text=render(ctx))
 

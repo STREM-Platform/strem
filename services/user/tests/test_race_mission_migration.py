@@ -1,4 +1,5 @@
-"""Isolated additive migration and restart persistence; never points at .env DB."""
+"""The migration builds the schema, data survives a restart, and it downgrades cleanly;
+never points at the .env database."""
 
 import asyncio
 import os
@@ -14,7 +15,7 @@ from app.race_missions import MissionRecord, create
 from tests.test_race_missions import PAYLOAD
 
 
-def test_additive_migration_restart_and_disposable_downgrade(tmp_path: Path) -> None:
+def test_migration_restart_and_disposable_downgrade(tmp_path: Path) -> None:
     db_url = f"sqlite+aiosqlite:///{(tmp_path / 'mission-migrations.db').as_posix()}"
     env = {**os.environ, "DATABASE_URL": db_url}
 
@@ -50,26 +51,13 @@ def test_additive_migration_restart_and_disposable_downgrade(tmp_path: Path) -> 
 
     asyncio.run(read_after_restart())
     # Disposable test database only. A populated real DB must NOT be downgraded.
-    migrate(
-        "-x",
-        "allow_course_data_loss=true",
-        "-x",
-        "allow_race_os_data_loss=true",
-        "downgrade",
-        "0007_biomarkers",
-    )
+    migrate("downgrade", "base")
 
     async def check_tables() -> None:
         engine = create_async_engine(db_url)
         async with engine.connect() as conn:
             tables = await conn.run_sync(lambda sync: inspect(sync).get_table_names())
-            assert (
-                "race_missions" not in tables
-                and "mission_layers" not in tables
-                and "race_results" not in tables
-                and "user_profiles" in tables
-                and "biomarkers" in tables
-            )
+            assert set(tables) <= {"alembic_version"}
         await engine.dispose()
 
     asyncio.run(check_tables())

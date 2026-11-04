@@ -1,6 +1,6 @@
 """strem-training-service — application entrypoint.
 
-Implements strem-shared-contracts/contracts/training/openapi.yml: logged and
+Implements the training API (OpenAPI at `/docs`): logged and
 imported training sessions, connected sources (Strava, Whoop), private mission
 courses, Race OS training plans, progress and daily check-ins (strem-docs#26).
 `GET /health` stays unversioned for probes.

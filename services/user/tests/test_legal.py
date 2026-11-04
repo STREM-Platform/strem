@@ -28,7 +28,7 @@ def _by_type(body: Any) -> dict[str, dict[str, Any]]:
 
 def test_required_versions_are_well_formed_dates() -> None:
     # The registry must hold valid YYYY-MM-DD version strings, matching the
-    # `Version:` headers in strem-docs/legal.
+    # `Version:` headers in docs/legal.
     assert set(REQUIRED_VERSIONS) == set(DocumentType)
     for version in REQUIRED_VERSIONS.values():
         assert is_valid_version_format(version)

@@ -1,4 +1,4 @@
-"""Retrieval tools for the race team graph (ADR 0010, ai#58 phase 2).
+"""Retrieval tools for the race team graph (ai#58 phase 2).
 
 Instead of one block with fixed caps (12 sessions, 7 check-ins, 12 races), a
 specialist asks for what the question needs. Tools read the RaceContext that

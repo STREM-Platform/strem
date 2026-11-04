@@ -1,4 +1,4 @@
-"""Race Lab and plan builds as LangGraph subgraphs (ADR 0010, ai#58 phase 5).
+"""Race Lab and plan builds as LangGraph subgraphs (ai#58 phase 5).
 
 Each layer is one subgraph: the engine drafts, the AI personalises inside the
 engine's guardrails, and the owning service validates and stores the result.

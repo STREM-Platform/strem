@@ -2,8 +2,7 @@
 
 STREM's mobile-facing entrypoint — routes `/v1` requests to the owning backend
 service and hands off the caller's bearer token. It **owns no domain data, no
-database, and no business logic** (see
-`strem-docs/architecture/adr/0006-authorize-strem-api-gateway.md`).
+database, and no business logic**.
 
 `strem-mobile` targets a single configurable base URL (this gateway) instead of
 per-service ports. Nutrition and community routes were retired with the pre-pivot

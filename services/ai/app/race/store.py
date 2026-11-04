@@ -175,7 +175,7 @@ async def proposals(
 
 
 async def export_user(session: AsyncSession, user_id: uuid.UUID) -> dict[str, Any]:
-    """Everything the race team holds about one athlete (ADR 0010: joins export)."""
+    """Everything the race team holds about one athlete (joins export)."""
     chats = await session.scalars(
         select(RaceChatMessage)
         .where(RaceChatMessage.user_id == user_id)

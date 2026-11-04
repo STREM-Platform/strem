@@ -1,4 +1,4 @@
-"""Plan changes pause for the athlete (ADR 0010, ai#58 phase 4): the review graph
+"""Plan changes pause for the athlete (ai#58 phase 4): the review graph
 stops at an interrupt; accept applies, adjust redrafts with the athlete's words
 and pauses again, dismiss closes. Nothing touches the plan before accept."""
 

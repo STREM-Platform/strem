@@ -1,4 +1,4 @@
-"""Race Lab and plan builds as subgraphs (ADR 0010, ai#58 phase 5): engine draft →
+"""Race Lab and plan builds as subgraphs (ai#58 phase 5): engine draft →
 AI personalise → owner validation, the plan before the other layers, and every AI
 path reading the same core context, including what the athlete told the team."""
 
