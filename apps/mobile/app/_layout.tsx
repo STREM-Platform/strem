@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, type ReactNode } from "react";
 
 import { ErrorBoundary } from "@/components/error-boundary";
+import { SessionUnavailable } from "@/components/session-unavailable";
 import { FontAssets } from "@/constants/theme";
 import { installGlobalErrorHandler } from "@/lib/monitoring";
 import { AuthProvider, useAuth } from "@/lib/session/auth-context";
@@ -17,6 +18,7 @@ installGlobalErrorHandler();
  * - signed in, legal not accepted        → `(legal)` (accept gate, before all else)
  * - signed in, onboarding incomplete     → `(onboarding)`
  * - signed in, onboarding complete       → `(app)`
+ * - STREM unreachable while restoring     → retry screen over everything (#2)
  *
  * While loading (restoring the session, or fetching onboarding/legal status) the
  * current route — the splash — is shown and no redirect happens. The `(legal)`
@@ -29,7 +31,7 @@ function RouteGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (phase === "loading") {
+    if (phase === "loading" || phase === "unavailable") {
       return;
     }
     const group = segments[0];
@@ -65,7 +67,12 @@ function RouteGuard({ children }: { children: ReactNode }) {
     }
   }, [phase, onboardingCompleted, legalAccepted, segments, router]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {phase === "unavailable" ? <SessionUnavailable /> : null}
+    </>
+  );
 }
 
 export default function RootLayout() {

@@ -3,7 +3,7 @@
  *
  * Wraps `fetch` with a configurable base URL, attaches the bearer access token,
  * and transparently refreshes it on a `401` (retrying the request once). If the
- * refresh fails, stored tokens are cleared and `SessionExpiredError` is thrown so
+ * refresh token is refused, stored tokens are cleared and `SessionExpiredError` is thrown so
  * the session layer can sign the user out.
  */
 
@@ -25,6 +25,9 @@ import type {
   TokenPair,
   UserProfile,
 } from "./types";
+
+// Session restore and status checks fail fast instead of leaving a spinner.
+const SESSION_CHECK_MS = 15000;
 
 export class ApiError extends Error {
   readonly code: string;
@@ -65,10 +68,27 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, body);
 }
 
-async function refreshAccessToken(signal: AbortSignal): Promise<string> {
+// Refresh tokens rotate: each refresh revokes the token it presents, so two
+// refreshes with the same token would sign the athlete out. Concurrent 401s share
+// one refresh, and a pair another tab already rotated is used instead of refreshing.
+let pendingRefresh: Promise<string> | null = null;
+
+function refreshAccessToken(staleAccessToken: string | undefined, signal: AbortSignal): Promise<string> {
+  if (!pendingRefresh) {
+    pendingRefresh = rotateTokens(staleAccessToken, signal).finally(() => {
+      pendingRefresh = null;
+    });
+  }
+  return pendingRefresh;
+}
+
+async function rotateTokens(staleAccessToken: string | undefined, signal: AbortSignal): Promise<string> {
   const tokens = await getStoredTokens();
   if (!tokens) {
     throw new SessionExpiredError();
+  }
+  if (staleAccessToken && tokens.accessToken !== staleAccessToken) {
+    return tokens.accessToken;
   }
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
@@ -76,9 +96,17 @@ async function refreshAccessToken(signal: AbortSignal): Promise<string> {
     body: JSON.stringify({ refresh_token: tokens.refreshToken }),
     signal,
   });
-  if (!response.ok) {
+  if (response.status === 401 || response.status === 403) {
+    const latest = await getStoredTokens();
+    if (latest && latest.refreshToken !== tokens.refreshToken) {
+      return latest.accessToken; // another tab rotated the pair first
+    }
     await clearTokens();
     throw new SessionExpiredError();
+  }
+  if (!response.ok) {
+    // 5xx, 429 or a gateway that is down: the session may still be valid, keep it.
+    throw await parseError(response);
   }
   const pair = (await response.json()) as TokenPair;
   await storeTokens(pair);
@@ -115,7 +143,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     let response = await send(path, options, controller.signal, accessToken);
 
     if (response.status === 401 && options.auth) {
-      const refreshed = await refreshAccessToken(controller.signal);
+      const refreshed = await refreshAccessToken(accessToken, controller.signal);
       response = await send(path, options, controller.signal, refreshed);
     }
 
@@ -159,10 +187,10 @@ export const api = {
     await request<void>("/auth/account", { method: "DELETE", body: { ...confirm, password }, auth: true });
   },
   getMe(): Promise<AuthIdentity> {
-    return request<AuthIdentity>("/auth/me", { auth: true });
+    return request<AuthIdentity>("/auth/me", { auth: true, timeoutMs: SESSION_CHECK_MS });
   },
   getOnboardingStatus(): Promise<OnboardingStatus> {
-    return request<OnboardingStatus>("/users/onboarding/status", { auth: true });
+    return request<OnboardingStatus>("/users/onboarding/status", { auth: true, timeoutMs: SESSION_CHECK_MS });
   },
   submitOnboarding(payload: OnboardingSubmission): Promise<OnboardingStatus> {
     return request<OnboardingStatus>("/users/onboarding", {
@@ -175,7 +203,7 @@ export const api = {
     return request<UserProfile>("/users/me", { auth: true });
   },
   getLegalStatus(): Promise<LegalStatus> {
-    return request<LegalStatus>("/users/me/legal", { auth: true });
+    return request<LegalStatus>("/users/me/legal", { auth: true, timeoutMs: SESSION_CHECK_MS });
   },
   acceptLegal(acceptances: LegalAcceptanceInput[]): Promise<LegalStatus> {
     return request<LegalStatus>("/users/me/legal/accept", {
