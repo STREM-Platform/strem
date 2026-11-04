@@ -229,28 +229,31 @@ export default function TeamScreen() {
           </View>
         ) : null}
       </ScrollView>
-      <View style={[styles.composer, { bottom: wide ? 16 : 96 + Math.max(insets.bottom, 10), left: wide ? 32 : 12, right: wide ? 32 : 12 }]}>
-        <TextInput
-          accessibilityLabel="Message your race team"
-          value={input}
-          onChangeText={setInput}
-          placeholder={offline ? "AI race team offline" : "Ask about training, fueling, pacing, gear…"}
-          placeholderTextColor={C.textDim}
-          editable={!offline}
-          multiline
-          style={styles.input}
-          onSubmitEditing={() => void send(input)}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Send"
-          accessibilityState={{ disabled: !input.trim() || Boolean(offline) || sending }}
-          disabled={!input.trim() || Boolean(offline) || sending}
-          onPress={() => void send(input)}
-          style={({ pressed }) => [styles.send, (!input.trim() || offline) && { backgroundColor: C.surface3 }, pressed && { opacity: 0.8 }]}
-        >
-          <Icon name="send" size={20} color={input.trim() && !offline ? C.ink : C.textDim} sw={2.4} />
-        </Pressable>
+      <View style={[styles.dock, wide ? styles.dockWide : { bottom: 96 + Math.max(insets.bottom, 10), paddingHorizontal: 12 }]}>
+        <View style={styles.composer}>
+          <TextInput
+            accessibilityLabel="Message your race team"
+            value={input}
+            onChangeText={setInput}
+            placeholder={offline ? "AI race team offline" : "Ask about training, fueling, pacing, gear…"}
+            placeholderTextColor={C.textDim}
+            editable={!offline}
+            multiline
+            numberOfLines={1}
+            style={styles.input}
+            onSubmitEditing={() => void send(input)}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Send"
+            accessibilityState={{ disabled: !input.trim() || Boolean(offline) || sending }}
+            disabled={!input.trim() || Boolean(offline) || sending}
+            onPress={() => void send(input)}
+            style={({ pressed }) => [styles.send, (!input.trim() || offline) && { backgroundColor: C.surface3 }, pressed && { opacity: 0.8 }]}
+          >
+            <Icon name="send" size={20} color={input.trim() && !offline ? C.ink : C.textDim} sw={2.4} />
+          </Pressable>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -330,7 +333,11 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: "92%", padding: 14, borderRadius: R.lg },
   user: { alignSelf: "flex-end", backgroundColor: C.white, borderBottomRightRadius: 6 },
   assistant: { alignSelf: "flex-start", backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderBottomLeftRadius: 6 },
-  composer: { position: "absolute", flexDirection: "row", alignItems: "flex-end", gap: 6, padding: 6, paddingLeft: 16, borderRadius: 26, backgroundColor: C.surface2, borderWidth: 1, borderColor: C.lineStrong, maxWidth: 900, alignSelf: "center" },
+  // The composer sits in the content's centred column (900 wide less its 32 px gutters);
+  // on wide screens a solid strip keeps the cards from showing around it.
+  dock: { position: "absolute", left: 0, right: 0, alignItems: "center" },
+  dockWide: { bottom: 0, paddingTop: 12, paddingBottom: 16, paddingHorizontal: 32, backgroundColor: C.ink, borderTopWidth: 1, borderTopColor: C.line },
+  composer: { width: "100%", maxWidth: 836, flexDirection: "row", alignItems: "flex-end", gap: 6, padding: 6, paddingLeft: 16, borderRadius: 26, backgroundColor: C.surface2, borderWidth: 1, borderColor: C.lineStrong },
   send: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: C.white },
   input: { flex: 1, minHeight: 44, maxHeight: 120, paddingVertical: 11, color: C.text, ...ui(15, 500) },
 });
