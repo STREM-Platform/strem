@@ -7,6 +7,7 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Row } from "@/components/ui/kit";
 import { C, R, ui } from "@/constants/theme";
 import type { TrainingLevel } from "@/lib/api/types";
+import { useAuth } from "@/lib/session/auth-context";
 import { useOnboardingStep } from "@/lib/use-onboarding-step";
 
 const zone = (() => {
@@ -28,7 +29,9 @@ const WHYS = ["To find out what I'm capable of", "Because the mountains make me 
 /** "About you" (redesigned in mobile#142): the few facts every plan needs, plus the athlete's own why. */
 export default function AboutYouScreen() {
   const { submit, submitting, error } = useOnboardingStep("identity");
-  const [name, setName] = useState("");
+  // The name typed at registration, so it isn't asked twice (#4).
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.display_name ?? "");
   const [level, setLevel] = useState<TrainingLevel | null>(null);
   const [days, setDays] = useState<number | null>(null);
   const [why, setWhy] = useState("");

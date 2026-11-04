@@ -1,5 +1,6 @@
 /** Mission setup form state, validation (mirrors the user-service rules) and payload. */
 
+import type { TrainingLevel, UserProfile } from "@/lib/api/types";
 import type {
   CoverMedia,
   MissionInput,
@@ -126,6 +127,21 @@ function optionalNumber(value: string, min: number, max: number, integer: boolea
 }
 
 /** Validate one step's fields (or all when step is undefined). */
+const EXPERIENCE_FROM_LEVEL: Record<TrainingLevel, NonNullable<Preparation["experience"]>> = {
+  beginner: "new",
+  intermediate: "some",
+  advanced: "experienced",
+};
+
+/** Start a new race's "starting point" from what the athlete said in About you (#4), never over their own edits. */
+export function withBaseline(form: MissionForm, profile: Pick<UserProfile, "training_level" | "weekly_target_days">): MissionForm {
+  return {
+    ...form,
+    experience: form.experience ?? (profile.training_level ? EXPERIENCE_FROM_LEVEL[profile.training_level] : null),
+    days: form.days || (profile.weekly_target_days ? String(profile.weekly_target_days) : ""),
+  };
+}
+
 export function validate(form: MissionForm, step?: "race" | "demands" | "goal" | "prep"): FormErrors {
   const errors: FormErrors = {};
   const all = step === undefined;
