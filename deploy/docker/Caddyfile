@@ -1,0 +1,7 @@
+# HTTPS for the API (#21). Caddy gets and renews the certificate itself once the
+# domain's DNS points at this server. It replaces any client-sent
+# X-Forwarded-For with the real client IP, which the gateway rate-limits on.
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy gateway:8000
+}

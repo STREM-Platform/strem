@@ -1,0 +1,104 @@
+name: Deploy
+
+# Every green CI run on main ships itself (#21): build the five service images
+# for ARM (Oracle Ampere / Hetzner CAX), push them to GHCR, then on the server
+# pull, migrate every database and restart. The deploy job waits until the
+# DEPLOY_HOST repository variable exists, so this is harmless before setup.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit to deploy (empty = latest main); an older one rolls back"
+        required: false
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  SHA: ${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  images:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        service: [gateway, auth, user, training, ai]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/strem-${{ matrix.service }}:${{ env.SHA }}
+            ghcr.io/${{ github.repository_owner }}/strem-${{ matrix.service }}:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    needs: images
+    if: vars.DEPLOY_HOST != ''
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      HOST: ${{ vars.DEPLOY_HOST }}
+      USER_AT: ${{ vars.DEPLOY_USER || 'ubuntu' }}@${{ vars.DEPLOY_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - name: SSH key
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+      - name: Copy the stack definition
+        run: |
+          scp -r deploy/docker/docker-compose.yml deploy/docker/docker-compose.prod.yml \
+            deploy/docker/Caddyfile deploy/docker/postgres deploy/scripts/backup-db.sh \
+            "$USER_AT:/srv/strem/"
+      - name: Pull, migrate, restart
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh "$USER_AT" "TAG=$SHA GHCR_USER=${{ github.actor }} GHCR_TOKEN=$GHCR_TOKEN bash -s" <<'EOF'
+          set -euo pipefail
+          cd /srv/strem
+          chmod +x backup-db.sh
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+          export TAG
+          compose() { docker compose -f docker-compose.yml -f docker-compose.prod.yml "$@"; }
+          compose pull --quiet
+          docker logout ghcr.io
+          compose up -d --wait postgres redis
+          for service in auth user training ai; do
+            compose run --rm --no-deps "$service" alembic upgrade head
+          done
+          compose up -d --remove-orphans --wait
+          docker image prune -f
+          EOF
+      - name: Smoke check
+        run: |
+          domain=$(ssh "$USER_AT" "grep '^API_DOMAIN=' /srv/strem/.env | cut -d= -f2")
+          curl --fail --retry 10 --retry-delay 6 --retry-all-errors "https://$domain/health"
