@@ -4,7 +4,7 @@ import { ApiError } from "../client";
 
 export const auth = { auth: true, timeoutMs: 20000 };
 
-export const slow = { auth: true, timeoutMs: 180000 };
+export const slow = { auth: true, timeoutMs: 310000 };
 
 export type Origin = "engine" | "ai" | "athlete";
 

@@ -22,8 +22,8 @@ class Settings(BaseSettings):
 
     # Per-request upstream timeout (seconds). Generous because AI work is slow:
     # building a Race Mission's layers makes several Claude calls in parallel and
-    # personalizing a full training plan can take well over a minute.
-    upstream_timeout_seconds: float = 180.0
+    # personalizing a full training plan can take nearly three minutes.
+    upstream_timeout_seconds: float = 300.0
 
     # Rate limiting. Redis is shared across gateway instances; empty falls back to
     # a per-process in-memory limiter. Limits apply per window, per scope (client
