@@ -137,7 +137,7 @@ test("export and permanently delete all mission data", async ({ page, request })
   const remaining = await (await request.get(`${api}/race-missions`, { headers })).json();
   expect(remaining.items).toHaveLength(0);
   const raceTeam = await (await request.get(`${api}/ai/race/data`, { headers })).json();
-  expect(raceTeam).toEqual({ memory: [], chat: [], briefs: [], proposals: [], ai_usage: [] });
+  expect(raceTeam).toEqual({ memory: [], chat: [], briefs: [], proposals: [], ai_usage: [], covers: [] });
 });
 
 test("import my own plan from pasted text, review it and train from it", async ({ page, request }) => {

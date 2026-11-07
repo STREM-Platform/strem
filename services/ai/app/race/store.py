@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
 from app.db import Base
+from app.race.enrich.covers import GeneratedCover
 
 
 class RaceChatMessage(Base):
@@ -192,6 +193,16 @@ async def export_user(session: AsyncSession, user_id: uuid.UUID) -> dict[str, An
     usage = await session.scalars(
         select(AIUsage).where(AIUsage.user_id == user_id).order_by(AIUsage.day)
     )
+    covers = await session.execute(
+        select(
+            GeneratedCover.id,
+            GeneratedCover.model,
+            GeneratedCover.prompt,
+            GeneratedCover.created_at,
+        )
+        .where(GeneratedCover.user_id == user_id)
+        .order_by(GeneratedCover.created_at)
+    )
     return {
         "chat": [
             {
@@ -223,10 +234,19 @@ async def export_user(session: AsyncSession, user_id: uuid.UUID) -> dict[str, An
             for r in proposals
         ],
         "ai_usage": [{"day": r.day.isoformat(), "calls": r.calls} for r in usage],
+        "covers": [
+            {
+                "id": str(r.id),
+                "model": r.model,
+                "prompt": r.prompt,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in covers
+        ],
     }
 
 
 async def purge_user(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Delete every race-team record of one athlete."""
-    for model in (RaceChatMessage, RaceBrief, RaceProposal, AIUsage):
+    for model in (RaceChatMessage, RaceBrief, RaceProposal, AIUsage, GeneratedCover):
         await session.execute(delete(model).where(model.user_id == user_id))

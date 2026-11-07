@@ -45,6 +45,8 @@ export interface AIStatus {
   available: boolean;
   model?: string | null;
   reason?: string | null;
+  /** AI race covers (#35) are enabled for this account. */
+  cover_images?: boolean;
 }
 
 export interface ChatMessage {

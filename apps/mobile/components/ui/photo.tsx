@@ -15,7 +15,8 @@ import { C, ui } from "@/constants/theme";
 import type { CoverMedia } from "@/lib/api/race-missions";
 
 export function PhotoCredit({ cover, style }: { cover: CoverMedia; style?: StyleProp<ViewStyle> }) {
-  const text = [cover.creator ? `Photo: ${cover.creator}` : "Photo", cover.license].filter(Boolean).join(" · ");
+  const generated = cover.provider === "generated";
+  const text = generated ? `AI-generated image · ${cover.creator ?? "image model"}` : [cover.creator ? `Photo: ${cover.creator}` : "Photo", cover.license].filter(Boolean).join(" · ");
   return (
     <Pressable
       accessibilityRole="link"
@@ -26,7 +27,7 @@ export function PhotoCredit({ cover, style }: { cover: CoverMedia; style?: Style
     >
       <Text style={styles.credit} numberOfLines={1}>
         {text}
-        {cover.depicts !== "event" ? " · atmosphere" : ""}
+        {cover.depicts !== "event" && !generated ? " · atmosphere" : ""}
       </Text>
     </Pressable>
   );

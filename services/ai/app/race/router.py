@@ -5,15 +5,18 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Any
 
+import httpx
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.deps import BearerTokenDep, CurrentUserDep, SessionDep
+from app.deps import BearerTokenDep, CurrentUserDep, SessionDep, SettingsDep
 from app.errors import AppError
 from app.race import importer, memory, service, store
 from app.race.ai import budget
+from app.race.ai.client import AIUnavailable
 from app.race.clients import RaceServices
+from app.race.enrich import covers
 from app.race.enrich.geo import search_places
 from app.race.enrich.media import search_media
 from app.race.plan_import import PlanImportRequest
@@ -74,7 +77,9 @@ def _no_store(response: Response) -> None:
 
 
 @router.get("/race/status")
-async def race_ai_status(ai: RaceAIDep, current: CurrentUserDep) -> dict[str, Any]:
+async def race_ai_status(
+    ai: RaceAIDep, current: CurrentUserDep, settings: SettingsDep
+) -> dict[str, Any]:
     state = ai.status()
     meter = budget.current_meter()
     return {
@@ -83,6 +88,7 @@ async def race_ai_status(ai: RaceAIDep, current: CurrentUserDep) -> dict[str, An
         "reason": state.reason,
         "daily_limit": meter.limit if meter else 0,
         "left_today": meter.left if meter else None,
+        "cover_images": covers.allowed(settings, current.email),
     }
 
 
@@ -430,3 +436,46 @@ async def photos(
     sport: Annotated[str | None, Query(max_length=40)] = None,
 ) -> dict[str, Any]:
     return {"items": await search_media(event, location, sport)}
+
+
+@router.post("/enrich/covers", status_code=status.HTTP_201_CREATED)
+async def generate_cover(
+    body: covers.CoverRequest,
+    current: CurrentUserDep,
+    settings: SettingsDep,
+    db: SessionDep,
+    _ai: RaceAIDep,  # applies the athlete's daily AI limit to this request
+) -> dict[str, Any]:
+    """Paint a cover for this race with the image model (#35), allowlisted accounts only."""
+    if not covers.allowed(settings, current.email):
+        raise AppError(
+            403, "cover_generation_restricted", "AI race covers aren't enabled for your account."
+        )
+    try:
+        budget.spend()
+    except AIUnavailable as exc:
+        raise AppError(429, "ai_limit_reached", str(exc)) from exc
+    prompt = covers.prompt_for(body)
+    try:
+        data = await covers.generate(settings, prompt)
+    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
+        raise AppError(
+            502, "cover_generation_failed", "The image model didn't return a cover. Retry."
+        ) from exc
+    cover = covers.new_cover(current.user_id, settings, prompt, data)
+    db.add(cover)
+    await db.commit()
+    return {"id": str(cover.id), "path": f"/ai/enrich/covers/{cover.id}", "model": cover.model}
+
+
+@router.get("/enrich/covers/{cover_id}")
+async def cover_image(cover_id: uuid.UUID, db: SessionDep) -> Response:
+    """The image itself. Public like any cover photo; the id is unguessable."""
+    row = await db.get(covers.GeneratedCover, cover_id)
+    if row is None:
+        raise AppError(404, "not_found", "No such cover.")
+    return Response(
+        content=row.data,
+        media_type=row.media_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
