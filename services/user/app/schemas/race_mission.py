@@ -168,7 +168,8 @@ class RaceGoal(StrictModel):
 
 class CoverMedia(StrictModel):
     """A cover photo and the attribution its licence requires. Never scraped:
-    openly licensed (Openverse, Wikimedia Commons) or supplied by the athlete."""
+    openly licensed (Openverse, Wikimedia Commons), supplied by the athlete, or
+    generated for them by the race team's image model (#35)."""
 
     url: str = Field(max_length=1000)
     thumb_url: str | None = Field(default=None, max_length=1000)
@@ -178,7 +179,7 @@ class CoverMedia(StrictModel):
     license: str = Field(min_length=2, max_length=60)
     license_url: str | None = Field(default=None, max_length=300)
     source_url: str = Field(max_length=1000)
-    provider: Literal["openverse", "wikimedia", "athlete"]
+    provider: Literal["openverse", "wikimedia", "athlete", "generated"]
     depicts: Literal["event", "location", "atmosphere"] = "atmosphere"
 
     @field_validator("url", "thumb_url", "creator_url", "license_url", "source_url")

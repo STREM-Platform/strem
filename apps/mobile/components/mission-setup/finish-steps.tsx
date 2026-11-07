@@ -9,8 +9,10 @@ import { Icon } from "@/components/ui/icon";
 import { Body, Button, Card, Chip, Notice, Overline, Row } from "@/components/ui/kit";
 import { HeroMedia } from "@/components/ui/photo";
 import { C, R, disp, ui } from "@/constants/theme";
-import { enrichApi, type PhotoCandidate } from "@/lib/api/race";
-import type { Terrain, Weekday } from "@/lib/api/race-missions";
+import { ApiError } from "@/lib/api/client";
+import { enrichApi, raceAi, type PhotoCandidate } from "@/lib/api/race";
+import { API_BASE_URL } from "@/lib/config";
+import type { CoverMedia, Terrain, Weekday } from "@/lib/api/race-missions";
 import { hm, km, longDate, parseFinishTime } from "@/lib/race/format";
 import type { FormErrors, MissionForm } from "@/lib/race/mission-form";
 import { FORMATS, TERRAIN, sportMeta } from "@/lib/race/sports";
@@ -51,9 +53,49 @@ export function PhotoStep({ form, set }: { form: MissionForm; set: SetFn }) {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // AI race covers (#35) show only for accounts the server enables.
+  const [canPaint, setCanPaint] = useState(false);
+  const [painting, setPainting] = useState(false);
+  const [paintError, setPaintError] = useState<string | null>(null);
+  useEffect(() => {
+    raceAi.status().then((s) => setCanPaint(Boolean(s.cover_images))).catch(() => setCanPaint(false));
+  }, []);
+  const paint = async () => {
+    setPainting(true);
+    setPaintError(null);
+    try {
+      const made = await enrichApi.generateCover({
+        name: form.name,
+        sport: form.sport,
+        location: form.location || null,
+        race_date: form.date || null,
+        distance_km: Number(form.distance) || null,
+        elevation_gain_m: Math.round(Number(form.elevation)) || null,
+      });
+      const url = `${API_BASE_URL}${made.path}`;
+      const cover: CoverMedia = { url, thumb_url: url, title: `${form.name} (AI-generated)`, creator: made.model, license: "AI-generated", source_url: url, provider: "generated", depicts: "atmosphere" };
+      setItems((current) => [{ ...cover, id: made.id }, ...(current ?? [])]);
+      set("cover", cover);
+    } catch (err) {
+      setPaintError(err instanceof ApiError ? err.message : "The image model didn't answer. Retry.");
+    } finally {
+      setPainting(false);
+    }
+  };
   return (
     <View style={{ gap: 14 }}>
       <Body muted>Pick a photo that makes this race feel real. These are openly licensed photos of the event or its location, credited to their creators.</Body>
+      {canPaint ? (
+        <Card pad={16} style={{ gap: 10 }}>
+          <Row gap={8}>
+            <Icon name="sparkles" size={16} color={C.accent} />
+            <Text style={[ui(14, 700), { color: C.text, flex: 1 }]}>Paint a cover with AI</Text>
+          </Row>
+          <Body muted>The image model draws {form.name || "your race"} from what it knows about the race and the place. It’s labelled as AI-generated, never as a photo of the event.</Body>
+          {paintError ? <Notice icon="alert" tone="attention" title="No cover this time" body={paintError} /> : null}
+          <Button label={painting ? "Painting your race… (up to a minute)" : "Generate cover"} icon="sparkles" loading={painting} disabled={!form.name.trim()} onPress={() => void paint()} style={{ alignSelf: "flex-start" }} />
+        </Card>
+      ) : null}
       <Row gap={8} align="flex-end">
         <Input label="Search photos" value={query} onChangeText={setQuery} placeholder="Race, mountain or place" returnKeyType="search" onSubmitEditing={() => void search(query)} />
         <Button label="Search" kind="secondary" onPress={() => void search(query)} style={{ marginBottom: 2 }} />
@@ -99,7 +141,7 @@ export function PhotoStep({ form, set }: { form: MissionForm; set: SetFn }) {
               ) : null}
               <View style={styles.photoMeta}>
                 <Text style={[ui(10, 700), { color: C.text }]} numberOfLines={1}>
-                  {photo.depicts === "event" ? "Event" : photo.depicts === "location" ? "Location" : "Atmosphere"} · {photo.license}
+                  {photo.provider === "generated" ? "AI-generated" : `${photo.depicts === "event" ? "Event" : photo.depicts === "location" ? "Location" : "Atmosphere"} · ${photo.license}`}
                 </Text>
                 <Text style={[ui(10, 500), { color: C.textMuted }]} numberOfLines={1}>
                   {photo.creator}
@@ -109,7 +151,7 @@ export function PhotoStep({ form, set }: { form: MissionForm; set: SetFn }) {
           );
         })}
       </View>
-      {form.cover ? (
+      {form.cover && form.cover.provider !== "generated" ? (
         <Choices
           options={[
             { value: "event", label: "Shows this race" },

@@ -91,7 +91,7 @@ export interface CoverMedia {
   license: string;
   license_url?: string | null;
   source_url: string;
-  provider: "openverse" | "wikimedia" | "athlete";
+  provider: "openverse" | "wikimedia" | "athlete" | "generated";
   depicts?: "event" | "location" | "atmosphere";
 }
 

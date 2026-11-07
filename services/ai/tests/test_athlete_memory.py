@@ -78,6 +78,7 @@ def test_what_the_athlete_says_is_remembered_used_corrected_and_forgotten() -> N
                 "briefs": [],
                 "proposals": [],
                 "ai_usage": [],
+                "covers": [],
             }
 
     asyncio.run(scenario())

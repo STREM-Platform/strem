@@ -42,7 +42,21 @@ export const enrichApi = {
       .join("&");
     return (await request<{ items: PhotoCandidate[] }>(`/ai/enrich/photos?${query}`, { auth: true, timeoutMs: 30000 })).items;
   },
+  /** Paint a cover with the image model (#35); allowlisted accounts only. */
+  generateCover(race: CoverRace) {
+    return request<{ id: string; path: string; model: string }>("/ai/enrich/covers", { auth: true, timeoutMs: 200000, method: "POST", body: race });
+  },
 };
+
+export interface CoverRace {
+  name: string;
+  sport?: string | null;
+  location?: string | null;
+  race_date?: string | null;
+  distance_km?: number | null;
+  elevation_gain_m?: number | null;
+  description?: string | null;
+}
 
 export interface StravaRoute {
   id: string;

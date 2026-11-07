@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-6.1-sol"
     openai_base_url: str = "https://api.openai.com/v1"
 
+    # AI-generated race covers (#35). Off unless the athlete's email is listed here
+    # (comma-separated) and an OpenAI key is set; each image counts toward the
+    # daily AI limit below.
+    openai_image_model: str = "gpt-image-2"
+    cover_image_emails: str = ""
+
     # Model calls each athlete may make per UTC day (#8); 0 = no limit. Past it the
     # race engine carries on and the app says the AI is back tomorrow.
     ai_daily_limit: int = 60
